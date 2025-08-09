@@ -13,10 +13,15 @@ It is intentionally simple for early deployment, with clear upgrade paths.
   - Auth: single shared HMAC key for request signing.
     - including anti-replay measures.  Timestamp, nonce
 
+- **Phase 1.5 (enhanced auth)**
+  - Implement "PSK for join → per-worker HMAC key" pattern.
+  - Workers use shared PSK to establish unique HMAC keys during join.
+  - Optional: Wrap join step in X25519 key exchange for defense-in-depth.
+
 - **Phase 2 (future)**
   - Introduce a Creds Service (fronting Vault or similar).
-  - Swap shared key to per-worker keys or short-lived job tokens.
-  - more sophisticated authentication for workers pehaps.
+  - Swap to short-lived job tokens or certificate-based auth.
+  - Full per-worker key rotation and revocation.
 
 ---
 
@@ -45,21 +50,31 @@ It is intentionally simple for early deployment, with clear upgrade paths.
 - Secrets are redacted from logs and only held in memory on the Controller.
 
 **Residual Risks**
-- Single shared HMAC key: if leaked, attacker can call `/checkout` until rotated.
-- Compromised worker can use `/checkout` while active.
+- Phase 1: Single shared HMAC key - if leaked, attacker can call `/checkout` until rotated.
+- Phase 1.5: Compromised PSK allows generating new worker keys, but limits blast radius.
+- Any compromised worker can use `/checkout` while its key remains valid.
 
 ---
 
 ## Controls
 
 ### 1. HMAC Request Signing
+
+**Phase 1 (current):**
 - Shared `TS_HMAC_SECRET` in both Controller and Workers.
 - Each request includes timestamp, nonce, and HMAC signature.
-- Controller verifies:
-  - HMAC (constant-time compare)
-  - Timestamp within ±60s
-  - Nonce not reused (cache for 5 min)
-- Rate-limit `/checkout`.
+- Controller verifies signature, timestamp (±60s), and nonce uniqueness.
+
+**Phase 1.5 (per-worker keys):**
+- Shared PSK for worker join process to establish unique HMAC keys.
+- Each worker gets individual HMAC key via authenticated join handshake.
+- Optional X25519 wrapping ensures PSK-derived keys never transmitted in clear.
+- Controller maintains mapping of worker IDs to their unique HMAC keys.
+
+All phases include:
+- Constant-time HMAC comparison
+- Nonce cache (5 min) for replay protection
+- Rate-limiting on `/checkout` and join endpoints
 
 ### 2. TLS for Controller
 - Public endpoint: Let’s Encrypt via Caddy/Traefik/nginx.
