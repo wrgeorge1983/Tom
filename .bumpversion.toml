@@ -1,0 +1,26 @@
+  [tool.bumpversion]
+  current_version = "0.1.0"
+  parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+  serialize = ["{major}.{minor}.{patch}"]
+  commit = true
+  tag = true
+  tag_name = "v{new_version}"
+
+  [[tool.bumpversion.files]]
+  filename = "VERSION"
+
+#  [[tool.bumpversion.files]]
+#  filename = "pyproject.toml"
+#  search = "version = \"{current_version}\""
+#  replace = "version = \"{new_version}\""
+
+  [[tool.bumpversion.files]]
+  filename = "services/core/pyproject.toml"
+  search = "version = \"{current_version}\""
+  replace = "version = \"{new_version}\""
+
+  # Add more services as needed
+#  [[tool.bumpversion.files]]
+#  filename = "services/api/pyproject.toml"
+#  search = "version = \"{current_version}\""
+#  replace = "version = \"{new_version}\""
