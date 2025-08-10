@@ -3,3 +3,4 @@
 .claude/
 adhoc_tests
 **/*.egg-info/
+**/*.env
