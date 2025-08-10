@@ -4,14 +4,16 @@ from fastapi import FastAPI
 from tom_core import __version__
 from tom_core import api
 from tom_core.credentials.credentials import YamlCredentialStore
+from tom_core.config import settings
 
 
 def create_app():
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
+    async def lifespan(this_app: FastAPI):
         # Initialize credential store on startup
-        app.state.credential_store = YamlCredentialStore(
-            "../../../../adhoc_tests/assets.yml"
+        this_app.state.settings = settings
+        this_app.state.credential_store = YamlCredentialStore(
+            settings.credential_path,
         )
         yield
         # Cleanup on shutdown if needed
