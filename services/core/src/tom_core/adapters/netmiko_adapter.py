@@ -3,14 +3,18 @@ from typing import Optional
 
 from netmiko import ConnectHandler
 
-from tom_core.credentials.credentials import YamlCredentialStore, SSHCredentials, CredentialStore
+from tom_core.credentials.credentials import (
+    YamlCredentialStore,
+    SSHCredentials,
+    CredentialStore,
+)
 
 
 @dataclass
 class NetmikoAdapter:
     host: str
-    device_type: str
     port: int
+    device_type: str
     credential: Optional[SSHCredentials] = None
     connection: Optional[ConnectHandler] = None
 

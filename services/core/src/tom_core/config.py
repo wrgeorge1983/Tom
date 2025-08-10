@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     # Tom Core Server settings
     host: str = "0.0.0.0"
     port: int = 8020
-    log_level: str|int = "info"  # Input is str, but we convert to int for actual use
+    log_level: str | int = "info"  # Input is str, but we convert to int for actual use
 
-    @field_validator('log_level')
+    @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v) -> int:
         if isinstance(v, int):
@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="TOM_CORE_",
-        env_file=os.getenv("TOM_CORE_ENV_FILE", 'foo.env'),
+        env_file=os.getenv("TOM_CORE_ENV_FILE", "foo.env"),
         case_sensitive=False,
     )
 
