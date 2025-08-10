@@ -3,7 +3,7 @@ from typing import Optional
 
 from netmiko import ConnectHandler
 
-from tom_core.credentials.credentials import YamlCredentialStore, SSHCredentials
+from tom_core.credentials.credentials import YamlCredentialStore, SSHCredentials, CredentialStore
 
 
 @dataclass
@@ -33,7 +33,7 @@ class NetmikoAdapter:
         device_type: str,
         credential_id: str,
         port: int,
-        credential_store: YamlCredentialStore,
+        credential_store: CredentialStore,
     ):
         credential = SSHCredentials(credential_id)
         credential.initialize(credential_store)

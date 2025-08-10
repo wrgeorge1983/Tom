@@ -3,7 +3,7 @@ from urllib.request import Request
 from fastapi import APIRouter, Depends, Request
 
 from tom_core.adapters.netmiko_adapter import NetmikoAdapter
-from tom_core.credentials.credentials import YamlCredentialStore
+from tom_core.credentials.credentials import CredentialStore
 
 router = APIRouter()
 
@@ -24,7 +24,7 @@ async def send_netmiko_command(
     command: str,
     credential_id: str,
     port: int = 22,
-    credential_store: YamlCredentialStore = Depends(get_credential_store),
+    credential_store: CredentialStore = Depends(get_credential_store),
 ):
     adapter = NetmikoAdapter.new_with_credential(
         host=host,
