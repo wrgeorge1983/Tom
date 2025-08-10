@@ -2,3 +2,4 @@
 .venv/
 .claude/
 adhoc_tests
+**/*.egg-info/

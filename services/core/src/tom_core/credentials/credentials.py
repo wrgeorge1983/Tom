@@ -15,8 +15,8 @@ class CredentialStore:
 class YamlCredentialStore(CredentialStore):
     filename: str
     data: Optional[dict] = None
-    def __post_init__(self):
 
+    def __post_init__(self):
         if self.data is None:
             # First try to open the file directly
             try:
@@ -24,7 +24,9 @@ class YamlCredentialStore(CredentialStore):
                     self.data = yaml.safe_load(f)
             except FileNotFoundError:
                 # If not found, try to open from project root
-                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                project_root = os.path.dirname(
+                    os.path.dirname(os.path.abspath(__file__))
+                )
                 full_path = os.path.join(project_root, self.filename)
                 with open(full_path, "r") as f:
                     self.data = yaml.safe_load(f)
@@ -33,10 +35,17 @@ class YamlCredentialStore(CredentialStore):
         if credential_id not in self.data:
             raise Exception(f"Credential {credential_id} not found in {self.filename}")
 
-        if "username" not in self.data[credential_id] or "password" not in self.data[credential_id]:
-            raise Exception(f"Credential {credential_id} does missing username or password")
+        if (
+            "username" not in self.data[credential_id]
+            or "password" not in self.data[credential_id]
+        ):
+            raise Exception(
+                f"Credential {credential_id} does missing username or password"
+            )
 
-        return self.data[credential_id]["username"], self.data[credential_id]["password"]
+        return self.data[credential_id]["username"], self.data[credential_id][
+            "password"
+        ]
 
 
 @dataclass
@@ -47,5 +56,7 @@ class SSHCredentials:
     initialized: bool = False
 
     def initialize(self, credential_store: CredentialStore):
-        self.username, self.password = credential_store.get_ssh_credentials(self.credential_id)
+        self.username, self.password = credential_store.get_ssh_credentials(
+            self.credential_id
+        )
         self.initialized = True

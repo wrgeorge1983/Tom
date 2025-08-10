@@ -18,7 +18,6 @@ class NetmikoAdapter:
         if self.credential is None or not self.credential.initialized:
             raise Exception("SSH Credentials not initialized")
 
-
         self.connection = ConnectHandler(
             host=self.host,
             username=self.credential.username,
@@ -28,8 +27,17 @@ class NetmikoAdapter:
         )
 
     @classmethod
-    def new_with_credential(cls, host: str, device_type: str, credential_id: str, port: int = 22):
-        return cls(host=host, device_type=device_type, credential=SSHCredentials(credential_id), port=port)
+    def new_with_credential(
+        cls,
+        host: str,
+        device_type: str,
+        credential_id: str,
+        port: int,
+        credential_store: YamlCredentialStore,
+    ):
+        credential = SSHCredentials(credential_id)
+        credential.initialize(credential_store)
+        return cls(host=host, device_type=device_type, credential=credential, port=port)
 
     def send_command(self, command: str) -> str:
         if self.connection is None:
@@ -37,10 +45,16 @@ class NetmikoAdapter:
 
         return self.connection.send_command(command)
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     credential_store = YamlCredentialStore("../../../../adhoc_tests/assets.yml")
-    adapter = NetmikoAdapter.new_with_credential("192.168.155.227", "cisco_ios", "first_test", 22, )
+    adapter = NetmikoAdapter.new_with_credential(
+        "192.168.155.227",
+        "cisco_ios",
+        "first_test",
+        22,
+        credential_store=credential_store,
+    )
     adapter.credential.initialize(credential_store)
     adapter.connect()
     print(adapter.send_command("show ip int brief"))
