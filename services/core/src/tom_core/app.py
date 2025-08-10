@@ -16,3 +16,5 @@ def create_app():
             description="Network Automation Broker Service Core.",
             lifespan=lifespan
     )
+
+    return app

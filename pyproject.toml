@@ -1,0 +1,19 @@
+[project]
+name = "tom"
+version = "0.1.0"
+description = "Tom Smykowski Network Automation Broker - Workspace"
+requires-python = ">=3.13"
+dependencies = [
+    "tom_core"
+]
+
+[tool.uv.sources]
+tom-core = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+    "services/core",
+    # Future services will go here:
+    # "services/worker",
+    # "services/api", 
+]
