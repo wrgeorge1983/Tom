@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from tom_core import __version__
+from tom_core import api
 
 
 def create_app():
@@ -17,4 +18,5 @@ def create_app():
             lifespan=lifespan
     )
 
+    app.include_router(api.router, prefix="/api")
     return app
