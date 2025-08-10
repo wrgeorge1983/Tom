@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,6 +11,10 @@ from tom_core.config import settings
 def create_app():
     @asynccontextmanager
     async def lifespan(this_app: FastAPI):
+        logging.basicConfig(
+            level=settings.log_level,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+        )
         # Initialize credential store on startup
         this_app.state.settings = settings
         this_app.state.credential_store = YamlCredentialStore(
