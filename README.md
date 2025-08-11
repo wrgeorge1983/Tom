@@ -15,8 +15,11 @@ a web interface, or chat, etc. has NO business talking directly to your network
 equipment or handling credentials etc. 
 
 All of these are solveable, but there's rarely a reason to solve it differently for
-each project.  Also, they can be cumbersome and fragile with unpleasant dependence
+each project.  Also, they can be cumbersome and fragile with unpleasant dependence on 
 system details (looking at you TextFSM!) 
+
+Network Automation has a huge toolbox, and integrating with all of it (especially 
+doing so well) is a huge challenge. 
 
 - **Transport/Drivers** - Netmiko, scrapli, etc.
 - **Parsing engines and templates** - TextFSM, ttp, genie, etc.
@@ -28,8 +31,12 @@ system details (looking at you TextFSM!)
 
 ## Goals
 
-- **Reusable primitives** - Provide common functionality (templating, parsing, queue handling, API glue) that can be consumed by multiple automation workflows or tools.
+- **Reusable primitives** - Provide common functionality (templating, parsing, SOT & Inventory integration, queueing, API glue) that can be consumed by multiple automation workflows or tools.
 - **Simple deployments** - A single `docker compose` setup for running all services together with dependencies (e.g., Redis).
 - **Support runtime changes** - You can update your service config as time goes on
 - **Support immutable state** - You can bake your own images so you're guaranteed to have an always redeployable artifact without a bunch of setup
 
+
+## Inspiration
+
+- [Netpalm](https://github.com/tbotnz/netpalm/) - Netpalm effectively invented the idea of a Network Automation Broker, and is the direct inspiration for Tom Smykowski.
