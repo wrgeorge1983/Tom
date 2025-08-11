@@ -3,6 +3,7 @@ from urllib.request import Request
 from fastapi import APIRouter, Depends, Request
 
 from tom_core.adapters.netmiko_adapter import NetmikoAdapter
+from tom_core.adapters.scrapli_adapter import ScrapliAsyncAdapter
 from tom_core.credentials.credentials import CredentialStore
 
 router = APIRouter()
@@ -17,7 +18,7 @@ async def root():
     return {"message": "Hello World"}
 
 
-@router.get("/send_command")
+@router.get("/send_netmiko_command")
 async def send_netmiko_command(
     host: str,
     device_type: str,
@@ -36,3 +37,25 @@ async def send_netmiko_command(
     adapter.connect()
     result = adapter.send_command(command)
     return {"message": result}
+
+
+@router.get("/send_scrapli_command")
+async def send_scrapli_command(
+    host: str,
+    device_type: str,
+    command: str,
+    credential_id: str,
+    port: int = 22,
+    credential_store: CredentialStore = Depends(get_credential_store),
+):
+    adapter = ScrapliAsyncAdapter.new_with_credential(
+        host=host,
+        device_type=device_type,
+        credential_id=credential_id,
+        port=port,
+        credential_store=credential_store,
+    )
+    await adapter.connect()
+    result = await adapter.send_command(command)
+    return {"message": result}
+

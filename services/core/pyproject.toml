@@ -5,6 +5,7 @@ description = "Tom Smykowski Network Automation Broker - Core Service"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "asyncssh>=2.21.0",
     "fastapi>=0.116.1",
     "netmiko>=4.4.0",
     "pydantic>=2.11.7",

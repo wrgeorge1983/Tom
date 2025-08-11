@@ -116,6 +116,8 @@ class ScrapliAsyncAdapter:
             port=self.port,
             auth_username=self.credential.username,
             auth_password=self.credential.password,
+            transport="asyncssh",
+            auth_strict_key=False,
         )
 
     @classmethod
