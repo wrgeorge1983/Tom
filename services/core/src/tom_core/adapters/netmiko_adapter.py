@@ -8,6 +8,7 @@ from tom_core.credentials.credentials import (
     SSHCredentials,
     CredentialStore,
 )
+from tom_core.exceptions import TomException
 
 
 @dataclass
@@ -20,7 +21,7 @@ class NetmikoAdapter:
 
     def connect(self):
         if self.credential is None or not self.credential.initialized:
-            raise Exception("SSH Credentials not initialized")
+            raise TomException("SSH Credentials not initialized")
 
         self.connection = ConnectHandler(
             host=self.host,
@@ -45,7 +46,7 @@ class NetmikoAdapter:
 
     def send_command(self, command: str) -> str:
         if self.connection is None:
-            raise Exception("Connection not initialized")
+            raise TomException("Connection not initialized")
 
         return self.connection.send_command(command)
 

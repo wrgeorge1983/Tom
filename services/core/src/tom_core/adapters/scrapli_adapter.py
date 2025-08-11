@@ -18,6 +18,7 @@ from scrapli.driver.core import (
     AsyncJunosDriver,
 )
 from tom_core.credentials.credentials import SSHCredentials, CredentialStore
+from tom_core.exceptions import TomException
 
 valid_sync_drivers = {
     "cisco_iosxe": IOSXEDriver,
@@ -53,7 +54,7 @@ class ScrapliSyncAdapter:
         self._driver_class = self._resolve_driver(self.device_type)
 
         if self.credential is None or not self.credential.initialized:
-            raise Exception("SSH Credentials not initialized")
+            raise TomException("SSH Credentials not initialized")
 
         self.connection = self._driver_class(  # scrapli doesn't initiate until calling .open()
             host=self.host,
@@ -66,13 +67,13 @@ class ScrapliSyncAdapter:
     def _resolve_driver(cls, device_type: str) -> Type[NetworkDriver]:
         result = valid_sync_drivers.get(device_type)
         if result is None:
-            raise Exception(f"Device type {device_type} not supported")
+            raise TomException(f"Device type {device_type} not supported")
 
         return result
 
     def connect(self):
         if self.connection is None or not self.credential.initialized:
-            raise Exception("Connection not initialized")
+            raise TomException("Connection not initialized")
 
         self.connection.open()
 
@@ -91,7 +92,7 @@ class ScrapliSyncAdapter:
 
     def send_command(self, command: str) -> str:
         if self.connection is None:
-            raise Exception("Connection not initialized")
+            raise TomException("Connection not initialized")
 
         return self.connection.send_command(command).result
 
@@ -109,7 +110,7 @@ class ScrapliAsyncAdapter:
         self._driver_class = self._resolve_driver(self.device_type)
 
         if self.credential is None or not self.credential.initialized:
-            raise Exception("SSH Credentials not initialized")
+            raise TomException("SSH Credentials not initialized")
 
         self.connection = self._driver_class(  # scrapli doesn't initiate until calling .open()
             host=self.host,
@@ -124,13 +125,13 @@ class ScrapliAsyncAdapter:
     def _resolve_driver(cls, device_type: str) -> Type[AsyncNetworkDriver]:
         result = valid_async_drivers.get(device_type)
         if result is None:
-            raise Exception(f"Device type {device_type} not supported")
+            raise TomException(f"Device type {device_type} not supported")
 
         return result
 
     async def connect(self):
         if self.connection is None or not self.credential.initialized:
-            raise Exception("Connection not initialized")
+            raise TomException("Connection not initialized")
         await self.connection.open()
 
     @classmethod
@@ -148,5 +149,5 @@ class ScrapliAsyncAdapter:
 
     async def send_command(self, command: str) -> str:
         if self.connection is None:
-            raise Exception("Connection not initialized")
+            raise TomException("Connection not initialized")
         return (await self.connection.send_command(command)).result

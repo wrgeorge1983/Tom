@@ -4,11 +4,13 @@ from typing import Optional
 
 import yaml
 
+from tom_core.exceptions import TomException
+
 
 @dataclass
 class CredentialStore:
     def get_ssh_credentials(self, credential_id: str) -> (str, str):
-        raise Exception("Not implemented")
+        raise TomException("Not implemented")
 
 
 @dataclass
@@ -33,13 +35,13 @@ class YamlCredentialStore(CredentialStore):
 
     def get_ssh_credentials(self, credential_id: str) -> (str, str):
         if credential_id not in self.data:
-            raise Exception(f"Credential {credential_id} not found in {self.filename}")
+            raise TomException(f"Credential {credential_id} not found in {self.filename}")
 
         if (
             "username" not in self.data[credential_id]
             or "password" not in self.data[credential_id]
         ):
-            raise Exception(
+            raise TomException(
                 f"Credential {credential_id} does missing username or password"
             )
 
