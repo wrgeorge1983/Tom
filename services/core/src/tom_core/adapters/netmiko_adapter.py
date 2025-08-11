@@ -31,6 +31,19 @@ class NetmikoAdapter:
             port=self.port,
         )
 
+    def close(self):
+        if self.connection is not None:
+            self.connection.disconnect()
+            self.connection = None
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        self.close()
+        return False
+
     @classmethod
     def new_with_credential(
         cls,

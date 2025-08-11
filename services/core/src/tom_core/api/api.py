@@ -34,8 +34,8 @@ async def send_netmiko_command(
         port=port,
         credential_store=credential_store,
     )
-    adapter.connect()
-    result = adapter.send_command(command)
+    with adapter:
+        result = adapter.send_command(command)
     return {"message": result}
 
 
@@ -55,7 +55,8 @@ async def send_scrapli_command(
         port=port,
         credential_store=credential_store,
     )
-    await adapter.connect()
-    result = await adapter.send_command(command)
+    async with adapter:
+        result = await adapter.send_command(command)
+
     return {"message": result}
 
