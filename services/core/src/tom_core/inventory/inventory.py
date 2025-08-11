@@ -7,7 +7,7 @@ from tom_core.exceptions import TomException
 
 
 class DeviceConfig(BaseModel):
-    adapter: Literal['netmiko', 'scrapli'] = 'netmiko'
+    adapter: Literal['netmiko', 'scrapli']
     adapter_driver: str
     adapter_options: dict[str, Any] = {}
     host: str

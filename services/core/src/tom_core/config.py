@@ -29,7 +29,8 @@ class Settings(BaseSettings):
 
     # Credential store settings
     project_root: str = "../../../../"
-    credential_file: str = "assets.yml"
+    credential_file: str = "defaultCreds.yml"
+    inventory_file: str = "defaultInventory.yml"
 
     # Tom Core Server settings
     host: str = "0.0.0.0"
@@ -47,6 +48,11 @@ class Settings(BaseSettings):
     @property
     def credential_path(self) -> str:
         return str(Path(self.project_root) / self.credential_file)
+
+    @computed_field
+    @property
+    def inventory_path(self) -> str:
+        return str(Path(self.project_root) / self.inventory_file)
 
     model_config = SettingsConfigDict(
         env_prefix="TOM_CORE_",

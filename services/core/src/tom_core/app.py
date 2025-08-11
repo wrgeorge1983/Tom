@@ -6,6 +6,7 @@ from tom_core import __version__
 from tom_core import api
 from tom_core.credentials.credentials import YamlCredentialStore
 from tom_core.config import settings
+from tom_core.inventory.inventory import YamlInventoryStore
 
 
 def create_app():
@@ -19,6 +20,9 @@ def create_app():
         this_app.state.settings = settings
         this_app.state.credential_store = YamlCredentialStore(
             settings.credential_path,
+        )
+        this_app.state.inventory_store = YamlInventoryStore(
+            settings.inventory_path,
         )
         yield
         # Cleanup on shutdown if needed
