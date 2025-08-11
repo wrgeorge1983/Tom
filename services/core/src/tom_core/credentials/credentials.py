@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -24,7 +23,9 @@ class YamlCredentialStore(CredentialStore):
 
     def get_ssh_credentials(self, credential_id: str) -> (str, str):
         if credential_id not in self.data:
-            raise TomException(f"Credential {credential_id} not found in {self.filename}")
+            raise TomException(
+                f"Credential {credential_id} not found in {self.filename}"
+            )
 
         if (
             "username" not in self.data[credential_id]

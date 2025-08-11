@@ -1,15 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional, Type
 
-from scrapli.driver import NetworkDriver, AsyncNetworkDriver
-from scrapli.driver.base.base_driver import BaseDriver
-from scrapli.driver.core import (
-    EOSDriver,
-    IOSXEDriver,
-    NXOSDriver,
-    IOSXRDriver,
-    JunosDriver,
-)
+from scrapli.driver import AsyncNetworkDriver
 from scrapli.driver.core import (
     AsyncEOSDriver,
     AsyncIOSXEDriver,
@@ -45,13 +37,15 @@ class ScrapliAsyncAdapter:
         if self.credential is None or not self.credential.initialized:
             raise TomException("SSH Credentials not initialized")
 
-        self.connection = self._driver_class(  # scrapli doesn't initiate until calling .open()
-            host=self.host,
-            port=self.port,
-            auth_username=self.credential.username,
-            auth_password=self.credential.password,
-            transport="asyncssh",
-            auth_strict_key=False,
+        self.connection = (
+            self._driver_class(  # scrapli doesn't initiate until calling .open()
+                host=self.host,
+                port=self.port,
+                auth_username=self.credential.username,
+                auth_password=self.credential.password,
+                transport="asyncssh",
+                auth_strict_key=False,
+            )
         )
 
     @classmethod
