@@ -27,7 +27,7 @@ async def root():
     return {"message": "Hello World"}
 
 
-@router.get("/send_netmiko_command")
+@router.get("/raw/send_netmiko_command")
 async def send_netmiko_command(
     host: str,
     device_type: str,
@@ -48,7 +48,7 @@ async def send_netmiko_command(
     return {"message": result}
 
 
-@router.get("/send_scrapli_command")
+@router.get("/raw/send_scrapli_command")
 async def send_scrapli_command(
     host: str,
     device_type: str,
@@ -96,7 +96,7 @@ async def send_inventory_command(
             credential_store=credential_store,
         )
         with adapter:
-            result = await adapter.send_command(command)
+            result = adapter.send_command(command)
 
     elif device_config.adapter == "scrapli":
         adapter = ScrapliAsyncAdapter.new_with_credential(
