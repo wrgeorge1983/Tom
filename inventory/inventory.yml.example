@@ -1,11 +1,33 @@
-r1_netmiko:
+# Inventory Configuration Template
+# Each device is keyed by device name at the root level
+
+# <device_name>:  # Replace with actual device name
+#   # Required fields
+#   host: str                    # IP address or hostname
+#   adapter: netmiko            # netmiko | scrapli  
+#   adapter_driver: cisco_ios   # For netmiko: cisco_ios | cisco_nxos | arista_eos | juniper_junos | etc...
+#                               # For scrapli: cisco_iosxe | cisco_nxos | cisco_iosxr | arista_eos | etc...
+#                               # for convenience, you can print the full list of available drivers with e.g.
+#                               # `uv run python -m tom_core.inventory.inventory`
+#   credential_id: str          # Reference to credential in credentials.yml
+#   
+#   # Optional fields
+#   port: int                   # Default: 22
+#   adapter_options: {}         # Adapter-specific options (dict)
+
+# Example devices:
+router1:
   host: "192.168.1.1"
   adapter: "netmiko"
   adapter_driver: "cisco_ios"
-  credential_id: cred_1
-
-r1_scrapli:
-  host: "192.168.1.1."
+  credential_id: "lab_creds"
+  port: 22
+  
+switch1:  
+  host: "192.168.1.10"
   adapter: "scrapli"
-  adapter_driver: "cisco_iosxe"
-  credential_id: cred_1
+  adapter_driver: "cisco_iosxe"  
+  credential_id: "lab_creds"
+  adapter_options:
+    transport: "system"
+    auth_strict_key: false

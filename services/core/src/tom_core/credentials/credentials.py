@@ -7,7 +7,6 @@ import yaml
 from tom_core.exceptions import TomException
 
 
-@dataclass
 class CredentialStore:
     def get_ssh_credentials(self, credential_id: str) -> (str, str):
         raise TomException("Not implemented")
@@ -15,23 +14,13 @@ class CredentialStore:
 
 @dataclass
 class YamlCredentialStore(CredentialStore):
-    filename: str
+    filename: str = ""
     data: Optional[dict] = None
 
-    def __post_init__(self):
-        if self.data is None:
-            # First try to open the file directly
-            try:
-                with open(self.filename, "r") as f:
-                    self.data = yaml.safe_load(f)
-            except FileNotFoundError:
-                # If not found, try to open from project root
-                project_root = os.path.dirname(
-                    os.path.dirname(os.path.abspath(__file__))
-                )
-                full_path = os.path.join(project_root, self.filename)
-                with open(full_path, "r") as f:
-                    self.data = yaml.safe_load(f)
+    def __init__(self, filename: str):
+        self.filename = filename
+        with open(filename, "r") as f:
+            self.data = yaml.safe_load(f)
 
     def get_ssh_credentials(self, credential_id: str) -> (str, str):
         if credential_id not in self.data:
