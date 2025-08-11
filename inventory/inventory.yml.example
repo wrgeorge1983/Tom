@@ -1,0 +1,11 @@
+r1_netmiko:
+  host: "192.168.1.1"
+  adapter: "netmiko"
+  adapter_driver: "cisco_ios"
+  credential_id: cred_1
+
+r1_scrapli:
+  host: "192.168.1.1."
+  adapter: "scrapli"
+  adapter_driver: "cisco_iosxe"
+  credential_id: cred_1

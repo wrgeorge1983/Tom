@@ -1,0 +1,8 @@
+# This is a TERRIBLE IDEA and ONLY FOR TEST.  creds in yaml are awful and
+# you should feel bad when you use them.
+# But feeling bad is the burden we bear sometimes ;)
+
+
+cred_1:
+  username: uname
+  password: password
