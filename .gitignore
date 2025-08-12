@@ -3,3 +3,4 @@
 .claude/
 **/*.egg-info/
 **/*.env
+slop/

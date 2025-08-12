@@ -6,7 +6,7 @@ so the developers don't have to!
 
 It's like a jump-host for your applications.
 
-## Why - (what don't you people understand!?)
+## What would you say you do here?
 There are lots of things a good network automation project will need, and most of 
 them have no reason to be re-invented every time. 
 
