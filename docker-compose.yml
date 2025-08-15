@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: services/core/
+      dockerfile: Dockerfile
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    image: tom_core
+    env_file:
+      - docker.env
+    ports:
+      - "8000:8000"
+#    restart: always
+    volumes:
+      - ./inventory:/app/inventory
+    command:
+      - ".venv/bin/fastapi"
+      - "run"
+      - "src/tom_core/main.py"
+      - "--workers"
+      - "1"

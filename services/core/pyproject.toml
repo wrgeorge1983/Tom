@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "asyncssh>=2.21.0",
-    "fastapi>=0.116.1",
+    "fastapi[standard]>=0.116.1",
     "netmiko>=4.4.0",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
