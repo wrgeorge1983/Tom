@@ -16,7 +16,6 @@ queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}
 
 async def foo(*args, **kwargs):
     print(f"{args=}, {kwargs=}")
-    raise TomException("foo")
     return {
         "foo": "bar",
         "baz": "qux",
@@ -24,6 +23,7 @@ async def foo(*args, **kwargs):
 
 
 async def send_command_netmiko(ctx: saq.types.Context, json: str):
+    print("running send_command_netmiko")
     assert "credential_store" in ctx, "Missing credential store in context."
     credential_store = ctx["credential_store"]
     model = NetmikoSendCommandModel.model_validate_json(json)
@@ -32,6 +32,8 @@ async def send_command_netmiko(ctx: saq.types.Context, json: str):
 
 
 async def send_command_scrapli(ctx: saq.types.Context, json: str):
+    print("running send_command_scrapli")
+    assert "credential_store" in ctx, "Missing credential store in context."
     assert "credential_store" in ctx, "Missing credential store in context."
     credential_store = ctx["credential_store"]
     model = ScrapliSendCommandModel.model_validate_json(json)
