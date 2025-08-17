@@ -1,10 +1,10 @@
 from typing import Literal
+from urllib import request
 
 from fastapi import APIRouter, Depends, Request
+import saq
 
-from tom_core.adapters.netmiko_adapter import NetmikoAdapter
-from tom_core.adapters.scrapli_adapter import ScrapliAsyncAdapter
-from tom_core.credentials.credentials import CredentialStore
+from shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 from tom_core.exceptions import TomException
 from tom_core.inventory.inventory import (
     InventoryStore,
@@ -12,10 +12,6 @@ from tom_core.inventory.inventory import (
 )
 
 router = APIRouter()
-
-
-def get_credential_store(request: Request) -> CredentialStore:
-    return request.app.state.credential_store
 
 
 def get_inventory_store(request: Request) -> InventoryStore:
@@ -27,46 +23,59 @@ async def root():
     return {"message": "Hello World"}
 
 
+@router.get("/foo")
+async def foo(request: Request):
+    queue: saq.Queue = request.app.state.queue
+    job = await queue.enqueue("foo")
+
+    return {"result": job.result}
+
+
 @router.get("/raw/send_netmiko_command")
 async def send_netmiko_command(
+    request: Request,
     host: str,
     device_type: str,
     command: str,
     credential_id: str,
     port: int = 22,
-    credential_store: CredentialStore = Depends(get_credential_store),
 ):
-    adapter = NetmikoAdapter.new_with_credential(
+    queue = request.app.state.queue
+
+    args = NetmikoSendCommandModel(
         host=host,
         device_type=device_type,
+        command=command,
         credential_id=credential_id,
         port=port,
-        credential_store=credential_store,
     )
-    with adapter:
-        result = adapter.send_command(command)
+    result = await queue.apply(
+        "send_command_netmiko", timeout=10, json=args.model_dump_json()
+    )
     return {"message": result}
 
 
 @router.get("/raw/send_scrapli_command")
 async def send_scrapli_command(
+    request: Request,
     host: str,
     device_type: str,
     command: str,
     credential_id: str,
     port: int = 22,
-    credential_store: CredentialStore = Depends(get_credential_store),
 ):
-    adapter = ScrapliAsyncAdapter.new_with_credential(
+    queue = request.app.state.queue
+
+    args = ScrapliSendCommandModel(
         host=host,
         device_type=device_type,
+        command=command,
         credential_id=credential_id,
         port=port,
-        credential_store=credential_store,
     )
-    async with adapter:
-        result = await adapter.send_command(command)
-
+    result = await queue.apply(
+        "send_command_scrapli", timeout=10, json=args.model_dump_json()
+    )
     return {"message": result}
 
 
@@ -79,35 +88,39 @@ async def inventory(
 
 @router.get("/device/{device_name}/send_command")
 async def send_inventory_command(
+    request: Request,
     device_name: str,
     command: str,
     inventory_store: InventoryStore = Depends(get_inventory_store),
-    credential_store: CredentialStore = Depends(get_credential_store),
 ) -> dict[Literal["message"], str]:
     device_config = inventory_store.get_device_config(device_name)
-    credential = credential_store.get_ssh_credentials(device_config.credential_id)
+    # credential = credential_store.get_ssh_credentials(device_config.credential_id)
+
+    queue: saq.Queue = request.app.state.queue
 
     if device_config.adapter == "netmiko":
-        adapter = NetmikoAdapter.new_with_credential(
+        args = NetmikoSendCommandModel(
             host=device_config.host,
             device_type=device_config.adapter_driver,
+            command=command,
             credential_id=device_config.credential_id,
             port=device_config.port,
-            credential_store=credential_store,
         )
-        with adapter:
-            result = adapter.send_command(command)
+        result = await queue.apply(
+            "send_command_netmiko", timeout=10, json=args.model_dump_json()
+        )
 
     elif device_config.adapter == "scrapli":
-        adapter = ScrapliAsyncAdapter.new_with_credential(
+        args = ScrapliSendCommandModel(
             host=device_config.host,
             device_type=device_config.adapter_driver,
+            command=command,
             credential_id=device_config.credential_id,
             port=device_config.port,
-            credential_store=credential_store,
         )
-        async with adapter:
-            result = await adapter.send_command(command)
+        result = await queue.apply(
+            "send_command_scrapli", timeout=10, json=args.model_dump_json()
+        )
 
     else:
         raise TomException(f"Unknown device type {type(device_config)}")

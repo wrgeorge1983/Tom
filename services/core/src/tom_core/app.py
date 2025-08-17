@@ -2,11 +2,18 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+import saq
+
 from tom_core import __version__
 from tom_core import api
-from tom_core.credentials.credentials import YamlCredentialStore
-from tom_core.config import settings
+from tom_core.config import Settings, settings
 from tom_core.inventory.inventory import YamlInventoryStore
+
+
+def create_queue(settings: Settings) -> saq.Queue:
+    queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
+    logging.info(f"Created queue {queue}")
+    return queue
 
 
 def create_app():
@@ -18,12 +25,10 @@ def create_app():
         )
         # Initialize credential store on startup
         this_app.state.settings = settings
-        this_app.state.credential_store = YamlCredentialStore(
-            settings.credential_path,
-        )
         this_app.state.inventory_store = YamlInventoryStore(
             settings.inventory_path,
         )
+        this_app.state.queue = create_queue(settings)
         yield
         # Cleanup on shutdown if needed
 

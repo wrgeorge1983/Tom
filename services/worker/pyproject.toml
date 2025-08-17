@@ -5,5 +5,14 @@ description = "Tom Smykowski Device Worker Node"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "saq>=0.25.2",
+    "asyncssh>=2.21.0",
+    "netmiko>=4.6.0",
+    "pydantic-settings>=2.10.1",
+    "pyyaml>=6.0.2",
+    "saq[redis]>=0.25.2",
+    "scrapli>=2025.1.30",
+    "tom-shared",
 ]
+
+[tool.uv.sources]
+tom-shared = { path = "../../shared", editable = true }

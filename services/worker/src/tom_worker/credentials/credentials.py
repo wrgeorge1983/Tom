@@ -21,7 +21,7 @@ class YamlCredentialStore(CredentialStore):
         with open(filename, "r") as f:
             self.data = yaml.safe_load(f)
 
-    def get_ssh_credentials(self, credential_id: str) -> (str, str):
+    def get_ssh_credentials(self, credential_id: str) -> "SSHCredentials":
         if credential_id not in self.data:
             raise TomException(
                 f"Credential {credential_id} not found in {self.filename}"
@@ -34,10 +34,16 @@ class YamlCredentialStore(CredentialStore):
             raise TomException(
                 f"Credential {credential_id} does missing username or password"
             )
+        cred_data = self.data[credential_id]
+        return SSHCredentials(
+            credential_id=credential_id,
+            username=cred_data["username"],
+            password=cred_data["password"],
+        )
 
-        return self.data[credential_id]["username"], self.data[credential_id][
-            "password"
-        ]
+        # return self.data[credential_id]["username"], self.data[credential_id][
+        #     "password"
+        # ]
 
 
 @dataclass
@@ -45,10 +51,3 @@ class SSHCredentials:
     credential_id: str
     username: Optional[str] = None
     password: Optional[str] = None
-    initialized: bool = False
-
-    def initialize(self, credential_store: CredentialStore):
-        self.username, self.password = credential_store.get_ssh_credentials(
-            self.credential_id
-        )
-        self.initialized = True

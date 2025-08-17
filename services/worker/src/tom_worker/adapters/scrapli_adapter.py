@@ -9,8 +9,10 @@ from scrapli.driver.core import (
     AsyncIOSXRDriver,
     AsyncJunosDriver,
 )
-from tom_core.credentials.credentials import SSHCredentials, CredentialStore
-from tom_core.exceptions import TomException
+
+from shared.models import ScrapliSendCommandModel
+from ..credentials.credentials import SSHCredentials, CredentialStore
+from ..exceptions import TomException
 
 
 valid_async_drivers = {
@@ -22,30 +24,26 @@ valid_async_drivers = {
 }
 
 
-@dataclass
 class ScrapliAsyncAdapter:
-    host: str
-    port: int
-    device_type: str
-    credential: Optional[SSHCredentials] = None
-    connection: Optional[AsyncNetworkDriver] = None
-    _driver_class: Optional[Type[AsyncNetworkDriver]] = field(default=None, init=False)
+    def __init__(
+        self, host: str, port: int, device_type: str, credential: SSHCredentials
+    ):
+        self.host = host
+        self.port = port
+        self.device_type = device_type
+        self.credential = credential
+        self.connection: Optional[AsyncNetworkDriver] = None
 
-    def __post_init__(self):
         self._driver_class = self._resolve_driver(self.device_type)
 
-        if self.credential is None or not self.credential.initialized:
-            raise TomException("SSH Credentials not initialized")
-
-        self.connection = (
-            self._driver_class(  # scrapli doesn't initiate until calling .open()
-                host=self.host,
-                port=self.port,
-                auth_username=self.credential.username,
-                auth_password=self.credential.password,
-                transport="asyncssh",
-                auth_strict_key=False,
-            )
+        # connection is created now, but doesn't touch the network until .open() is called
+        self.connection = self._driver_class(
+            host=self.host,
+            port=self.port,
+            auth_username=self.credential.username,
+            auth_password=self.credential.password,
+            transport="asyncssh",
+            auth_strict_key=False,
         )
 
     @classmethod
@@ -57,7 +55,7 @@ class ScrapliAsyncAdapter:
         return result
 
     async def connect(self):
-        if self.connection is None or not self.credential.initialized:
+        if self.connection is None:
             raise TomException("Connection not initialized")
         await self.connection.open()
 
@@ -75,17 +73,16 @@ class ScrapliAsyncAdapter:
         return False
 
     @classmethod
-    def new_with_credential(
-        cls,
-        host: str,
-        device_type: str,
-        credential_id: str,
-        port: int,
-        credential_store: CredentialStore,
-    ):
-        credential = SSHCredentials(credential_id)
-        credential.initialize(credential_store)
-        return cls(host=host, device_type=device_type, credential=credential, port=port)
+    def from_model(
+        cls, model: ScrapliSendCommandModel, credential_store: CredentialStore
+    ) -> "ScrapliAsyncAdapter":
+        credential = credential_store.get_ssh_credentials(model.credential_id)
+        return cls(
+            host=model.host,
+            device_type=model.device_type,
+            credential=credential,
+            port=model.port,
+        )
 
     async def send_command(self, command: str) -> str:
         if self.connection is None:

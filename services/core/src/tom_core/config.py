@@ -4,6 +4,7 @@ from pathlib import Path
 
 from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import saq
 
 
 class Settings(BaseSettings):
@@ -27,10 +28,18 @@ class Settings(BaseSettings):
     :type log_level: str
     """
 
-    # Credential store settings
+    # File settings
     project_root: str = "../../../../"
+
+    # Store settings
     credential_file: str = "defaultCreds.yml"
     inventory_file: str = "defaultInventory.yml"
+
+    # Redis settings
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    # TODO: SSL, Auth, Etc.
 
     # Tom Core Server settings
     host: str = "0.0.0.0"

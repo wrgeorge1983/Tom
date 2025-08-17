@@ -1,0 +1,10 @@
+[project]
+name = "tom-shared"
+version = "0.1.0"
+description = "Tom Smykowski Network Automation Broker - Shared"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.11.7",
+]
+
