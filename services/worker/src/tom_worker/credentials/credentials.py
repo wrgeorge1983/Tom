@@ -3,7 +3,7 @@ from typing import Optional
 
 import yaml
 
-from tom_core.exceptions import TomException
+from tom_worker.exceptions import TomException
 
 
 class CredentialStore:

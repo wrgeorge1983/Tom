@@ -4,12 +4,12 @@ from typing import Optional
 
 from netmiko import ConnectHandler
 
-from shared.models import NetmikoSendCommandModel
-from services.worker.src.tom_worker.credentials.credentials import (
+from tom_shared.models import NetmikoSendCommandModel
+from tom_worker.credentials.credentials import (
     SSHCredentials,
     CredentialStore,
 )
-from ..exceptions import TomException
+from tom_worker.exceptions import TomException
 
 
 class NetmikoAdapter:

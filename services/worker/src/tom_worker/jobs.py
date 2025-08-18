@@ -1,9 +1,9 @@
 import saq.types
 
-from services.worker.src.tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
-from services.worker.src.tom_worker.exceptions import GatingException
-from services.worker.src.tom_worker.semaphore import DeviceSemaphore
-from shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
+from tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
+from tom_worker.exceptions import GatingException
+from tom_worker.semaphore import DeviceSemaphore
+from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 
 
 async def foo(*args, **kwargs):
@@ -23,7 +23,7 @@ async def send_command_netmiko(ctx: saq.types.Context, json: str):
 
     job_id = ctx["job"].id
 
-    device_id = f'{model.host}:{model.port}'
+    device_id = f"{model.host}:{model.port}"
     semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
     if not await semaphore.acquire_lease(job_id):
         raise GatingException(f"{device_id} busy. Lease not acquired.")
@@ -46,7 +46,7 @@ async def send_command_scrapli(ctx: saq.types.Context, json: str):
     model = ScrapliSendCommandModel.model_validate_json(json)
 
     job_id = ctx["job"].id
-    device_id = f'{model.host}:{model.port}'
+    device_id = f"{model.host}:{model.port}"
     semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
     if not await semaphore.acquire_lease(job_id):
         raise GatingException(f"{device_id} busy. Lease not acquired.")

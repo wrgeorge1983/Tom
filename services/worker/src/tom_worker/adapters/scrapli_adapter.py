@@ -10,9 +10,9 @@ from scrapli.driver.core import (
     AsyncJunosDriver,
 )
 
-from shared.models import ScrapliSendCommandModel
-from ..credentials.credentials import SSHCredentials, CredentialStore
-from ..exceptions import TomException
+from tom_shared.models import ScrapliSendCommandModel
+from tom_worker.credentials.credentials import SSHCredentials, CredentialStore
+from tom_worker.exceptions import TomException
 
 
 valid_async_drivers = {

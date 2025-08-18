@@ -8,6 +8,7 @@ class NetmikoSendCommandModel(BaseModel):
     credential_id: str
     command: str
 
+
 class ScrapliSendCommandModel(BaseModel):
     host: str
     port: int

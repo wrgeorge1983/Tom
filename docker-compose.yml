@@ -1,14 +1,14 @@
 services:
   api:
     build:
-      context: services/core/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/core/Dockerfile
+    image: tom_core
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    image: tom_core
     env_file:
       - docker.env
     ports:
@@ -22,3 +22,28 @@ services:
       - "src/tom_core/main.py"
       - "--workers"
       - "1"
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    image: tom_worker
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - docker.env
+    volumes:
+      - ./inventory:/app/inventory
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

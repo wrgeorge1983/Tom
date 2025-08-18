@@ -1,8 +1,11 @@
 import asyncio
 import redis.asyncio as redis
 
+
 class DeviceSemaphore:
-    def __init__(self, redis_client: redis.Redis, device_id: str, max_concurrent_tasks: int = 1):
+    def __init__(
+        self, redis_client: redis.Redis, device_id: str, max_concurrent_tasks: int = 1
+    ):
         self.redis_client = redis_client
         self.device_id = device_id
         self.max_concurrent_tasks = max_concurrent_tasks
@@ -36,8 +39,12 @@ class DeviceSemaphore:
         
         """
         result = await self.redis_client.eval(
-            lua_script, 1, self.lease_key, job_id,
-            str(self.max_concurrent_tasks), str(self.lease_ttl)
+            lua_script,
+            1,
+            self.lease_key,
+            job_id,
+            str(self.max_concurrent_tasks),
+            str(self.lease_ttl),
         )
         return bool(result)
 

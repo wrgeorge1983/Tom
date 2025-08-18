@@ -5,9 +5,9 @@ import logging
 import redis.asyncio as redis
 import saq, saq.types
 
-from services.worker.src.tom_worker.credentials.credentials import YamlCredentialStore
-from services.worker.src.tom_worker.exceptions import GatingException, TransientException
-from services.worker.src.tom_worker.jobs import foo, send_command_netmiko, send_command_scrapli
+from tom_worker.credentials.credentials import YamlCredentialStore
+from tom_worker.exceptions import GatingException, TransientException
+from tom_worker.jobs import foo, send_command_netmiko, send_command_scrapli
 from .config import settings
 
 queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
@@ -18,7 +18,9 @@ async def main():
     shutdown_event = asyncio.Event()
 
     credential_store = YamlCredentialStore(settings.credential_path)
-    semaphore_redis_client = redis.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
+    semaphore_redis_client = redis.from_url(
+        f"redis://{settings.redis_host}:{settings.redis_port}"
+    )
 
     def worker_setup(ctx: saq.types.Context):
         ctx["credential_store"] = credential_store
@@ -55,6 +57,7 @@ async def main():
 
 def run():
     """entrypoint"""
+    print("Starting worker.")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

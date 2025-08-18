@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 import saq
 
-from shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
+from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 from tom_core.exceptions import TomException
 from tom_core.inventory.inventory import (
     InventoryStore,

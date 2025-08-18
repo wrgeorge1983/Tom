@@ -1,0 +1,5 @@
+.venv
+.dockerignore
+Dockerfile
+README.md
+**/*.egg-info
