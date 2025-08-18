@@ -2,43 +2,15 @@ import asyncio
 import signal
 import logging
 
+import redis.asyncio as redis
 import saq, saq.types
 
 from services.worker.src.tom_worker.credentials.credentials import YamlCredentialStore
-from services.worker.src.tom_worker.exceptions import TomException
+from services.worker.src.tom_worker.exceptions import GatingException, TransientException
+from services.worker.src.tom_worker.jobs import foo, send_command_netmiko, send_command_scrapli
 from .config import settings
-from .adapters import NetmikoAdapter, ScrapliAsyncAdapter
-from shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
-
 
 queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
-
-
-async def foo(*args, **kwargs):
-    print(f"{args=}, {kwargs=}")
-    return {
-        "foo": "bar",
-        "baz": "qux",
-    }
-
-
-async def send_command_netmiko(ctx: saq.types.Context, json: str):
-    print("running send_command_netmiko")
-    assert "credential_store" in ctx, "Missing credential store in context."
-    credential_store = ctx["credential_store"]
-    model = NetmikoSendCommandModel.model_validate_json(json)
-    async with NetmikoAdapter.from_model(model, credential_store) as adapter:
-        return await adapter.send_command(model.command)
-
-
-async def send_command_scrapli(ctx: saq.types.Context, json: str):
-    print("running send_command_scrapli")
-    assert "credential_store" in ctx, "Missing credential store in context."
-    assert "credential_store" in ctx, "Missing credential store in context."
-    credential_store = ctx["credential_store"]
-    model = ScrapliSendCommandModel.model_validate_json(json)
-    async with ScrapliAsyncAdapter.from_model(model, credential_store) as adapter:
-        return await adapter.send_command(model.command)
 
 
 async def main():
@@ -46,11 +18,23 @@ async def main():
     shutdown_event = asyncio.Event()
 
     credential_store = YamlCredentialStore(settings.credential_path)
+    semaphore_redis_client = redis.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
+
+    def worker_setup(ctx: saq.types.Context):
+        ctx["credential_store"] = credential_store
+        ctx["redis_client"] = semaphore_redis_client
+
+    def should_retry(exception, attempts):
+        if isinstance(exception, GatingException):
+            return attempts < 10
+        if isinstance(exception, TransientException):
+            return attempts < 3
+        return False
 
     worker = saq.Worker(
         queue,
         functions=[foo, send_command_netmiko, send_command_scrapli],
-        startup=lambda ctx: ctx.__setitem__("credential_store", credential_store),
+        startup=worker_setup,
     )
 
     def signal_handler(sig, frame):

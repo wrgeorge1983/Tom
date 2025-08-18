@@ -23,6 +23,7 @@ class JobResponse(BaseModel):
     job_id: str
     status: Literal["NEW", "QUEUED", "ACTIVE", "COMPLETE", "FAILED", "ABORTED"]
     result: Optional[str | dict] = None
+    group: Optional[str] = None
 
     @classmethod
     def from_job(cls, job: Optional[saq.job.Job]) -> "JobResponse":
@@ -52,7 +53,12 @@ async def enqueue_job(
     timeout: int = 10,
 ) -> JobResponse:
     job = await queue.enqueue(
-        function_name, timeout=timeout, json=args.model_dump_json()
+        function_name,
+        timeout=timeout,
+        json=args.model_dump_json(),
+        retries=5,
+        retry_delay=1.0,
+        retry_backoff=True,
     )
     if wait:
         await job.refresh(until_complete=float(timeout))
@@ -73,9 +79,12 @@ async def foo(request: Request) -> JobResponse:
 
 
 @router.get("/job/{job_id}")
-async def job(request: Request, job_id: str) -> JobResponse:
+async def job(request: Request, job_id: str) -> Optional[JobResponse]:
     queue: saq.Queue = request.app.state.queue
-    return await JobResponse.from_job_id(job_id, queue)
+    job = await JobResponse.from_job_id(job_id, queue)
+    if job.status == "NEW":
+        return None
+    return job
 
 
 @router.get("/raw/send_netmiko_command")
@@ -150,9 +159,12 @@ async def send_inventory_command(
             credential_id=device_config.credential_id,
             port=device_config.port,
         )
-        response = await enqueue_job(
-            queue, "send_command_netmiko", args, wait=wait, timeout=timeout
-        )
+        try:
+            response = await enqueue_job(
+                queue, "send_command_netmiko", args, wait=wait, timeout=timeout
+            )
+        except Exception as e:
+            logging.exception(f"Failed to enqueue job for {device_name}: {e}")
 
     elif device_config.adapter == "scrapli":
         args = ScrapliSendCommandModel(

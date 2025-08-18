@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 import saq
+from saq.web.starlette import saq_web
 
 from tom_core import __version__
 from tom_core import api
@@ -17,6 +18,8 @@ def create_queue(settings: Settings) -> saq.Queue:
 
 
 def create_app():
+    queue = create_queue(settings)
+
     @asynccontextmanager
     async def lifespan(this_app: FastAPI):
         logging.basicConfig(
@@ -28,7 +31,7 @@ def create_app():
         this_app.state.inventory_store = YamlInventoryStore(
             settings.inventory_path,
         )
-        this_app.state.queue = create_queue(settings)
+        this_app.state.queue = queue
         yield
         # Cleanup on shutdown if needed
 
@@ -38,6 +41,8 @@ def create_app():
         description="Network Automation Broker Service Core.",
         lifespan=lifespan,
     )
+
+    app.mount("/queueMonitor", saq_web("/queueMonitor", [queue]), name="queueMonitor")
 
     app.include_router(api.router, prefix="/api")
     return app
