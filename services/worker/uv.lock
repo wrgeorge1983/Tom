@@ -505,7 +505,7 @@ wheels = [
 
 [[package]]
 name = "tom-shared"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "../../shared" }
 dependencies = [
     { name = "pydantic" },
@@ -516,7 +516,7 @@ requires-dist = [{ name = "pydantic", specifier = ">=2.11.7" }]
 
 [[package]]
 name = "tom-worker"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
     { name = "asyncssh" },
