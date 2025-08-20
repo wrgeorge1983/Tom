@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import yaml
 from pydantic import BaseModel, Field, RootModel
 
-from tom_core.exceptions import TomException
+from tom_core.exceptions import TomException, TomNotFoundException
 
 import logging
 
@@ -84,7 +84,7 @@ class YamlInventoryStore(InventoryStore):
 
     def get_device_config(self, device_name: str) -> DeviceConfig:
         if device_name not in self.data:
-            raise TomException(f"Device {device_name} not found in {self.filename}")
+            raise TomNotFoundException(f"Device {device_name} not found in {self.filename}")
 
         return DeviceConfig(**self.data[device_name])
     
@@ -142,7 +142,7 @@ class SwisInventoryStore(InventoryStore):
                 return self._node_to_device_config(node)
         
         log.warning(f"Device {device_name} not found in inventory")
-        raise TomException(f"Device {device_name} not found in SolarWinds inventory")
+        raise TomNotFoundException(f"Device {device_name} not found in SolarWinds inventory")
     
     def list_all_nodes(self) -> list[dict]:
         """Return all nodes from SolarWinds inventory."""

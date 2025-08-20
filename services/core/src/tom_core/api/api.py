@@ -7,7 +7,7 @@ import saq
 
 from tom_core.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
-from tom_core.exceptions import TomException
+from tom_core.exceptions import TomException, TomAuthException, TomNotFoundException
 from tom_core.inventory.inventory import (
     InventoryStore,
     DeviceConfig,
@@ -27,16 +27,16 @@ class AuthResponse(TypedDict):
 
 def api_key_auth(request: Request) -> AuthResponse:
     valid_headers = request.app.state.settings.api_key_headers
-    valid_api_keys = request.app.state.settings.api_keys
+    valid_api_keys = request.app.state.settings.api_key_users
 
     for header in valid_headers:
         api_key = request.headers.get(header)
         if api_key in valid_api_keys:
             return {"method": "api_key", "user": valid_api_keys[api_key]}
 
-    header_keys = ", ".join(valid_headers)
+    header_keys = ", ".join(f"'{header}'" for header in valid_headers)
 
-    raise TomException(f"Missing api key header. One of: [{header_keys}]")
+    raise TomAuthException(f"Missing or invalid API key. Requires one of these headers: {header_keys}")
 
 async def do_auth(request: Request) -> AuthResponse:
     settings = request.app.state.settings

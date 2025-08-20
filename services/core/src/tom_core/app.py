@@ -1,8 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 
 import saq
 from saq.web.starlette import saq_web
@@ -12,6 +13,7 @@ from tom_core import api
 from tom_core.config import Settings, settings
 from tom_core.inventory.inventory import YamlInventoryStore, SwisInventoryStore
 from tom_core.inventory.solarwinds import ModifiedSwisClient
+from tom_core.exceptions import TomException, TomAuthException, TomNotFoundException, TomValidationException
 
 
 def create_queue(settings: Settings) -> saq.Queue:
@@ -57,4 +59,34 @@ def create_app():
     app.mount("/queueMonitor", saq_web("/queueMonitor", [queue]), name="queueMonitor")
 
     app.include_router(api.router, prefix="/api")
+    
+    # Exception handlers
+    @app.exception_handler(TomAuthException)
+    async def auth_exception_handler(request: Request, exc: TomAuthException):
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Unauthorized", "detail": str(exc)}
+        )
+    
+    @app.exception_handler(TomNotFoundException)
+    async def not_found_exception_handler(request: Request, exc: TomNotFoundException):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Not Found", "detail": str(exc)}
+        )
+    
+    @app.exception_handler(TomValidationException)
+    async def validation_exception_handler(request: Request, exc: TomValidationException):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "detail": str(exc)}
+        )
+    
+    @app.exception_handler(TomException)
+    async def tom_exception_handler(request: Request, exc: TomException):
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal Server Error", "detail": str(exc)}
+        )
+    
     return app

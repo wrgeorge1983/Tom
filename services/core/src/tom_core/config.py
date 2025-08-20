@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     allow_inline_credentials: bool = False
     auth_mode: Literal["none", "api_key", "oauth2"] = "none"
     api_key_headers: list[str] = ["X-API-Key"]
-    api_keys: list[str] = []  # this is broken, we actually need a map str -> user.   fix later
+    api_keys: list[str] = []  # "key:user", "key:user"
 
     @field_validator("log_level")
     @classmethod
@@ -66,6 +66,27 @@ class Settings(BaseSettings):
         if isinstance(v, int):
             return v
         return logging.getLevelName(v.upper())
+
+    @field_validator("api_keys")
+    @classmethod
+    def validate_api_keys(cls, v) -> list[str]:
+        if not isinstance(v, list):
+            raise ValueError("api_keys must be a list of strings")
+        for key in v:
+            if not isinstance(key, str):
+                raise ValueError("api_keys must be a list of strings")
+            if ":" not in key:
+                raise ValueError("api_keys must be a list of strings in the format 'key:user'")
+        return v
+
+    @computed_field
+    @property
+    def api_key_users(self) -> dict[str, str]:
+        return {
+            key: user
+            for key_str in self.api_keys
+                for key, user in [key_str.split(":", 1)]
+        }
 
     @computed_field
     @property
