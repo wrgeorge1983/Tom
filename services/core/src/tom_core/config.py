@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     project_root: str = "../../../../"
 
     # Store settings
+    inventory_type: Literal["yaml", "swis"] = "yaml"
     inventory_file: str = "defaultInventory.yml"
 
     # Redis settings
@@ -40,6 +41,13 @@ class Settings(BaseSettings):
     redis_port: int = 6379
     redis_db: int = 0
     # TODO: SSL, Auth, Etc.
+
+    # SolarWinds API settings
+    swapi_host: str = ""
+    swapi_username: str = ""
+    swapi_password: str = ""
+    swapi_port: int = 17774
+    swapi_default_cred_name: str = "default"
 
     # Tom Core Server settings
     host: str = "0.0.0.0"

@@ -10,7 +10,8 @@ from saq.web.starlette import saq_web
 from tom_core import __version__
 from tom_core import api
 from tom_core.config import Settings, settings
-from tom_core.inventory.inventory import YamlInventoryStore
+from tom_core.inventory.inventory import YamlInventoryStore, SwisInventoryStore
+from tom_core.inventory.solarwinds import ModifiedSwisClient
 
 
 def create_queue(settings: Settings) -> saq.Queue:
@@ -28,11 +29,20 @@ def create_app():
             level=settings.log_level,
             format="%(asctime)s - %(levelname)s - %(message)s",
         )
-        # Initialize credential store on startup
+        # Initialize inventory store on startup
         this_app.state.settings = settings
-        this_app.state.inventory_store = YamlInventoryStore(
-            settings.inventory_path,
-        )
+        
+        logging.info(f"Initializing inventory store with type: {settings.inventory_type}")
+        
+        if settings.inventory_type == "yaml":
+            logging.info(f"Using YAML inventory from: {settings.inventory_path}")
+            this_app.state.inventory_store = YamlInventoryStore(settings.inventory_path)
+        elif settings.inventory_type == "swis":
+            logging.info(f"Using SWIS inventory with host: {settings.swapi_host}")
+            swis_client = ModifiedSwisClient.from_settings(settings)
+            this_app.state.inventory_store = SwisInventoryStore(swis_client, settings)
+        else:
+            raise ValueError(f"Unknown inventory_type: {settings.inventory_type}")
         this_app.state.queue = queue
         yield
         # Cleanup on shutdown if needed

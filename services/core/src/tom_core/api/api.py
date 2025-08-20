@@ -185,12 +185,99 @@ async def send_scrapli_command(
     return await enqueue_job(queue, "send_command_scrapli", args, wait=wait)
 
 
+@router.get("/inventory/export")
+async def export_inventory(
+    inventory_store: InventoryStore = Depends(get_inventory_store),
+    filter_name: Optional[str] = Query(None, description="Optional filter name (switches, routers, iosxe, arista_exclusion)")
+) -> dict[str, DeviceConfig]:
+    """Export all nodes from inventory in DeviceConfig format."""
+    import logging
+
+    log = logging.getLogger(__name__)
+    log.info(f"Exporting inventory nodes with filter: {filter_name}")
+
+    try:
+        nodes = await inventory_store.alist_all_nodes()
+        
+        # Apply filter if specified
+        if filter_name:
+            from tom_core.inventory.solarwinds import FilterRegistry
+            filter_obj = FilterRegistry.get_filter(filter_name)
+            nodes = [node for node in nodes if filter_obj.matches(node)]
+            log.info(f"Filtered to {len(nodes)} nodes using {filter_name} filter")
+        else:
+            log.info(f"Exported {len(nodes)} nodes (no filter)")
+        
+        # Convert to DeviceConfig format
+        device_configs = {}
+        for node in nodes:
+            caption = node.get("Caption")
+            if caption:
+                # For SWIS, convert node to DeviceConfig; for YAML, node is already in DeviceConfig format
+                if hasattr(inventory_store, '_node_to_device_config'):
+                    device_configs[caption] = inventory_store._node_to_device_config(node)
+                else:
+                    # YAML store - node already has DeviceConfig fields
+                    device_configs[caption] = DeviceConfig(**{k: v for k, v in node.items() if k != "Caption"})
+        
+        return device_configs
+    except Exception as e:
+        log.error(f"Failed to export inventory: {e}")
+        raise
+
+
+@router.get("/inventory/export/raw")
+async def export_raw_inventory(
+    inventory_store: InventoryStore = Depends(get_inventory_store),
+    filter_name: Optional[str] = Query(None, description="Optional filter name (switches, routers, iosxe, arista_exclusion)")
+) -> list[dict]:
+    """Export raw nodes from inventory (SolarWinds format for SWIS, YAML format for YAML)."""
+    import logging
+
+    log = logging.getLogger(__name__)
+    log.info(f"Exporting raw inventory nodes with filter: {filter_name}")
+
+    try:
+        nodes = await inventory_store.alist_all_nodes()
+        
+        # Apply filter if specified
+        if filter_name:
+            from tom_core.inventory.solarwinds import FilterRegistry
+            filter_obj = FilterRegistry.get_filter(filter_name)
+            nodes = [node for node in nodes if filter_obj.matches(node)]
+            log.info(f"Filtered to {len(nodes)} raw nodes using {filter_name} filter")
+        else:
+            log.info(f"Exported {len(nodes)} raw nodes (no filter)")
+        
+        return nodes
+    except Exception as e:
+        log.error(f"Failed to export raw inventory: {e}")
+        raise
+
+
+@router.get("/inventory/filters")
+async def list_filters() -> dict[str, str]:
+    """List available inventory filters."""
+    from tom_core.inventory.solarwinds import FilterRegistry
+    return FilterRegistry.get_available_filters()
+
+
 @router.get("/inventory/{device_name}")
 async def inventory(
     device_name: str, inventory_store: InventoryStore = Depends(get_inventory_store)
 ) -> DeviceConfig:
-    return inventory_store.get_device_config(device_name)
-
+    import logging
+    log = logging.getLogger(__name__)
+    log.info(f"Inventory endpoint called for device: {device_name}")
+    log.info(f"Inventory store type: {type(inventory_store)}")
+    
+    try:
+        result = await inventory_store.aget_device_config(device_name)
+        log.info(f"Successfully retrieved config for {device_name}")
+        return result
+    except Exception as e:
+        log.error(f"Failed to get device config for {device_name}: {e}")
+        raise
 
 @router.get("/device/{device_name}/send_command")
 async def send_inventory_command(
