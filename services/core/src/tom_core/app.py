@@ -2,6 +2,8 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
+
 import saq
 from saq.web.starlette import saq_web
 

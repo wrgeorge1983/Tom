@@ -57,7 +57,13 @@ class NetmikoAdapter:
     def from_model(
         cls, model: NetmikoSendCommandModel, credential_store: CredentialStore
     ) -> "NetmikoAdapter":
-        credential = credential_store.get_ssh_credentials(model.credential_id)
+        if model.credential.type == "stored":
+            credential = credential_store.get_ssh_credentials(model.credential.credential_id)
+        elif model.credential.type == "inlineSSH":
+            credential = SSHCredentials("inline", model.credential.username, model.credential.password)
+        else:
+            raise TomException(f"Credential type {model.credential.type} not supported")
+
         return cls(
             host=model.host,
             device_type=model.device_type,

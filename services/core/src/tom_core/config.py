@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,7 +33,6 @@ class Settings(BaseSettings):
     project_root: str = "../../../../"
 
     # Store settings
-    credential_file: str = "defaultCreds.yml"
     inventory_file: str = "defaultInventory.yml"
 
     # Redis settings
@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8020
     log_level: str | int = "info"  # Input is str, but we convert to int for actual use
+
+    # API Settings
+    allow_inline_credentials: bool = False
+    auth_mode: Literal["none", "api_key", "oauth2"] = "none"
+    api_key_headers: list[str] = ["X-API-Key"]
+    api_keys: list[str] = []  # this is broken, we actually need a map str -> user.   fix later
 
     @field_validator("log_level")
     @classmethod
