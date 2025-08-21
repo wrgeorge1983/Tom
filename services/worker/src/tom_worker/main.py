@@ -17,7 +17,20 @@ async def main():
     loop = asyncio.get_running_loop()
     shutdown_event = asyncio.Event()
 
-    credential_store = YamlCredentialStore(settings.credential_path)
+    match settings.credential_store:
+        case "yaml":
+            credential_store = YamlCredentialStore(settings.credential_path)
+
+        case "vault":
+            from tom_worker.credentials.vault import VaultCredentialStore, VaultClient
+
+            vault_client = VaultClient.from_settings(settings)
+            await vault_client.validate_access()
+            credential_store = VaultCredentialStore(vault_client)
+
+        case _:
+            raise ValueError(f"Unknown credential store: {settings.credential_store}")
+
     semaphore_redis_client = redis.from_url(
         f"redis://{settings.redis_host}:{settings.redis_port}"
     )

@@ -54,13 +54,17 @@ class NetmikoAdapter:
         return False
 
     @classmethod
-    def from_model(
+    async def from_model(
         cls, model: NetmikoSendCommandModel, credential_store: CredentialStore
     ) -> "NetmikoAdapter":
         if model.credential.type == "stored":
-            credential = credential_store.get_ssh_credentials(model.credential.credential_id)
+            credential = await credential_store.get_ssh_credentials(
+                model.credential.credential_id
+            )
         elif model.credential.type == "inlineSSH":
-            credential = SSHCredentials("inline", model.credential.username, model.credential.password)
+            credential = SSHCredentials(
+                "inline", model.credential.username, model.credential.password
+            )
         else:
             raise TomException(f"Credential type {model.credential.type} not supported")
 

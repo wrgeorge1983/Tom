@@ -15,8 +15,6 @@ from tom_core.inventory.inventory import (
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
 
 
-
-
 def get_inventory_store(request: Request) -> InventoryStore:
     return request.app.state.inventory_store
 
@@ -24,6 +22,7 @@ def get_inventory_store(request: Request) -> InventoryStore:
 class AuthResponse(TypedDict):
     method: Literal["api_key", "None"]
     user: str | None
+
 
 def api_key_auth(request: Request) -> AuthResponse:
     valid_headers = request.app.state.settings.api_key_headers
@@ -36,7 +35,10 @@ def api_key_auth(request: Request) -> AuthResponse:
 
     header_keys = ", ".join(f"'{header}'" for header in valid_headers)
 
-    raise TomAuthException(f"Missing or invalid API key. Requires one of these headers: {header_keys}")
+    raise TomAuthException(
+        f"Missing or invalid API key. Requires one of these headers: {header_keys}"
+    )
+
 
 async def do_auth(request: Request) -> AuthResponse:
     settings = request.app.state.settings
@@ -188,7 +190,10 @@ async def send_scrapli_command(
 @router.get("/inventory/export")
 async def export_inventory(
     inventory_store: InventoryStore = Depends(get_inventory_store),
-    filter_name: Optional[str] = Query(None, description="Optional filter name (switches, routers, iosxe, arista_exclusion)")
+    filter_name: Optional[str] = Query(
+        None,
+        description="Optional filter name (switches, routers, iosxe, arista_exclusion)",
+    ),
 ) -> dict[str, DeviceConfig]:
     """Export all nodes from inventory in DeviceConfig format."""
     import logging
@@ -198,28 +203,33 @@ async def export_inventory(
 
     try:
         nodes = await inventory_store.alist_all_nodes()
-        
+
         # Apply filter if specified
         if filter_name:
             from tom_core.inventory.solarwinds import FilterRegistry
+
             filter_obj = FilterRegistry.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
             log.info(f"Filtered to {len(nodes)} nodes using {filter_name} filter")
         else:
             log.info(f"Exported {len(nodes)} nodes (no filter)")
-        
+
         # Convert to DeviceConfig format
         device_configs = {}
         for node in nodes:
             caption = node.get("Caption")
             if caption:
                 # For SWIS, convert node to DeviceConfig; for YAML, node is already in DeviceConfig format
-                if hasattr(inventory_store, '_node_to_device_config'):
-                    device_configs[caption] = inventory_store._node_to_device_config(node)
+                if hasattr(inventory_store, "_node_to_device_config"):
+                    device_configs[caption] = inventory_store._node_to_device_config(
+                        node
+                    )
                 else:
                     # YAML store - node already has DeviceConfig fields
-                    device_configs[caption] = DeviceConfig(**{k: v for k, v in node.items() if k != "Caption"})
-        
+                    device_configs[caption] = DeviceConfig(
+                        **{k: v for k, v in node.items() if k != "Caption"}
+                    )
+
         return device_configs
     except Exception as e:
         log.error(f"Failed to export inventory: {e}")
@@ -229,7 +239,10 @@ async def export_inventory(
 @router.get("/inventory/export/raw")
 async def export_raw_inventory(
     inventory_store: InventoryStore = Depends(get_inventory_store),
-    filter_name: Optional[str] = Query(None, description="Optional filter name (switches, routers, iosxe, arista_exclusion)")
+    filter_name: Optional[str] = Query(
+        None,
+        description="Optional filter name (switches, routers, iosxe, arista_exclusion)",
+    ),
 ) -> list[dict]:
     """Export raw nodes from inventory (SolarWinds format for SWIS, YAML format for YAML)."""
     import logging
@@ -239,16 +252,17 @@ async def export_raw_inventory(
 
     try:
         nodes = await inventory_store.alist_all_nodes()
-        
+
         # Apply filter if specified
         if filter_name:
             from tom_core.inventory.solarwinds import FilterRegistry
+
             filter_obj = FilterRegistry.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
             log.info(f"Filtered to {len(nodes)} raw nodes using {filter_name} filter")
         else:
             log.info(f"Exported {len(nodes)} raw nodes (no filter)")
-        
+
         return nodes
     except Exception as e:
         log.error(f"Failed to export raw inventory: {e}")
@@ -259,6 +273,7 @@ async def export_raw_inventory(
 async def list_filters() -> dict[str, str]:
     """List available inventory filters."""
     from tom_core.inventory.solarwinds import FilterRegistry
+
     return FilterRegistry.get_available_filters()
 
 
@@ -267,10 +282,11 @@ async def inventory(
     device_name: str, inventory_store: InventoryStore = Depends(get_inventory_store)
 ) -> DeviceConfig:
     import logging
+
     log = logging.getLogger(__name__)
     log.info(f"Inventory endpoint called for device: {device_name}")
     log.info(f"Inventory store type: {type(inventory_store)}")
-    
+
     try:
         result = await inventory_store.aget_device_config(device_name)
         log.info(f"Successfully retrieved config for {device_name}")
@@ -279,6 +295,7 @@ async def inventory(
         log.error(f"Failed to get device config for {device_name}: {e}")
         raise
 
+
 @router.get("/device/{device_name}/send_command")
 async def send_inventory_command(
     request: Request,
@@ -286,7 +303,9 @@ async def send_inventory_command(
     command: str,
     inventory_store: InventoryStore = Depends(get_inventory_store),
     wait: bool = False,
-    rawOutput: bool = Query(False, description="Return raw output directly. Only works with wait=True"),
+    rawOutput: bool = Query(
+        False, description="Return raw output directly. Only works with wait=True"
+    ),
     timeout: int = 10,
     # Optional Inline SSH Credentials
     username: Optional[str] = Query(
@@ -301,7 +320,6 @@ async def send_inventory_command(
     ),
 ) -> JobResponse | str:
     device_config = inventory_store.get_device_config(device_name)
-
 
     if username is not None and password is not None:
         credential = InlineSSHCredential(username=username, password=password)

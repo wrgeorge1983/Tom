@@ -47,3 +47,29 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  vault:
+    image: hashicorp/vault:1.20.2
+    ports:
+      - '8200:8200'
+    volumes:
+      - vault-data:/vault/data
+      - vault-logs:/vault/logs
+#      - ./vault-config:/vault/config
+
+    environment:
+      VAULT_DEV: "true"   # remove for prod
+      VAULT_DEV_ROOT_TOKEN_ID: "myroot"  # remove for prod
+      VAULT_DEV_LISTEN_ADDRESS: "vault:8200"
+      VAULT_ADDR: "http://vault:8200"
+
+    cap_add:
+      - IPC_LOCK
+    command: ["vault", "server", "-dev"]  # remove -dev for prod
+
+volumes:
+  vault-data:
+    driver: local
+  vault-logs:
+    driver: local
+

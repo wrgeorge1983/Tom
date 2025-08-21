@@ -1,5 +1,3 @@
-
-
 def _get_available_drivers():
     """Get all available drivers from actual adapter implementations"""
     from tom_worker.adapters.scrapli_adapter import valid_async_drivers

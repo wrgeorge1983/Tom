@@ -73,12 +73,13 @@ class ScrapliAsyncAdapter:
         return False
 
     @classmethod
-    def from_model(
+    async def from_model(
         cls, model: ScrapliSendCommandModel, credential_store: CredentialStore
     ) -> "ScrapliAsyncAdapter":
-
         if model.credential.type == "stored":
-            credential = credential_store.get_ssh_credentials(model.credential.credential_id)
+            credential = await credential_store.get_ssh_credentials(
+                model.credential.credential_id
+            )
         elif model.credential.type == "inlineSSH":
             credential = SSHCredentials(
                 "inline", model.credential.username, model.credential.password

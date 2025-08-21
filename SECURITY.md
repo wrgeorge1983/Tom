@@ -1,97 +1,119 @@
-# Security Plan
+# Security Architecture
 
-This document describes the initial security posture for Tom Smykowski.  
-It is intentionally simple for early deployment, with clear upgrade paths.
-
----
-
-## Scope & Phases
-
-- **Phase 1 (MVP)**
-  - Controller holds creds (env/file).
-  - Worker fetches creds from Controller via `/checkout` over TLS.
-  - Auth: single shared HMAC key for request signing.
-    - including anti-replay measures.  Timestamp, nonce
-
-- **Phase 1.5 (enhanced auth)**
-  - Implement "PSK for join → per-worker HMAC key" pattern.
-  - Workers use shared PSK to establish unique HMAC keys during join.
-  - Optional: Wrap join step in X25519 key exchange for defense-in-depth.
-
-- **Phase 2 (future)**
-  - Introduce a Creds Service (fronting Vault or similar).
-  - Swap to short-lived job tokens or certificate-based auth.
-  - Full per-worker key rotation and revocation.
+This document describes the current and planned security architecture for Tom Smykowski.
 
 ---
 
-## Threat Model
+## Current Implementation
 
-**Assets**
-- Device credentials, rendered configs, parsed outputs, audit logs.
+**Authentication:**
+- API key authentication for tom-core endpoints
+- Configurable headers (default: `X-API-Key`)
+- User mapping via `key:user` format in configuration
 
-**Trust Boundaries**
-- Controller API (HTTPS)
-- Queue (Redis Streams)
-- Worker containers
+**Credential Management:**
+- YAML-based credential store (shared between tom-core and tom-worker)
+- Credentials referenced by ID, not embedded in jobs
+- Workers read credentials directly from YAML files
 
-**Assumptions**
-- TLS is enforced for Controller.
-- Redis is not world-reachable; ACLs applied.
-- Hosts/containers are patched and monitored.
+**Transport Security:**
+- HTTPS/TLS for tom-core API endpoints
+- Redis communication (currently plain-text, local network assumed)
 
----
+## Planned Security Phases
 
-## Guarantees (Phase 1)
+**Phase 1 (Current)**: Direct credential access
+- Both API service and workers read from shared YAML credential store
+- Simple but functional for development/testing environments
 
-- Secrets never enter the queue.
-- `/checkout` requests are authenticated (HMAC) and fresh (timestamp + nonce).
-- Transport is encrypted (TLS).
-- Secrets are redacted from logs and only held in memory on the Controller.
+**Phase 2 (Near-term)**: Worker authentication & credential checkout
+- Workers authenticate to API service using HMAC signatures
+- API service provides credential checkout endpoint (`/checkout`)
+- Credentials stay centralized, not distributed to worker filesystems
 
-**Residual Risks**
-- Phase 1: Single shared HMAC key - if leaked, attacker can call `/checkout` until rotated.
-- Phase 1.5: Compromised PSK allows generating new worker keys, but limits blast radius.
-- Any compromised worker can use `/checkout` while its key remains valid.
-
----
-
-## Controls
-
-### 1. HMAC Request Signing
-
-**Phase 1 (current):**
-- Shared `TS_HMAC_SECRET` in both Controller and Workers.
-- Each request includes timestamp, nonce, and HMAC signature.
-- Controller verifies signature, timestamp (±60s), and nonce uniqueness.
-
-**Phase 1.5 (per-worker keys):**
-- Shared PSK for worker join process to establish unique HMAC keys.
-- Each worker gets individual HMAC key via authenticated join handshake.
-- Optional X25519 wrapping ensures PSK-derived keys never transmitted in clear.
-- Controller maintains mapping of worker IDs to their unique HMAC keys.
-
-All phases include:
-- Constant-time HMAC comparison
-- Nonce cache (5 min) for replay protection
-- Rate-limiting on `/checkout` and join endpoints
-
-### 2. TLS for Controller
-- Public endpoint: Let’s Encrypt via Caddy/Traefik/nginx.
-- Private endpoint: Internal ACME CA (e.g., smallstep).
-- As fallback: Self-signed cert with pinning in Workers.
-
-### 3. Redis Hygiene
-- Bind to private network; enable TLS if available.
-- Separate ACLs: Controller can write; Workers can read/ack only.
-
-### 4. Logging & Audit
-- Log: job ID, worker ID, target, action, cred ref (not secret), result.
-- No secret material in logs.
-- Log HMAC verification results and replay rejections.
+**Phase 3 (Future)**: Advanced security
+- Per-worker HMAC keys (PSK-based join process)
+- Short-lived credential tokens
+- Integration with external secret stores (Vault, etc.)
 
 ---
 
-We will provide scripts for:
-- Generating a new shared HMAC secret.
-- Generating TLS keys and certs.
+## Current Security Posture
+
+**Assets Protected:**
+- Network device credentials (SSH/SNMP/API keys)
+- Device command outputs and configuration data
+- Job metadata and audit logs
+
+**Current Controls:**
+- API key authentication prevents unauthorized API access
+- Credential ID references (not plaintext) in job payloads
+- Proper HTTP error codes prevent information leakage
+- Structured logging without credential exposure
+
+**Current Gaps:**
+- No worker authentication (workers trust shared credential files)
+- Redis communication in plaintext
+- No credential rotation or expiry
+- Limited audit logging
+
+---
+
+## Phase 2 Implementation Plan
+
+**Worker Authentication:**
+```python
+# Worker registers with API service
+POST /worker/register
+{
+  "worker_id": "unique-worker-id",
+  "hmac_signature": "...",
+  "timestamp": "...",
+  "nonce": "..."
+}
+
+# Worker requests credentials for job
+POST /credentials/checkout  
+{
+  "job_id": "...",
+  "credential_id": "default",
+  "hmac_signature": "...",
+  "timestamp": "...",
+  "nonce": "..."
+}
+```
+
+**Security Improvements:**
+- Workers must authenticate before accessing credentials
+- Credentials never leave the API service filesystem
+- HMAC signatures prevent credential theft via compromised Redis
+- Audit trail for all credential access
+
+**Migration Path:**
+- Add worker authentication alongside existing direct file access
+- Gradual migration allows testing without disruption
+- Fallback to current approach if authentication fails
+
+---
+
+## Configuration
+
+**Current Environment Variables:**
+```bash
+# API Authentication
+TOM_CORE_AUTH_MODE=api_key
+TOM_CORE_API_KEYS=["key1:user1", "key2:user2"]
+
+# Credential Store  
+TOM_CORE_CREDENTIAL_FILE=creds.yml
+```
+
+**Future Phase 2 Variables:**
+```bash
+# Worker Authentication
+TOM_CORE_WORKER_HMAC_SECRET=shared-secret-key
+TOM_CORE_WORKER_AUTH_REQUIRED=true
+
+# Credential Checkout
+TOM_CORE_CREDENTIAL_CHECKOUT_ENABLED=true
+```

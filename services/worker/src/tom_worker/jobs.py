@@ -29,7 +29,7 @@ async def send_command_netmiko(ctx: saq.types.Context, json: str):
         raise GatingException(f"{device_id} busy. Lease not acquired.")
 
     try:
-        async with NetmikoAdapter.from_model(model, credential_store) as adapter:
+        async with await NetmikoAdapter.from_model(model, credential_store) as adapter:
             result = await adapter.send_command(model.command)
 
         print(f"completed send_command_netmiko: {ctx['job'].id=}")

@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,7 +23,6 @@ class Settings(BaseSettings):
 
     # File settings
     project_root: str = "../../../../"
-    credential_file: str = "defaultCreds.yml"
 
     # Tom Core Server settings
     log_level: str | int = "info"  # Input is str, but we convert to int for actual use
@@ -32,6 +32,19 @@ class Settings(BaseSettings):
     redis_port: int = 6379
     redis_db: int = 0
     # TODO: SSL, Auth, Etc.
+
+    # credential stores
+
+    # - YAML store
+    credential_file: str = "defaultCreds.yml"
+
+    # - Vault store
+    vault_url: str = ""  # e.g. http://localhost:8200"
+    vault_token: str = (
+        ""  # e.g. s.csdfssdfs3823j   (or 'myroot' if you are IN DEV ONLY)
+    )
+
+    credential_store: Literal["yaml", "vault"] = "yaml"
 
     @field_validator("log_level")
     @classmethod

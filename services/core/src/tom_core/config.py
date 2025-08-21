@@ -76,7 +76,9 @@ class Settings(BaseSettings):
             if not isinstance(key, str):
                 raise ValueError("api_keys must be a list of strings")
             if ":" not in key:
-                raise ValueError("api_keys must be a list of strings in the format 'key:user'")
+                raise ValueError(
+                    "api_keys must be a list of strings in the format 'key:user'"
+                )
         return v
 
     @computed_field
@@ -85,7 +87,7 @@ class Settings(BaseSettings):
         return {
             key: user
             for key_str in self.api_keys
-                for key, user in [key_str.split(":", 1)]
+            for key, user in [key_str.split(":", 1)]
         }
 
     @computed_field

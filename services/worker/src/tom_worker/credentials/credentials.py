@@ -7,11 +7,10 @@ from tom_worker.exceptions import TomException
 
 
 class CredentialStore:
-    def get_ssh_credentials(self, credential_id: str) -> (str, str):
+    async def get_ssh_credentials(self, credential_id: str) -> (str, str):
         raise TomException("Not implemented")
 
 
-@dataclass
 class YamlCredentialStore(CredentialStore):
     filename: str = ""
     data: Optional[dict] = None
@@ -21,7 +20,7 @@ class YamlCredentialStore(CredentialStore):
         with open(filename, "r") as f:
             self.data = yaml.safe_load(f)
 
-    def get_ssh_credentials(self, credential_id: str) -> "SSHCredentials":
+    async def get_ssh_credentials(self, credential_id: str) -> "SSHCredentials":
         if credential_id not in self.data:
             raise TomException(
                 f"Credential {credential_id} not found in {self.filename}"

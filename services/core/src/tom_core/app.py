@@ -11,9 +11,14 @@ from saq.web.starlette import saq_web
 from tom_core import __version__
 from tom_core import api
 from tom_core.config import Settings, settings
-from tom_core.inventory.inventory import YamlInventoryStore, SwisInventoryStore
-from tom_core.inventory.solarwinds import ModifiedSwisClient
-from tom_core.exceptions import TomException, TomAuthException, TomNotFoundException, TomValidationException
+from tom_core.inventory.inventory import YamlInventoryStore
+from tom_core.inventory.solarwinds import ModifiedSwisClient, SwisInventoryStore
+from tom_core.exceptions import (
+    TomException,
+    TomAuthException,
+    TomNotFoundException,
+    TomValidationException,
+)
 
 
 def create_queue(settings: Settings) -> saq.Queue:
@@ -33,9 +38,11 @@ def create_app():
         )
         # Initialize inventory store on startup
         this_app.state.settings = settings
-        
-        logging.info(f"Initializing inventory store with type: {settings.inventory_type}")
-        
+
+        logging.info(
+            f"Initializing inventory store with type: {settings.inventory_type}"
+        )
+
         if settings.inventory_type == "yaml":
             logging.info(f"Using YAML inventory from: {settings.inventory_path}")
             this_app.state.inventory_store = YamlInventoryStore(settings.inventory_path)
@@ -59,34 +66,33 @@ def create_app():
     app.mount("/queueMonitor", saq_web("/queueMonitor", [queue]), name="queueMonitor")
 
     app.include_router(api.router, prefix="/api")
-    
+
     # Exception handlers
     @app.exception_handler(TomAuthException)
     async def auth_exception_handler(request: Request, exc: TomAuthException):
         return JSONResponse(
-            status_code=401,
-            content={"error": "Unauthorized", "detail": str(exc)}
+            status_code=401, content={"error": "Unauthorized", "detail": str(exc)}
         )
-    
+
     @app.exception_handler(TomNotFoundException)
     async def not_found_exception_handler(request: Request, exc: TomNotFoundException):
         return JSONResponse(
-            status_code=404,
-            content={"error": "Not Found", "detail": str(exc)}
+            status_code=404, content={"error": "Not Found", "detail": str(exc)}
         )
-    
+
     @app.exception_handler(TomValidationException)
-    async def validation_exception_handler(request: Request, exc: TomValidationException):
+    async def validation_exception_handler(
+        request: Request, exc: TomValidationException
+    ):
         return JSONResponse(
-            status_code=400,
-            content={"error": "Bad Request", "detail": str(exc)}
+            status_code=400, content={"error": "Bad Request", "detail": str(exc)}
         )
-    
+
     @app.exception_handler(TomException)
     async def tom_exception_handler(request: Request, exc: TomException):
         return JSONResponse(
             status_code=500,
-            content={"error": "Internal Server Error", "detail": str(exc)}
+            content={"error": "Internal Server Error", "detail": str(exc)},
         )
-    
+
     return app

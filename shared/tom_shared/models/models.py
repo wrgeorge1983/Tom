@@ -7,6 +7,7 @@ class StoredCredential(BaseModel):
     type: Literal["stored"] = "stored"
     credential_id: str
 
+
 class InlineSSHCredential(BaseModel):
     type: Literal["inlineSSH"] = "inlineSSH"
     username: str

@@ -17,3 +17,6 @@ class TransientException(TomException):
 
 class PermanentException(TomException):
     pass
+
+class TomAuthException(TomException):
+    pass
