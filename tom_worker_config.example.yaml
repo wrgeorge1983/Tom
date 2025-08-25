@@ -1,0 +1,16 @@
+# Tom Smykowski Worker Service Configuration
+# YAML version of worker-related settings from local.env.example
+
+# Worker Service Settings
+log_level: "info"
+redis_host: "localhost"
+redis_port: 6379
+project_root: "../../.."
+
+# Credential Store Configuration
+credential_store: "yaml"  # or "vault"
+credential_file: "inventory/assets.yml"
+
+# Vault Configuration (for vault credential store)
+vault_url: "http://localhost:8200"
+vault_token: "myroot"  # using 'myroot' is crazy insecure, don't do in prod!

@@ -103,6 +103,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="TOM_CORE_",
         env_file=os.getenv("TOM_CORE_ENV_FILE", "foo.env"),
+        yaml_file=os.getenv("TOM_CORE_CONFIG_FILE", "tom_config.yaml"),
         case_sensitive=False,
     )
 

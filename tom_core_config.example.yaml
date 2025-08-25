@@ -1,0 +1,29 @@
+# Tom Smykowski Core Service Configuration
+# YAML version of core-related settings from local.env.example
+
+# Core Service Settings
+host: "0.0.0.0"
+port: 8000
+log_level: "info"
+project_root: "../../../.."
+
+# Redis Configuration
+redis_host: "localhost"  # would be 'redis' when running in docker compose
+redis_port: 6379
+
+# Authentication
+allow_inline_credentials: true  # good to keep this False when there are better options
+auth_mode: "api_key"
+api_key_headers: ["X-API-Key", "api-key"]
+api_keys: ["abc123:admin", "asldfjaldkf:admin"]
+
+# Inventory Configuration
+inventory_type: "yaml"  # or "swis"
+inventory_file: "inventory/inventory.yml"
+
+# SolarWinds SWIS/SWAPI Configuration
+swapi_host: "solarwinds.example.com"
+swapi_port: 17774
+swapi_username: "swapi_user"
+swapi_password: "swapi_pw"
+swapi_default_cred_name: "autoUser"
