@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import computed_field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource, PydanticBaseSettingsSource
 import saq
 
 
@@ -106,6 +106,17 @@ class Settings(BaseSettings):
         yaml_file=os.getenv("TOM_CORE_CONFIG_FILE", "tom_config.yaml"),
         case_sensitive=False,
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return  env_settings, dotenv_settings, YamlConfigSettingsSource(settings_cls),
 
 
 # Global settings instance - initialized at import time

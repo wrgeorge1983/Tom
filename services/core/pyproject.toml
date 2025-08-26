@@ -18,8 +18,12 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest",
-    "ruff", 
+    "ruff",
 ]
 
 [tool.uv.sources]
 tom-shared = { path = "../../shared", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+#addopts =
