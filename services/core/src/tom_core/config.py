@@ -1,11 +1,49 @@
 import logging
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional, Any
 
-from pydantic import computed_field, field_validator
+from pydantic import BaseModel, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource, PydanticBaseSettingsSource
 import saq
+
+
+class LoggingYamlConfigSettingsSource(YamlConfigSettingsSource):
+    """YAML config source that logs whether the file was found."""
+    
+    def __init__(self, settings_cls: type[BaseSettings]):
+        # Get yaml_file from model_config to avoid duplication
+        yaml_file = getattr(settings_cls.model_config, 'yaml_file', None)
+        super().__init__(settings_cls, yaml_file)
+        
+        # Use print for immediate visibility during startup before logging is configured
+        if yaml_file and Path(yaml_file).exists():
+            print(f"INFO: Loading configuration from YAML file: {yaml_file}")
+        elif yaml_file:
+            print(f"WARNING: YAML config file not found: {yaml_file} (using defaults and env vars)")
+        else:
+            print("DEBUG: No YAML config file specified")
+
+
+class SolarWindsMatchCriteria(BaseModel):
+    """Match criteria for SolarWinds devices."""
+    vendor: Optional[str] = None
+    description: Optional[str] = None
+    caption: Optional[str] = None
+
+
+class SolarWindsDeviceAction(BaseModel):
+    """Action to take when a device matches criteria."""
+    adapter: str
+    adapter_driver: str
+    credential_id: Optional[str] = None
+    port: int = 22
+
+
+class SolarWindsMapping(BaseModel):
+    """A single match/action rule for SolarWinds devices."""
+    match: SolarWindsMatchCriteria
+    action: SolarWindsDeviceAction
 
 
 class Settings(BaseSettings):
@@ -47,7 +85,16 @@ class Settings(BaseSettings):
     swapi_username: str = ""
     swapi_password: str = ""
     swapi_port: int = 17774
-    swapi_default_cred_name: str = "default"
+    swapi_device_mappings: list[SolarWindsMapping] = [
+        SolarWindsMapping(
+            match=SolarWindsMatchCriteria(vendor=".*"),
+            action=SolarWindsDeviceAction(
+                adapter="netmiko",
+                adapter_driver="cisco_ios",
+                credential_id="default",
+            )
+        )
+    ]
 
     # Tom Core Server settings
     host: str = "0.0.0.0"
@@ -103,7 +150,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="TOM_CORE_",
         env_file=os.getenv("TOM_CORE_ENV_FILE", "foo.env"),
-        yaml_file=os.getenv("TOM_CORE_CONFIG_FILE", "tom_config.yaml"),
+        yaml_file=os.getenv("TOM_CORE_CONFIG_FILE", "tom_core_config.yaml"),
         case_sensitive=False,
     )
 
@@ -116,7 +163,7 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return  env_settings, dotenv_settings, YamlConfigSettingsSource(settings_cls),
+        return env_settings, dotenv_settings, LoggingYamlConfigSettingsSource(settings_cls),
 
 
 # Global settings instance - initialized at import time

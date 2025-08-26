@@ -27,3 +27,32 @@ swapi_port: 17774
 swapi_username: "swapi_user"
 swapi_password: "swapi_pw"
 swapi_default_cred_name: "autoUser"
+
+# SolarWinds Device Mappings - processed in order, first match wins
+swapi_device_mappings:
+  - match:
+      vendor: "cisco"
+      description: "asr"
+    action:
+      adapter: "scrapli"
+      adapter_driver: "cisco_iosxe"
+      credential_id: "cisco_creds"
+      port: 22
+  - match:
+      vendor: "arista"
+    action:
+      adapter: "scrapli" 
+      adapter_driver: "arista_eos"
+      credential_id: "arista_creds"
+  - match:
+      vendor: "cisco"
+    action:
+      adapter: "netmiko"
+      adapter_driver: "cisco_ios"
+      credential_id: "cisco_creds"
+  # Default catch-all rule (matches everything)
+  - match:
+      vendor: ".*"
+    action:
+      adapter: "netmiko"
+      adapter_driver: "cisco_ios"

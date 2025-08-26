@@ -1,0 +1,16 @@
+swapi_device_mappings:
+#  - match:
+#      vendor: "cisco"
+#      description: "asr"
+#    action:
+#      adapter: "scrapli"
+#      adapter_driver: "cisco_iosxe"
+#      credential_id: "swncm"
+#      port: 22
+  # Default catch-all rule (matches everything)
+  - match:
+      vendor: ".*"
+    action:
+      adapter: "netmiko"
+      adapter_driver: "cisco_ios"
+      credential_id: "swncm"

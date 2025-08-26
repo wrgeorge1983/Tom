@@ -215,9 +215,30 @@ class SwisInventoryStore(InventoryStore):
             raise
 
     def _node_to_device_config(self, node: dict) -> DeviceConfig:
-        """Convert SolarWinds node data to DeviceConfig format."""
-        # TODO: Add proper mapping logic based on vendor/description
-        # For now, default to netmiko cisco_ios
+        """Convert SolarWinds node data to DeviceConfig format using configured mappings."""
+        # Try each mapping rule in order until we find a match
+        for mapping in self.settings.swapi_device_mappings:
+            # Create a filter from the match criteria
+            filter_obj = SolarWindsFilter(
+                caption_pattern=mapping.match.caption,
+                vendor_pattern=mapping.match.vendor,
+                description_pattern=mapping.match.description
+            )
+            
+            if filter_obj.matches(node):
+                # Use the credential_id from the action, or fall back to default
+                credential_id = mapping.action.credential_id or self.settings.swapi_default_cred_name
+                
+                return DeviceConfig(
+                    adapter=mapping.action.adapter,
+                    adapter_driver=mapping.action.adapter_driver,
+                    host=node["IPAddress"],
+                    port=mapping.action.port,
+                    credential_id=credential_id,
+                )
+        
+        # If no mapping matched, this shouldn't happen with the default ".*" rule
+        # But provide a fallback just in case
         return DeviceConfig(
             adapter="netmiko",
             adapter_driver="cisco_ios",

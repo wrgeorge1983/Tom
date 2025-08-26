@@ -35,19 +35,24 @@ def create_app():
         logging.basicConfig(
             level=settings.log_level,
             format="%(asctime)s - %(levelname)s - %(message)s",
+            force=True  # Override existing logging config
         )
+        logger = logging.getLogger(__name__)
+        
+        print(f"DEBUG: Log level set to: {logging.getLevelName(settings.log_level)}")
+        
         # Initialize inventory store on startup
         this_app.state.settings = settings
 
-        logging.info(
+        logger.info(
             f"Initializing inventory store with type: {settings.inventory_type}"
         )
 
         if settings.inventory_type == "yaml":
-            logging.info(f"Using YAML inventory from: {settings.inventory_path}")
+            logger.info(f"Using YAML inventory from: {settings.inventory_path}")
             this_app.state.inventory_store = YamlInventoryStore(settings.inventory_path)
         elif settings.inventory_type == "swis":
-            logging.info(f"Using SWIS inventory with host: {settings.swapi_host}")
+            logger.info(f"Using SWIS inventory with host: {settings.swapi_host}")
             swis_client = ModifiedSwisClient.from_settings(settings)
             this_app.state.inventory_store = SwisInventoryStore(swis_client, settings)
         else:
