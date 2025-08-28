@@ -18,4 +18,5 @@ If you fork or create a derivative of this project, you must either:
 1. Keep our original logo unchanged, OR
 2. Replace it entirely with your own branding
 
+Artist: TechnoToast, http://technotoast.art/
 All rights reserved.

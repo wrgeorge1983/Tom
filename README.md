@@ -49,6 +49,8 @@ system details (looking at you, Templating Libraries!)
 
 - [Netpalm](https://github.com/tbotnz/netpalm/) - Netpalm effectively invented the idea of a Network Automation Broker, and is the direct inspiration for Tom Smykowski.
 
+## Glorious Art
+Art by TechnoToast, http://technotoast.art/
 
 ## License
 Code is MIT - see [LICENSE](./LICENSE)  
