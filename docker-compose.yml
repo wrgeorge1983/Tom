@@ -39,7 +39,7 @@ services:
       - ./inventory:/app/inventory
 
   redis:
-    image: redis:latest
+    image: redis:7.4-alpine3.21
     ports:
       - "6379:6379"
     logging:

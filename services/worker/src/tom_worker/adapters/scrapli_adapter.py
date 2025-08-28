@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from typing import Optional, Type
 
@@ -94,7 +95,19 @@ class ScrapliAsyncAdapter:
             port=model.port,
         )
 
-    async def send_command(self, command: str) -> str:
+    async def send_commands(self, commands: list[str]) -> dict[str, str]:
         if self.connection is None:
             raise TomException("Connection not initialized")
-        return (await self.connection.send_command(command)).result
+        results = {}
+        for command in commands:
+            result = await self.connection.send_command(command)
+            while command in results:
+                n = re.match(r"(.*)_(\d+)$", command)
+                if n:
+                    command = n.group(1) + "_" + str(int(n.group(2)) + 1)
+                else:
+                    command = command + "_1"
+
+            results[command] = result.result
+
+        return results

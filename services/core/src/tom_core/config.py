@@ -13,8 +13,8 @@ class LoggingYamlConfigSettingsSource(YamlConfigSettingsSource):
     
     def __init__(self, settings_cls: type[BaseSettings]):
         # Get yaml_file from model_config to avoid duplication
-        yaml_file = getattr(settings_cls.model_config, 'yaml_file', None)
-        super().__init__(settings_cls, yaml_file)
+        yaml_file = settings_cls.model_config.get('yaml_file')
+        super().__init__(settings_cls)
         
         # Use print for immediate visibility during startup before logging is configured
         if yaml_file and Path(yaml_file).exists():

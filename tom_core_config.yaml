@@ -11,6 +11,8 @@ swapi_device_mappings:
   - match:
       vendor: ".*"
     action:
+#      adapter: "scrapli"
+#      adapter_driver: "cisco_iosxe"
       adapter: "netmiko"
       adapter_driver: "cisco_ios"
       credential_id: "swncm"

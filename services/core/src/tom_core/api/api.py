@@ -129,10 +129,11 @@ async def send_netmiko_command(
 
     queue = request.app.state.queue
 
+    commands = [command]
     args = NetmikoSendCommandModel(
         host=host,
         device_type=device_type,
-        command=command,
+        commands=commands,
         credential=credential,
         port=port,
     )
@@ -176,10 +177,12 @@ async def send_scrapli_command(
 
     queue = request.app.state.queue
 
+    commands = [command]
+
     args = ScrapliSendCommandModel(
         host=host,
         device_type=device_type,
-        command=command,
+        commands=commands,
         credential=credential,
         port=port,
     )
@@ -326,19 +329,20 @@ async def send_inventory_command(
     else:
         credential = StoredCredential(credential_id=device_config.credential_id)
 
+    commands = [command]
     queue: saq.Queue = request.app.state.queue
 
     if device_config.adapter == "netmiko":
         args = NetmikoSendCommandModel(
             host=device_config.host,
             device_type=device_config.adapter_driver,
-            command=command,
+            commands=commands,
             credential=credential,
             port=device_config.port,
         )
         try:
             response = await enqueue_job(
-                queue, "send_command_netmiko", args, wait=wait, timeout=timeout
+                queue, "send_commands_netmiko", args, wait=wait, timeout=timeout
             )
         except Exception as e:
             raise TomException(f"Failed to enqueue job for {device_name}: {e}")
@@ -347,13 +351,13 @@ async def send_inventory_command(
         args = ScrapliSendCommandModel(
             host=device_config.host,
             device_type=device_config.adapter_driver,
-            command=command,
+            commands=commands,
             credential=credential,
             port=device_config.port,
         )
         try:
             response = await enqueue_job(
-                queue, "send_command_scrapli", args, wait=wait, timeout=timeout
+                queue, "send_commands_scrapli", args, wait=wait, timeout=timeout
             )
         except Exception as e:
             raise TomException(f"Failed to enqueue job for {device_name}: {e}")
@@ -363,6 +367,63 @@ async def send_inventory_command(
 
     if wait:
         if rawOutput:
-            response = response.result
+            response = response.result.get(command)
+
+    return response
+
+
+@router.post("/device/{device_name}/send_commands")
+async def send_inventory_commands(
+    request: Request,
+    device_name: str,
+    commands: list[str],
+    inventory_store: InventoryStore = Depends(get_inventory_store),
+    wait: bool = False,
+    username: Optional[str] = Query(
+        None,
+        description="Override username (requires password). Uses inventory "
+        "credential if not provided.",
+    ),
+        password: Optional[str] = Query(
+            None,
+            description="Override password (requires username). Uses inventory "
+            "credential if not provided.",
+        )
+) -> JobResponse:
+    device_config = inventory_store.get_device_config(device_name)
+    if username is not None and password is not None:
+        credential = InlineSSHCredential(username=username, password=password)
+    else:
+        credential = StoredCredential(credential_id=device_config.credential_id)
+
+    queue: saq.Queue = request.app.state.queue
+
+    kwargs = {
+        "host": device_config.host,
+        "device_type": device_config.adapter_driver,
+        "commands": commands,
+        "credential": credential,
+        "port": device_config.port,
+    }
+    if device_config.adapter == "netmiko":
+        args = NetmikoSendCommandModel(**kwargs)
+        try:
+            response = await enqueue_job(
+                queue, "send_commands_netmiko", args, wait=wait
+            )
+        except Exception as e:
+            raise TomException(f"Failed to enqueue job for {device_name}: {e}")
+
+    elif device_config.adapter == "scrapli":
+        args = ScrapliSendCommandModel(**kwargs)
+        try:
+            response = await enqueue_job(
+                queue, "send_commands_scrapli", args, wait=wait
+            )
+        except Exception as e:
+            raise TomException(f"Failed to enqueue job for {device_name}: {e}")
+
+    else:
+        raise TomException(f"Unknown device type {type(device_config)}")
 
     return response

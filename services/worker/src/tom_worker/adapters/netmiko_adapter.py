@@ -1,4 +1,5 @@
 import asyncio
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -75,11 +76,22 @@ class NetmikoAdapter:
             port=model.port,
         )
 
-    def _send_command(self, command: str) -> str:
+    def _send_commands(self, commands: list[str]) -> dict:
         if self.connection is None:
             raise TomException("Connection not initialized")
+        results = {}
+        for command in commands:
+            result = self.connection.send_command(command)
+            while command in results:
+                n = re.match(r"(.*)_(\d+)$", command)
+                if n:
+                    command = n.group(1) + "_" + str(int(n.group(2)) + 1)
+                else:
+                    command = command + "_1"
 
-        return self.connection.send_command(command)
+            results[command] = result.strip()
 
-    async def send_command(self, command: str) -> str:
-        return await asyncio.to_thread(self._send_command, command=command)
+        return results
+
+    async def send_commands(self, commands: list[str]) -> dict:
+        return await asyncio.to_thread(self._send_commands, commands=commands)

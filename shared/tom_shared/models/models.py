@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +21,7 @@ class NetmikoSendCommandModel(BaseModel):
     host: str
     port: int
     device_type: str
-    command: str
+    commands: list[str]
     credential: CredentialSource = Field(discriminator="type")
 
 
@@ -29,5 +29,5 @@ class ScrapliSendCommandModel(BaseModel):
     host: str
     port: int
     device_type: str
-    command: str
+    commands: list[str]
     credential: CredentialSource = Field(discriminator="type")

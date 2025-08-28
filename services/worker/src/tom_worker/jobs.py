@@ -14,7 +14,7 @@ async def foo(*args, **kwargs):
     }
 
 
-async def send_command_netmiko(ctx: saq.types.Context, json: str):
+async def send_commands_netmiko(ctx: saq.types.Context, json: str):
     print(f"attempting send_command_netmiko: {ctx['job'].id=}")
     assert "credential_store" in ctx, "Missing credential store in context."
     credential_store = ctx["credential_store"]
@@ -30,7 +30,7 @@ async def send_command_netmiko(ctx: saq.types.Context, json: str):
 
     try:
         async with await NetmikoAdapter.from_model(model, credential_store) as adapter:
-            result = await adapter.send_command(model.command)
+            result = await adapter.send_commands(model.commands)
 
         print(f"completed send_command_netmiko: {ctx['job'].id=}")
         return result
@@ -38,7 +38,7 @@ async def send_command_netmiko(ctx: saq.types.Context, json: str):
         await semaphore.release_lease(job_id)
 
 
-async def send_command_scrapli(ctx: saq.types.Context, json: str):
+async def send_commands_scrapli(ctx: saq.types.Context, json: str):
     print("running send_command_scrapli")
     assert "credential_store" in ctx, "Missing credential store in context."
     credential_store = ctx["credential_store"]
@@ -53,7 +53,7 @@ async def send_command_scrapli(ctx: saq.types.Context, json: str):
 
     try:
         async with await ScrapliAsyncAdapter.from_model(model, credential_store) as adapter:
-            result = await adapter.send_command(model.command)
+            result = await adapter.send_commands(model.commands)
         return result
     finally:
         await semaphore.release_lease(job_id)

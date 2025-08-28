@@ -7,7 +7,7 @@ import saq, saq.types
 
 from tom_worker.credentials.credentials import YamlCredentialStore
 from tom_worker.exceptions import GatingException, TransientException
-from tom_worker.jobs import foo, send_command_netmiko, send_command_scrapli
+from tom_worker.jobs import foo, send_commands_netmiko, send_commands_scrapli
 from .config import settings
 
 queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
@@ -48,20 +48,22 @@ async def main():
 
     worker = saq.Worker(
         queue,
-        functions=[foo, send_command_netmiko, send_command_scrapli],
+        functions=[foo, send_commands_netmiko, send_commands_scrapli],
         startup=worker_setup,
     )
-
+    print('worker built')
     def signal_handler(sig, frame):
         logging.info(f"Received signal {sig}. Shutting down.")
         worker.stop()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, signal_handler, sig, None)
-
+    print('signals added')
     try:
         await worker.queue.connect()
+        print('connected')
         await worker.start()
+        print('started')
     finally:
         await worker.queue.disconnect()
 
