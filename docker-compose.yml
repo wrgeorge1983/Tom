@@ -39,9 +39,10 @@ services:
       - ./inventory:/app/inventory
 
   redis:
-    image: redis:7.4-alpine3.21
+#    image: redis:7.4-alpine3.21
+    build: ./docker/redis
     ports:
-      - "6379:6379"
+      - "6380:6380"
     logging:
       driver: "json-file"
       options:

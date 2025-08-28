@@ -9,7 +9,7 @@ This document describes the current and planned security architecture for Tom Sm
 **Authentication:**
 - API key authentication for tom-core endpoints
 - Configurable headers (default: `X-API-Key`)
-- User mapping via `key:user` format in configuration
+- User mapping via `key:user` format in configuration (currently users don't matter)
 
 **Credential Management:**
 - YAML-based credential store (shared between tom-core and tom-worker)

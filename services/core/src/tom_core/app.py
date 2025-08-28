@@ -23,7 +23,7 @@ from tom_core.exceptions import (
 
 
 def create_queue(settings: Settings) -> saq.Queue:
-    queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
+    queue = saq.Queue.from_url(settings.redis_url)
     logging.info(f"Created queue {queue}")
     return queue
 
@@ -87,7 +87,7 @@ def create_app():
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.mount("/static", StaticFiles(directory=f"{settings.project_root}/services/core/src/tom_core/static"), name="static")
 
     app.openapi = custom_openapi
 

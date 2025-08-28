@@ -7,22 +7,7 @@ from pydantic import BaseModel, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource, PydanticBaseSettingsSource
 import saq
 
-
-class LoggingYamlConfigSettingsSource(YamlConfigSettingsSource):
-    """YAML config source that logs whether the file was found."""
-    
-    def __init__(self, settings_cls: type[BaseSettings]):
-        # Get yaml_file from model_config to avoid duplication
-        yaml_file = settings_cls.model_config.get('yaml_file')
-        super().__init__(settings_cls)
-        
-        # Use print for immediate visibility during startup before logging is configured
-        if yaml_file and Path(yaml_file).exists():
-            print(f"INFO: Loading configuration from YAML file: {yaml_file}")
-        elif yaml_file:
-            print(f"WARNING: YAML config file not found: {yaml_file} (using defaults and env vars)")
-        else:
-            print("DEBUG: No YAML config file specified")
+from tom_shared.config import SharedSettings
 
 
 class SolarWindsMatchCriteria(BaseModel):
@@ -46,7 +31,7 @@ class SolarWindsMapping(BaseModel):
     action: SolarWindsDeviceAction
 
 
-class Settings(BaseSettings):
+class Settings(SharedSettings):
     """
     Settings class manages configuration options.
 
@@ -67,18 +52,11 @@ class Settings(BaseSettings):
     :type log_level: str
     """
 
-    # File settings
-    project_root: str = "../../../../"
+    # inherits log, project_root, and redis settings from SharedSettings
 
     # Store settings
     inventory_type: Literal["yaml", "swis"] = "yaml"
     inventory_file: str = "defaultInventory.yml"
-
-    # Redis settings
-    redis_host: str = "localhost"
-    redis_port: int = 6379
-    redis_db: int = 0
-    # TODO: SSL, Auth, Etc.
 
     # SolarWinds API settings
     swapi_host: str = ""
@@ -99,20 +77,12 @@ class Settings(BaseSettings):
     # Tom Core Server settings
     host: str = "0.0.0.0"
     port: int = 8020
-    log_level: str | int = "info"  # Input is str, but we convert to int for actual use
 
     # API Settings
     allow_inline_credentials: bool = False
     auth_mode: Literal["none", "api_key", "oauth2"] = "none"
     api_key_headers: list[str] = ["X-API-Key"]
     api_keys: list[str] = []  # "key:user", "key:user"
-
-    @field_validator("log_level")
-    @classmethod
-    def validate_log_level(cls, v) -> int:
-        if isinstance(v, int):
-            return v
-        return logging.getLevelName(v.upper())
 
     @field_validator("api_keys")
     @classmethod
@@ -139,11 +109,6 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def credential_path(self) -> str:
-        return str(Path(self.project_root) / self.credential_file)
-
-    @computed_field
-    @property
     def inventory_path(self) -> str:
         return str(Path(self.project_root) / self.inventory_file)
 
@@ -153,17 +118,6 @@ class Settings(BaseSettings):
         yaml_file=os.getenv("TOM_CORE_CONFIG_FILE", "tom_core_config.yaml"),
         case_sensitive=False,
     )
-
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[BaseSettings],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        file_secret_settings: PydanticBaseSettingsSource,
-    ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return env_settings, dotenv_settings, LoggingYamlConfigSettingsSource(settings_cls),
 
 
 # Global settings instance - initialized at import time

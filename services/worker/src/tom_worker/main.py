@@ -10,7 +10,7 @@ from tom_worker.exceptions import GatingException, TransientException
 from tom_worker.jobs import foo, send_commands_netmiko, send_commands_scrapli
 from .config import settings
 
-queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
+queue = saq.Queue.from_url(settings.redis_url)
 
 
 async def main():
