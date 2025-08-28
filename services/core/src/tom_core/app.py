@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 import saq
 from saq.web.starlette import saq_web
@@ -25,6 +26,8 @@ def create_queue(settings: Settings) -> saq.Queue:
     queue = saq.Queue.from_url(f"redis://{settings.redis_host}:{settings.redis_port}")
     logging.info(f"Created queue {queue}")
     return queue
+
+
 
 
 def create_app():
@@ -68,7 +71,29 @@ def create_app():
         lifespan=lifespan,
     )
 
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            summary=app.summary,
+            description=app.description,
+            routes=app.routes,
+        )
+        openapi_schema["info"]["x-logo"] = {
+            "url": "static/Tom-BlkWhiteTrans_1000x1000.png"
+        }
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
+    app.openapi = custom_openapi
+
     app.mount("/queueMonitor", saq_web("/queueMonitor", [queue]), name="queueMonitor")
+
+
 
     app.include_router(api.router, prefix="/api")
 
@@ -101,3 +126,4 @@ def create_app():
         )
 
     return app
+

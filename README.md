@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/images/Tom-BlkBlueTrans_1000x1000.png">
-  <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" src="./docs/images/Tom-BlkWhiteTrans_1000x1000.png" width="256">
+  <source media="(prefers-color-scheme: dark)" srcset="services/core/src/tom_core/static/Tom-BlkBlueTrans_1000x1000.png">
+  <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" src="services/core/src/tom_core/static/Tom-BlkWhiteTrans_1000x1000.png" width="256">
 </picture>
 
 # Tom Smykowski
