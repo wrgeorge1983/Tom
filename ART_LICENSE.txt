@@ -1,0 +1,21 @@
+LOGO AND BRANDING ASSETS LICENSE
+
+The logo and branding materials in this repository are NOT covered by the MIT
+license and have the following restrictions:
+
+PERMITTED USES:
+- Downloading, using the project with the original, unmodified logo
+- Distributing the project with the original, unmodified logo
+- Replacing the logo entirely with different artwork for derivative works
+
+PROHIBITED USES:
+- Modifying, altering, editing, or creating derivative versions of the logo
+- Using our logo (modified or unmodified) to represent derivative projects
+- Extracting logo elements for use in other contexts
+
+FOR DERIVATIVE WORKS:
+If you fork or create a derivative of this project, you must either:
+1. Keep our original logo unchanged, OR
+2. Replace it entirely with your own branding
+
+All rights reserved.
