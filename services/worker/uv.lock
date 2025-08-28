@@ -593,7 +593,7 @@ requires-dist = [{ name = "pydantic", specifier = ">=2.11.7" }]
 
 [[package]]
 name = "tom-worker"
-version = "0.2.0"
+version = "0.3.6"
 source = { virtual = "." }
 dependencies = [
     { name = "asyncssh" },

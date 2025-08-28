@@ -907,7 +907,7 @@ wheels = [
 
 [[package]]
 name = "tom-core"
-version = "0.2.0"
+version = "0.3.6"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },

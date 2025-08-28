@@ -1,10 +1,12 @@
   [tool.bumpversion]
-  current_version = "0.2.0"
+  current_version = "0.3.6"
   parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
   serialize = ["{major}.{minor}.{patch}"]
   commit = true
   tag = true
   tag_name = "v{new_version}"
+  commit_args = "-a"
+  pre_commit_hooks = ["uv sync --directory services/core", "uv sync --directory services/worker"]
 
   [[tool.bumpversion.files]]
   filename = "VERSION"
@@ -23,10 +25,10 @@
   filename = "services/worker/pyproject.toml"
   search = "version = \"{current_version}\""
   replace = "version = \"{new_version}\""
-  [[tool.bumpversion.files]]
-  filename = "shared/pyproject.toml"
-  search = "version = \"{current_version}\""
-  replace = "version = \"{new_version}\""
+#  [[tool.bumpversion.files]]      # this breaks things!
+#  filename = "shared/pyproject.toml"
+#  search = "version = \"{current_version}\""
+#  replace = "version = \"{new_version}\""
 
   # Add more services as needed
 #  [[tool.bumpversion.files]]
