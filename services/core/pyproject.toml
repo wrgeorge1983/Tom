@@ -1,6 +1,6 @@
 [project]
 name = "tom-core"
-version = "0.3.6"
+version = "0.3.0"
 description = "Tom Smykowski Network Automation Broker - Core Service"
 readme = "README.md"
 requires-python = ">=3.13"
