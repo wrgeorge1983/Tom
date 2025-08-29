@@ -51,19 +51,20 @@ async def main():
         functions=[foo, send_commands_netmiko, send_commands_scrapli],
         startup=worker_setup,
     )
-    print('worker built')
+    print("worker built")
+
     def signal_handler(sig, frame):
         logging.info(f"Received signal {sig}. Shutting down.")
         worker.stop()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, signal_handler, sig, None)
-    print('signals added')
+    print("signals added")
     try:
         await worker.queue.connect()
-        print('connected')
+        print("connected")
         await worker.start()
-        print('started')
+        print("started")
     finally:
         await worker.queue.disconnect()
 

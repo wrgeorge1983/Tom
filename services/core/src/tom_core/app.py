@@ -28,8 +28,6 @@ def create_queue(settings: Settings) -> saq.Queue:
     return queue
 
 
-
-
 def create_app():
     queue = create_queue(settings)
 
@@ -38,12 +36,12 @@ def create_app():
         logging.basicConfig(
             level=settings.log_level,
             format="%(asctime)s - %(levelname)s - %(message)s",
-            force=True  # Override existing logging config
+            force=True,  # Override existing logging config
         )
         logger = logging.getLogger(__name__)
-        
+
         print(f"DEBUG: Log level set to: {logging.getLevelName(settings.log_level)}")
-        
+
         # Initialize inventory store on startup
         this_app.state.settings = settings
 
@@ -87,13 +85,17 @@ def create_app():
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 
-    app.mount("/static", StaticFiles(directory=f"{settings.project_root}/services/core/src/tom_core/static"), name="static")
+    app.mount(
+        "/static",
+        StaticFiles(
+            directory=f"{settings.project_root}/services/core/src/tom_core/static"
+        ),
+        name="static",
+    )
 
     app.openapi = custom_openapi
 
     app.mount("/queueMonitor", saq_web("/queueMonitor", [queue]), name="queueMonitor")
-
-
 
     app.include_router(api.router, prefix="/api")
 
@@ -126,4 +128,3 @@ def create_app():
         )
 
     return app
-

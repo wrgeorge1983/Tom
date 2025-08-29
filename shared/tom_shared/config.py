@@ -3,22 +3,28 @@ from pathlib import Path
 from typing import Literal, Optional, Any
 
 from pydantic import computed_field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource, PydanticBaseSettingsSource
+from pydantic_settings import (
+    BaseSettings,
+    YamlConfigSettingsSource,
+    PydanticBaseSettingsSource,
+)
 
 
 class LoggingYamlConfigSettingsSource(YamlConfigSettingsSource):
     """YAML config source that logs whether the file was found."""
-    
+
     def __init__(self, settings_cls: type[BaseSettings]):
         # Get yaml_file from model_config to avoid duplication
-        yaml_file = settings_cls.model_config.get('yaml_file')
+        yaml_file = settings_cls.model_config.get("yaml_file")
         super().__init__(settings_cls)
-        
+
         # Use print for immediate visibility during startup before logging is configured
         if yaml_file and Path(yaml_file).exists():
             print(f"INFO: Loading configuration from YAML file: {yaml_file}")
         elif yaml_file:
-            print(f"WARNING: YAML config file not found: {yaml_file} (using defaults and env vars)")
+            print(
+                f"WARNING: YAML config file not found: {yaml_file} (using defaults and env vars)"
+            )
         else:
             print("DEBUG: No YAML config file specified")
 
@@ -46,14 +52,15 @@ class SharedSettings(BaseSettings):
     redis_port: int = 6379
     redis_db: int = 0
     redis_username: Optional[str] = None
-    redis_password: Optional[str] = None  # if provided without username, use legacy auth
+    redis_password: Optional[str] = (
+        None  # if provided without username, use legacy auth
+    )
     redis_use_tls: bool = False
     redis_tls_check_hostname: bool = False
     redis_tls_cert_reqs: Literal["none", "optional", "required"] = "none"
     redis_tls_ca_certs: Optional[str] = None
     redis_tls_certfile: Optional[str] = None
     redis_tls_keyfile: Optional[str] = None
-
 
     @computed_field
     @property
@@ -99,5 +106,8 @@ class SharedSettings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return env_settings, dotenv_settings, LoggingYamlConfigSettingsSource(settings_cls),
-
+        return (
+            env_settings,
+            dotenv_settings,
+            LoggingYamlConfigSettingsSource(settings_cls),
+        )

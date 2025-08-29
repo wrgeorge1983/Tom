@@ -222,13 +222,16 @@ class SwisInventoryStore(InventoryStore):
             filter_obj = SolarWindsFilter(
                 caption_pattern=mapping.match.caption,
                 vendor_pattern=mapping.match.vendor,
-                description_pattern=mapping.match.description
+                description_pattern=mapping.match.description,
             )
-            
+
             if filter_obj.matches(node):
                 # Use the credential_id from the action, or fall back to default
-                credential_id = mapping.action.credential_id or self.settings.swapi_default_cred_name
-                
+                credential_id = (
+                    mapping.action.credential_id
+                    or self.settings.swapi_default_cred_name
+                )
+
                 return DeviceConfig(
                     adapter=mapping.action.adapter,
                     adapter_driver=mapping.action.adapter_driver,
@@ -236,7 +239,7 @@ class SwisInventoryStore(InventoryStore):
                     port=mapping.action.port,
                     credential_id=credential_id,
                 )
-        
+
         # If no mapping matched, this shouldn't happen with the default ".*" rule
         # But provide a fallback just in case
         return DeviceConfig(

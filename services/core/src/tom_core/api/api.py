@@ -384,11 +384,11 @@ async def send_inventory_commands(
         description="Override username (requires password). Uses inventory "
         "credential if not provided.",
     ),
-        password: Optional[str] = Query(
-            None,
-            description="Override password (requires username). Uses inventory "
-            "credential if not provided.",
-        )
+    password: Optional[str] = Query(
+        None,
+        description="Override password (requires username). Uses inventory "
+        "credential if not provided.",
+    ),
 ) -> JobResponse:
     device_config = inventory_store.get_device_config(device_name)
     if username is not None and password is not None:

@@ -4,14 +4,16 @@ from pathlib import Path
 from typing import Literal, Optional, Any
 
 from pydantic import BaseModel, computed_field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource, PydanticBaseSettingsSource
-import saq
+from pydantic_settings import (
+    SettingsConfigDict,
+)
 
 from tom_shared.config import SharedSettings
 
 
 class SolarWindsMatchCriteria(BaseModel):
     """Match criteria for SolarWinds devices."""
+
     vendor: Optional[str] = None
     description: Optional[str] = None
     caption: Optional[str] = None
@@ -19,6 +21,7 @@ class SolarWindsMatchCriteria(BaseModel):
 
 class SolarWindsDeviceAction(BaseModel):
     """Action to take when a device matches criteria."""
+
     adapter: str
     adapter_driver: str
     credential_id: Optional[str] = None
@@ -27,6 +30,7 @@ class SolarWindsDeviceAction(BaseModel):
 
 class SolarWindsMapping(BaseModel):
     """A single match/action rule for SolarWinds devices."""
+
     match: SolarWindsMatchCriteria
     action: SolarWindsDeviceAction
 
@@ -70,7 +74,7 @@ class Settings(SharedSettings):
                 adapter="netmiko",
                 adapter_driver="cisco_ios",
                 credential_id="default",
-            )
+            ),
         )
     ]
 
