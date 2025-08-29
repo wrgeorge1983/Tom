@@ -18,6 +18,10 @@
 - Logo!
 - Redis TLS encryption and authentication support
 
+### v0.5.0
+- rename core->controller
+- docs
+
 ## Future Work
 
 ### Reliability
