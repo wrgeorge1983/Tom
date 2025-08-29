@@ -28,11 +28,13 @@ doing so well, and securely) is a huge challenge.
 - **Transport/Drivers** - Netmiko, scrapli, etc.
 - **Parsing engines and templates** - TextFSM, ttp, genie, etc.
 - **Rendering templates** - Jinja2, ttp, etc.
-- **Inventory** - TBD - something about talking to a SOT to get device inventory, 
-  map it to transport drivers, etc
-- **Security** - TBD - something about managing credentials, maybe also RBAC
+- **Inventory** - Talk to your source-of-truth, digest inventory files, map drivers 
+    to different gear from different vendors, make sure you use the correct  
+    parsing templates, etc. 
+- **Security** - Storing credentials in a way that won't give your security team 
+    a heart attack, using the right creds for the right gear, etc. 
 
-All of these are solveable, but there's rarely a reason to solve them differently for
+All of these are solvable, but there's rarely a reason to solve them differently for
 each project.  Also, they can be cumbersome and fragile with unpleasant dependence on
 system details (looking at you, Templating Libraries!)
 
@@ -43,6 +45,29 @@ system details (looking at you, Templating Libraries!)
 - **Simple deployments** - A single `docker compose` setup for running all services together with dependencies (e.g., Redis).
 - **Support runtime changes** - You can update your service config as time goes on
 - **Support immutable state** - You can bake your own images so you're guaranteed to have an always redeployable artifact without a bunch of setup or external dependencies.
+
+## Architecture
+### Simplified 
+```mermaid
+sequenceDiagram
+    actor C as Client 
+    participant T as Tom
+    participant D as Network Device<br/>R1<br/>192.168.1.1
+        
+    C ->> T: /send_command
+        note over C,T: device=R1<br/>command="sh ip int bri"
+    T ->> T: lookup inventory (inc. host & credential ref)
+    T ->> T: lookup credential
+    T ->> D: sh ip int bri
+    activate D
+        D -->> T: <raw output>
+    deactivate D
+    T ->> T: parse if needed
+    T -->> C: final response 
+```
+
+### Detailed
+[Detailed Diagram](./docs/overal-sequence-detail.md)
 
 
 ## Inspiration

@@ -4,7 +4,7 @@ sequenceDiagram
     box Black Tom
     participant T as Tom Controller
     participant IS as Inventory Store
-    participant Q as Job Queue
+    participant Q as Job Queue <br> (redis)
     participant W as Worker
     participant CS as Credential Store
     end
