@@ -1,7 +1,7 @@
 """ASGI Entrypoint"""
 
-from tom_core.app import create_app
-from tom_core.config import settings
+from tom_controller.app import create_app
+from tom_controller.config import settings
 
 app = create_app()
 if __name__ == "__main__":

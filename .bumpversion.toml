@@ -6,7 +6,7 @@
   tag = true
   tag_name = "v{new_version}"
   commit_args = "-a"
-  pre_commit_hooks = ["uv sync --directory services/core", "uv sync --directory services/worker"]
+  pre_commit_hooks = ["uv sync --directory services/controller", "uv sync --directory services/worker"]
 
   [[tool.bumpversion.files]]
   filename = "VERSION"
@@ -17,12 +17,12 @@
 #  replace = "version = \"{new_version}\""
 
   [[tool.bumpversion.files]]
-  filename = "services/core/pyproject.toml"
+  filename = "services/controller/pyproject.toml"
   search = "version = \"{current_version}\""
   replace = "version = \"{new_version}\""
 
   [[tool.bumpversion.files]]
-  filename = "services/core/src/tom_core/__init__.py"
+  filename = "services/controller/src/tom_controller/__init__.py"
 
   [[tool.bumpversion.files]]
   filename = "services/worker/pyproject.toml"

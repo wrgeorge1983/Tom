@@ -6,8 +6,8 @@ from urllib3 import disable_warnings
 
 from orionsdk import SolarWinds
 
-from tom_core.exceptions import TomNotFoundException
-from tom_core.inventory.inventory import InventoryStore, log, DeviceConfig
+from tom_controller.exceptions import TomNotFoundException
+from tom_controller.inventory.inventory import InventoryStore, log, DeviceConfig
 
 disable_warnings()
 log = logging.getLogger(__name__)
@@ -261,7 +261,7 @@ class SwisInventoryStore(InventoryStore):
         log.info(f"Searching through {len(self.nodes)} nodes for {device_name}")
 
         # Create filter to find device by caption (hostname)
-        from tom_core.inventory.solarwinds import SolarWindsFilter
+        from tom_controller.inventory.solarwinds import SolarWindsFilter
 
         device_filter = SolarWindsFilter(caption_pattern=f"^{re.escape(device_name)}$")
 

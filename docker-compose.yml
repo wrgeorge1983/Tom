@@ -1,9 +1,9 @@
 services:
-  api:
+  controller:
     build:
       context: .
-      dockerfile: services/core/Dockerfile
-    image: tom_core
+      dockerfile: services/controller/Dockerfile
+    image: tom_controller
     logging:
       driver: "json-file"
       options:
@@ -19,7 +19,7 @@ services:
     command:
       - ".venv/bin/fastapi"
       - "run"
-      - "src/tom_core/main.py"
+      - "src/tom_controller/main.py"
       - "--workers"
       - "1"
 

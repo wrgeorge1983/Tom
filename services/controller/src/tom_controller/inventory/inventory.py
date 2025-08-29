@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import yaml
 from pydantic import BaseModel, Field, RootModel
 
-from tom_core.exceptions import TomNotFoundException
+from tom_controller.exceptions import TomNotFoundException
 
 import logging
 

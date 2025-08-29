@@ -5,10 +5,14 @@ from fastapi import APIRouter, Depends, Request, Query
 from pydantic import BaseModel
 import saq
 
-from tom_core.api.models import JobResponse
+from tom_controller.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
-from tom_core.exceptions import TomException, TomAuthException, TomNotFoundException
-from tom_core.inventory.inventory import (
+from tom_controller.exceptions import (
+    TomException,
+    TomAuthException,
+    TomNotFoundException,
+)
+from tom_controller.inventory.inventory import (
     InventoryStore,
     DeviceConfig,
 )
@@ -209,7 +213,7 @@ async def export_inventory(
 
         # Apply filter if specified
         if filter_name:
-            from tom_core.inventory.solarwinds import FilterRegistry
+            from tom_controller.inventory.solarwinds import FilterRegistry
 
             filter_obj = FilterRegistry.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
@@ -258,7 +262,7 @@ async def export_raw_inventory(
 
         # Apply filter if specified
         if filter_name:
-            from tom_core.inventory.solarwinds import FilterRegistry
+            from tom_controller.inventory.solarwinds import FilterRegistry
 
             filter_obj = FilterRegistry.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
@@ -275,7 +279,7 @@ async def export_raw_inventory(
 @router.get("/inventory/filters")
 async def list_filters() -> dict[str, str]:
     """List available inventory filters."""
-    from tom_core.inventory.solarwinds import FilterRegistry
+    from tom_controller.inventory.solarwinds import FilterRegistry
 
     return FilterRegistry.get_available_filters()
 

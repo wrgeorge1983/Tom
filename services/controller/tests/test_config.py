@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from tom_core.config import Settings
+from tom_controller.config import Settings
 
 
 pytestDefaultValues = {

@@ -4,18 +4,18 @@ FROM python:3.13-slim-trixie AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.8.8 /uv /uvx /bin/
 
 
-RUN mkdir -p /app/services/core
-WORKDIR /app/services/core
+RUN mkdir -p /app/services/controller
+WORKDIR /app/services/controller
 
 COPY shared/ /app/shared/
 
-COPY services/core/uv.lock .
-COPY services/core/pyproject.toml .
+COPY services/controller/uv.lock .
+COPY services/controller/pyproject.toml .
 # Install dependencies
 RUN uv sync --locked --no-install-project --no-editable --no-dev
 
 # Copy the rest of the project
-COPY --chown=app:app services/core/ /app/services/core/
+COPY --chown=app:app services/controller/ /app/services/controller/
 RUN uv sync --locked --no-editable --no-dev
 
 
@@ -26,9 +26,9 @@ FROM python:3.13-slim-trixie
 # Copy installed environment only, not source code
 COPY --from=builder --chown=app:app /app /app
 
-WORKDIR /app/services/core
+WORKDIR /app/services/controller
 
-CMD [".venv/bin/fastapi", "run", "src/tom_core/main.py"]
+CMD [".venv/bin/fastapi", "run", "src/tom_controller/main.py"]
 
 
 

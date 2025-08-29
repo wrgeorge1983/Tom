@@ -9,12 +9,12 @@ from fastapi.staticfiles import StaticFiles
 import saq
 from saq.web.starlette import saq_web
 
-from tom_core import __version__
-from tom_core import api
-from tom_core.config import Settings, settings
-from tom_core.inventory.inventory import YamlInventoryStore
-from tom_core.inventory.solarwinds import ModifiedSwisClient, SwisInventoryStore
-from tom_core.exceptions import (
+from tom_controller import __version__
+from tom_controller import api
+from tom_controller.config import Settings, settings
+from tom_controller.inventory.inventory import YamlInventoryStore
+from tom_controller.inventory.solarwinds import ModifiedSwisClient, SwisInventoryStore
+from tom_controller.exceptions import (
     TomException,
     TomAuthException,
     TomNotFoundException,
@@ -88,7 +88,7 @@ def create_app():
     app.mount(
         "/static",
         StaticFiles(
-            directory=f"{settings.project_root}/services/core/src/tom_core/static"
+            directory=f"{settings.project_root}/services/controller/src/tom_controller/static"
         ),
         name="static",
     )

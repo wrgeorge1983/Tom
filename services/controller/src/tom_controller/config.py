@@ -40,7 +40,7 @@ class Settings(SharedSettings):
     Settings class manages configuration options.
 
     precedence: ENVVARS > env_file > defaults
-    ENVVARS are prefixed with "TOM_CORE_" (but are not case sensitive)
+    ENVVARS are prefixed with "TOM_CONTROLLER_" (but are not case sensitive)
 
     :var project_root: Relative path to the project's root directory.
     :type project_root: str
@@ -117,9 +117,9 @@ class Settings(SharedSettings):
         return str(Path(self.project_root) / self.inventory_file)
 
     model_config = SettingsConfigDict(
-        env_prefix="TOM_CORE_",
-        env_file=os.getenv("TOM_CORE_ENV_FILE", "foo.env"),
-        yaml_file=os.getenv("TOM_CORE_CONFIG_FILE", "tom_core_config.yaml"),
+        env_prefix="TOM_",
+        env_file=os.getenv("TOM_ENV_FILE", "foo.env"),
+        yaml_file=os.getenv("TOM_CONFIG_FILE", "tom_config.yaml"),
         case_sensitive=False,
     )
 
