@@ -22,6 +22,14 @@
 - rename core->controller
 - docs
 
+### v0.6.0 (In Progress)
+- JWT authentication support
+  - Base JWT validator with JWKS support
+  - Provider-specific validators (Duo, Google, GitHub, Microsoft Entra ID)
+  - Hybrid authentication mode (JWT + API keys)
+  - YAML-based provider configuration
+  - Bearer token validation in API
+
 ## Future Work
 
 ### Reliability
@@ -40,7 +48,11 @@
 - Jinja2 templating for command generation
 
 ### Security
-- oauth2 authentication support
+- ~~JWT/OAuth2 authentication support~~ ✅ v0.6.0
+- Role-based access control (RBAC) from JWT claims
+- OAuth2 scope-based permissions
+- Token refresh flow
+- Frontend OAuth flow handler (for testing/demo)
 
 ### Plugin model
 - Plugin API

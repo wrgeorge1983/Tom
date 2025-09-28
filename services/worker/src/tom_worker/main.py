@@ -14,16 +14,14 @@ from .config import settings
 # Configure logging before creating the queue
 logging.basicConfig(
     level=logging.DEBUG,  # Set root to DEBUG
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 logger = logging.getLogger(__name__)
 
 # Enable debug logging for SAQ
-saq_logger = logging.getLogger('saq')
+saq_logger = logging.getLogger("saq")
 saq_logger.setLevel(logging.DEBUG)
 
 queue = saq.Queue.from_url(settings.redis_url)

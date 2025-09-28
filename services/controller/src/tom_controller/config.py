@@ -11,6 +11,28 @@ from pydantic_settings import (
 from tom_shared.config import SharedSettings
 
 
+class JWTProviderConfig(BaseModel):
+    """Configuration for a JWT authentication provider."""
+
+    name: Literal["duo", "google", "github", "entra"] = "duo"
+    enabled: bool = True
+    issuer: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None  # OAuth client secret for token exchange
+    jwks_uri: Optional[str] = None
+    audience: Optional[str] = None
+    leeway_seconds: int = 30
+
+    # OAuth endpoints
+    authorization_url: Optional[str] = None  # OAuth authorization endpoint
+    token_url: Optional[str] = None  # OAuth token endpoint
+
+    # Provider-specific fields
+    app_id: Optional[str] = None  # GitHub App ID
+    private_key_path: Optional[str] = None  # GitHub App private key path
+    tenant_id: Optional[str] = None  # Microsoft Entra tenant ID
+
+
 class SolarWindsMatchCriteria(BaseModel):
     """Match criteria for SolarWinds devices."""
 
@@ -84,9 +106,13 @@ class Settings(SharedSettings):
 
     # API Settings
     allow_inline_credentials: bool = False
-    auth_mode: Literal["none", "api_key", "oauth2"] = "none"
+    auth_mode: Literal["none", "api_key", "jwt", "hybrid"] = "none"
     api_key_headers: list[str] = ["X-API-Key"]
     api_keys: list[str] = []  # "key:user", "key:user"
+
+    # JWT Settings
+    jwt_providers: list[JWTProviderConfig] = []
+    jwt_require_https: bool = True
 
     @field_validator("api_keys")
     @classmethod

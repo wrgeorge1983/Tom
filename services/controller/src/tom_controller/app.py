@@ -98,6 +98,9 @@ def create_app():
     app.mount("/queueMonitor", saq_web("/queueMonitor", [queue]), name="queueMonitor")
 
     app.include_router(api.router, prefix="/api")
+    app.include_router(
+        api.oauth_router, prefix="/api"
+    )  # OAuth endpoints don't require auth
 
     # Exception handlers
     @app.exception_handler(TomAuthException)

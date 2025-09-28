@@ -1,9 +1,10 @@
 import logging
-from typing import Optional, TypedDict, Literal
+from typing import Optional, TypedDict, Literal, Dict, Any
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Query, HTTPException
 from pydantic import BaseModel
 import saq
+import httpx
 
 from tom_controller.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
@@ -17,6 +18,7 @@ from tom_controller.inventory.inventory import (
     DeviceConfig,
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
+from tom_controller.auth import get_jwt_validator, JWTValidationError
 
 
 def get_inventory_store(request: Request) -> InventoryStore:
@@ -24,8 +26,10 @@ def get_inventory_store(request: Request) -> InventoryStore:
 
 
 class AuthResponse(TypedDict):
-    method: Literal["api_key", "None"]
+    method: Literal["api_key", "jwt", "none"]
     user: str | None
+    provider: Optional[str]
+    claims: Optional[Dict[str, Any]]
 
 
 def api_key_auth(request: Request) -> AuthResponse:
@@ -35,7 +39,12 @@ def api_key_auth(request: Request) -> AuthResponse:
     for header in valid_headers:
         api_key = request.headers.get(header)
         if api_key in valid_api_keys:
-            return {"method": "api_key", "user": valid_api_keys[api_key]}
+            return {
+                "method": "api_key",
+                "user": valid_api_keys[api_key],
+                "provider": None,
+                "claims": None,
+            }
 
     header_keys = ", ".join(f"'{header}'" for header in valid_headers)
 
@@ -44,14 +53,86 @@ def api_key_auth(request: Request) -> AuthResponse:
     )
 
 
+async def jwt_auth(request: Request) -> AuthResponse:
+    """Validate JWT from Authorization header."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise TomAuthException("Missing or invalid Bearer token")
+
+    token = auth_header[7:]  # Remove "Bearer " prefix
+
+    # Check HTTPS requirement
+    settings = request.app.state.settings
+    if settings.jwt_require_https:
+        # Check if connection is secure
+        if request.url.scheme != "https":
+            # Allow localhost for development
+            if request.client and request.client.host not in [
+                "127.0.0.1",
+                "localhost",
+                "::1",
+            ]:
+                raise TomAuthException("JWT authentication requires HTTPS")
+
+    # Try each enabled provider
+    for provider_config in settings.jwt_providers:
+        if not provider_config.enabled:
+            continue
+
+        try:
+            # Convert Pydantic model to dict for validator
+            config_dict = provider_config.model_dump()
+            validator = get_jwt_validator(config_dict)
+
+            claims = await validator.validate_token(token)
+            user = validator.get_user_identifier(claims)
+
+            # Clean up validator resources
+            await validator.close()
+
+            return {
+                "method": "jwt",
+                "user": user,
+                "provider": provider_config.name,
+                "claims": claims,
+            }
+
+        except JWTValidationError as e:
+            logging.debug(
+                f"JWT validation failed for provider {provider_config.name}: {e}"
+            )
+            continue  # Try next provider
+
+        except Exception as e:
+            logging.error(
+                f"Unexpected error validating JWT with {provider_config.name}: {e}"
+            )
+            continue
+
+    raise TomAuthException("Invalid JWT token - no provider could validate it")
+
+
 async def do_auth(request: Request) -> AuthResponse:
     settings = request.app.state.settings
+
     if settings.auth_mode == "none":
-        return {"method": "None", "user": None}
-    if settings.auth_mode == "api_key":
-        return api_key_auth(request)
-    else:
-        raise TomException(f"Unknown auth mode {settings.auth_mode}")
+        return {"method": "none", "user": None, "provider": None, "claims": None}
+
+    # Try API key auth first in hybrid mode
+    if settings.auth_mode in ["api_key", "hybrid"]:
+        try:
+            return api_key_auth(request)
+
+        except TomAuthException:
+            if settings.auth_mode == "api_key":
+                raise
+            # Continue to JWT check in hybrid mode
+
+    # Try JWT auth
+    if settings.auth_mode in ["jwt", "hybrid"]:
+        return await jwt_auth(request)
+
+    raise TomException(f"Unknown auth mode {settings.auth_mode}")
 
 
 class AuthRouter(APIRouter):
@@ -431,3 +512,111 @@ async def send_inventory_commands(
         raise TomException(f"Unknown device type {type(device_config)}")
 
     return response
+
+
+# OAuth endpoints (not requiring authentication)
+oauth_router = APIRouter()
+
+
+class TokenRequest(BaseModel):
+    """Request body for token exchange."""
+
+    code: str
+    state: str
+    redirect_uri: str = "http://localhost:8000/static/oauth-test.html"
+
+
+class TokenResponse(BaseModel):
+    """Response for token exchange."""
+
+    access_token: str
+    token_type: str = "Bearer"
+    expires_in: Optional[int] = None
+    id_token: Optional[str] = None
+
+
+@oauth_router.post("/oauth/token")
+async def exchange_token(
+    request: Request, token_request: TokenRequest
+) -> TokenResponse:
+    """Exchange OAuth authorization code for JWT token.
+
+    This endpoint handles the token exchange for the OAuth flow.
+    It's not protected by authentication since it's part of the auth flow itself.
+    """
+    settings = request.app.state.settings
+
+    # Find the first enabled OAuth provider with token exchange capability
+    provider_config = None
+    for provider in settings.jwt_providers:
+        if provider.enabled and provider.client_secret and provider.token_url:
+            provider_config = provider
+            break
+
+    if not provider_config:
+        raise HTTPException(
+            status_code=500,
+            detail="No OAuth provider configured with token exchange capability",
+        )
+
+    # Exchange the authorization code for tokens
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                provider_config.token_url,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": token_request.code,
+                    "client_id": provider_config.client_id,
+                    "client_secret": provider_config.client_secret,
+                    "redirect_uri": token_request.redirect_uri,
+                },
+                headers={"Accept": "application/json"},
+            )
+            response.raise_for_status()
+
+            token_data = response.json()
+
+            # Return the token(s)
+            return TokenResponse(
+                access_token=token_data.get("access_token")
+                or token_data.get("id_token"),
+                token_type=token_data.get("token_type", "Bearer"),
+                expires_in=token_data.get("expires_in"),
+                id_token=token_data.get("id_token"),
+            )
+
+        except httpx.HTTPStatusError as e:
+            logging.error(
+                f"Token exchange failed: {e.response.status_code} - {e.response.text}"
+            )
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Token exchange failed: {e.response.text}",
+            )
+        except Exception as e:
+            logging.error(f"Token exchange error: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Token exchange failed: {str(e)}"
+            )
+
+
+@oauth_router.get("/oauth/config")
+async def get_oauth_config(request: Request) -> dict:
+    """Get OAuth configuration for the frontend.
+
+    Returns the OAuth URLs needed by the frontend to initiate the flow.
+    """
+    settings = request.app.state.settings
+
+    # Find the first enabled OAuth provider
+    for provider in settings.jwt_providers:
+        if provider.enabled and provider.authorization_url:
+            return {
+                "provider": provider.name,
+                "authorization_url": provider.authorization_url,
+                "client_id": provider.client_id,
+                "redirect_uri": "http://localhost:8000/static/oauth-test.html",
+            }
+
+    return {"error": "No OAuth provider configured"}

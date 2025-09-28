@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tom Smykowski - OAuth Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #555;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            color: #666;
+            font-weight: 500;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .hidden {
+            display: none;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .token-display {
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Tom Smykowski - OAuth Test</h1>
+
+        <!-- Authentication Section -->
+        <div class="section">
+            <h2>Authentication</h2>
+            <div id="authSection">
+                <div id="providerInfo" class="hidden">
+                    <p>Provider: <strong id="providerName"></strong></p>
+                </div>
+                <button id="loginBtn" onclick="initiateOAuth()">Login with OAuth</button>
+                <button onclick="clearToken()">Logout</button>
+            </div>
+
+            <div id="authStatus"></div>
+
+            <div id="tokenInfo" class="hidden">
+                <h3>Authenticated ✓</h3>
+                <div class="token-display" id="tokenDisplay"></div>
+                <button onclick="decodeToken()">Show Token Details</button>
+                <div id="decodedToken"></div>
+            </div>
+        </div>
+
+        <!-- API Test Section -->
+        <div class="section hidden" id="apiSection">
+            <h2>Test API Calls</h2>
+
+            <label for="device">Device Name:</label>
+            <input type="text" id="device" placeholder="router1" />
+
+            <label for="command">Command:</label>
+            <input type="text" id="command" placeholder="show version" />
+
+            <button onclick="sendCommand()">Send Command</button>
+            <button onclick="testAuthEndpoint()">Test Auth Status</button>
+
+            <div id="apiResponse"></div>
+        </div>
+    </div>
+
+    <script>
+        // OAuth configuration from backend
+        let oauthConfig = null;
+        let jwtToken = localStorage.getItem('jwtToken') || '';
+
+        // Initialize on page load
+        window.onload = async function() {
+            // Check if we're returning from OAuth redirect
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+
+            if (code && state) {
+                await handleOAuthCallback(code, state);
+            } else {
+                // Load OAuth config from backend
+                await loadOAuthConfig();
+
+                // Check for existing token
+                if (jwtToken) {
+                    displayToken();
+                }
+            }
+        };
+
+        async function loadOAuthConfig() {
+            try {
+                showStatus('authStatus', 'Loading configuration...', 'info');
+                const response = await fetch('/api/oauth/config');
+
+                if (response.ok) {
+                    oauthConfig = await response.json();
+
+                    if (oauthConfig.error) {
+                        showStatus('authStatus', `Configuration error: ${oauthConfig.error}`, 'error');
+                        document.getElementById('loginBtn').disabled = true;
+                    } else {
+                        showStatus('authStatus', '', '');
+                        document.getElementById('providerInfo').classList.remove('hidden');
+                        document.getElementById('providerName').textContent =
+                            oauthConfig.provider.charAt(0).toUpperCase() + oauthConfig.provider.slice(1);
+                        document.getElementById('loginBtn').textContent = `Login with ${oauthConfig.provider.charAt(0).toUpperCase() + oauthConfig.provider.slice(1)}`;
+                    }
+                } else {
+                    showStatus('authStatus', 'Failed to load OAuth configuration', 'error');
+                    document.getElementById('loginBtn').disabled = true;
+                }
+            } catch (e) {
+                showStatus('authStatus', `Error loading configuration: ${e.message}`, 'error');
+                document.getElementById('loginBtn').disabled = true;
+            }
+        }
+
+        function initiateOAuth() {
+            if (!oauthConfig || !oauthConfig.authorization_url) {
+                showStatus('authStatus', 'OAuth not configured properly', 'error');
+                return;
+            }
+
+            // Generate random state for CSRF protection
+            const state = generateRandomString(32);
+            localStorage.setItem('oauthState', state);
+
+            // Build OAuth URL
+            const authUrl = `${oauthConfig.authorization_url}?` +
+                `response_type=code&` +
+                `client_id=${encodeURIComponent(oauthConfig.client_id)}&` +
+                `redirect_uri=${encodeURIComponent(oauthConfig.redirect_uri)}&` +
+                `state=${state}&` +
+                `scope=openid email profile`;
+
+            // Redirect to OAuth provider
+            window.location.href = authUrl;
+        }
+
+        async function handleOAuthCallback(code, state) {
+            showStatus('authStatus', 'Processing authentication...', 'info');
+
+            // Verify state
+            const savedState = localStorage.getItem('oauthState');
+            if (state !== savedState) {
+                showStatus('authStatus', 'Invalid state parameter - possible CSRF attack', 'error');
+                return;
+            }
+            localStorage.removeItem('oauthState');
+
+            // Exchange code for token via backend
+            try {
+                const response = await fetch('/api/oauth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        state: state,
+                        redirect_uri: window.location.origin + window.location.pathname
+                    })
+                });
+
+                if (response.ok) {
+                    const tokenData = await response.json();
+
+                    // Use id_token for JWT authentication (Duo returns id_token)
+                    jwtToken = tokenData.id_token || tokenData.access_token;
+                    localStorage.setItem('jwtToken', jwtToken);
+
+                    showStatus('authStatus', 'Successfully authenticated!', 'success');
+                    displayToken();
+
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    // Load config for UI
+                    await loadOAuthConfig();
+                } else {
+                    const error = await response.text();
+                    showStatus('authStatus', `Authentication failed: ${error}`, 'error');
+
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    // Load config for UI
+                    await loadOAuthConfig();
+                }
+            } catch (e) {
+                showStatus('authStatus', `Failed to complete authentication: ${e.message}`, 'error');
+            }
+        }
+
+        function displayToken() {
+            document.getElementById('tokenInfo').classList.remove('hidden');
+            document.getElementById('apiSection').classList.remove('hidden');
+            document.getElementById('tokenDisplay').textContent =
+                jwtToken.substring(0, 50) + '...' + jwtToken.substring(jwtToken.length - 20);
+        }
+
+        function decodeToken() {
+            try {
+                const parts = jwtToken.split('.');
+                const header = JSON.parse(atob(parts[0]));
+                const payload = JSON.parse(atob(parts[1]));
+
+                const now = Math.floor(Date.now() / 1000);
+                const exp = payload.exp;
+                const timeLeft = exp - now;
+                const expDate = new Date(exp * 1000);
+
+                document.getElementById('decodedToken').innerHTML =
+                    '<h4>Token Details:</h4>' +
+                    `<p><strong>User:</strong> ${payload.email || payload.preferred_username || payload.sub}</p>` +
+                    `<p><strong>Issuer:</strong> ${payload.iss}</p>` +
+                    `<p><strong>Expires:</strong> ${expDate.toLocaleString()} (${timeLeft > 0 ? Math.floor(timeLeft/60) + ' minutes' : 'EXPIRED'})</p>` +
+                    '<details>' +
+                    '<summary>Full Token Claims</summary>' +
+                    '<pre>' + JSON.stringify(payload, null, 2) + '</pre>' +
+                    '</details>';
+            } catch (e) {
+                showStatus('authStatus', 'Failed to decode token: ' + e.message, 'error');
+            }
+        }
+
+        function clearToken() {
+            jwtToken = '';
+            localStorage.removeItem('jwtToken');
+            document.getElementById('tokenInfo').classList.add('hidden');
+            document.getElementById('apiSection').classList.add('hidden');
+            document.getElementById('decodedToken').innerHTML = '';
+            showStatus('authStatus', 'Logged out', 'info');
+        }
+
+        async function testAuthEndpoint() {
+            if (!jwtToken) {
+                showStatus('apiResponse', 'Not authenticated', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/', {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+
+                const data = await response.json();
+                showStatus('apiResponse',
+                    `Response (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                    response.ok ? 'success' : 'error'
+                );
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        async function sendCommand() {
+            const device = document.getElementById('device').value;
+            const command = document.getElementById('command').value;
+
+            if (!device || !command) {
+                showStatus('apiResponse', 'Please enter device and command', 'error');
+                return;
+            }
+
+            if (!jwtToken) {
+                showStatus('apiResponse', 'Not authenticated', 'error');
+                return;
+            }
+
+            showStatus('apiResponse', 'Sending command...', 'info');
+
+            try {
+                const url = `/api/device/${encodeURIComponent(device)}/send_command?` +
+                    `command=${encodeURIComponent(command)}&wait=true&rawOutput=true`;
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+
+                const data = await response.text();
+                showStatus('apiResponse',
+                    `Response (${response.status}):\n${data}`,
+                    response.ok ? 'success' : 'error'
+                );
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (!message) {
+                element.className = '';
+                element.textContent = '';
+                return;
+            }
+            element.className = 'status ' + type;
+            element.textContent = message;
+            if (message.includes('\n')) {
+                element.innerHTML = '<pre>' + escapeHtml(message) + '</pre>';
+            }
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

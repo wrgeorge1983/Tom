@@ -1,0 +1,69 @@
+# Example JWT configuration for Tom Smykowski
+# Copy this to tom_config.yaml and update with your provider details
+
+# Authentication mode
+# Options: none, api_key, jwt, hybrid (jwt + api_key)
+auth_mode: jwt
+
+# JWT Settings
+jwt_require_https: true  # Enforce HTTPS for JWT auth (except localhost)
+
+# JWT Provider Configurations
+jwt_providers:
+  # Duo Security Configuration
+  - name: duo
+    enabled: false
+    issuer: "https://your-tenant.duosecurity.com"
+    client_id: "your-duo-client-id"
+    jwks_uri: "https://your-tenant.duosecurity.com/oauth/v1/keys"
+    audience: "your-api-audience"  # Optional, defaults to client_id
+    leeway_seconds: 30
+
+  # Google OAuth Configuration
+  - name: google
+    enabled: false
+    client_id: "your-client-id.apps.googleusercontent.com"
+    # Google's issuer and JWKS URI are set automatically if not provided
+    # issuer: "https://accounts.google.com"
+    # jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+    leeway_seconds: 30
+
+  # GitHub App Configuration
+  - name: github
+    enabled: false
+    app_id: "123456"  # Your GitHub App ID
+    private_key_path: "/path/to/github-app-private-key.pem"
+    # GitHub uses app-specific signing, not JWKS
+    leeway_seconds: 30
+
+  # Microsoft Entra ID (Azure AD) Configuration
+  - name: entra
+    enabled: false
+    tenant_id: "your-tenant-id"
+    client_id: "your-app-client-id"
+    # Entra issuer and JWKS URI are built automatically from tenant_id
+    # issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+    # jwks_uri: "https://login.microsoftonline.com/your-tenant-id/discovery/v2.0/keys"
+    audience: "api://your-app-id"  # Optional
+    leeway_seconds: 30
+
+# Hybrid Mode Example: Both JWT and API Keys
+# auth_mode: hybrid
+# api_key_headers:
+#   - "X-API-Key"
+#   - "Authorization"  # Can also check Authorization header for API keys
+# api_keys:
+#   - "secret-key-1:service-account-1"
+#   - "secret-key-2:service-account-2"
+
+# Redis settings (inherited from SharedSettings)
+redis_host: localhost
+redis_port: 6379
+redis_use_tls: false
+
+# Server settings
+host: "0.0.0.0"
+port: 8020
+
+# Logging
+log_level: INFO

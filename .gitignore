@@ -5,3 +5,4 @@
 **/*.env
 slop/
 **/__pycache__
+tom_controller_config.yaml

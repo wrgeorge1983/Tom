@@ -31,8 +31,8 @@ doing so well, and securely) is a huge challenge.
 - **Inventory** - Talk to your source-of-truth, digest inventory files, map drivers 
     to different gear from different vendors, make sure you use the correct  
     parsing templates, etc. 
-- **Security** - Storing credentials in a way that won't give your security team 
-    a heart attack, using the right creds for the right gear, etc. 
+- **Security** - Storing credentials in a way that won't give your security team
+    a heart attack, using the right creds for the right gear, JWT/OAuth authentication, etc. 
 
 All of these are solvable, but there's rarely a reason to solve them differently for
 each project.  Also, they can be cumbersome and fragile with unpleasant dependence on
@@ -45,6 +45,24 @@ system details (looking at you, Templating Libraries!)
 - **Simple deployments** - A single `docker compose` setup for running all services together with dependencies (e.g., Redis).
 - **Support runtime changes** - You can update your service config as time goes on
 - **Support immutable state** - You can bake your own images so you're guaranteed to have an always redeployable artifact without a bunch of setup or external dependencies.
+
+## Features
+
+### Authentication & Security
+- **API Key Authentication** - Simple key-based auth for service accounts
+- **JWT/OAuth2 Support** (v0.6.0) - Validate JWTs from multiple providers:
+  - Duo Security
+  - Google OAuth
+  - GitHub Apps
+  - Microsoft Entra ID (Azure AD)
+- **Hybrid Auth Mode** - Use both API keys and JWTs simultaneously
+- **HashiCorp Vault Integration** - Secure credential storage
+
+### Inventory & Automation
+- **Multiple Inventory Sources** - YAML files or SolarWinds SWIS
+- **Queue-Based Processing** - Async job execution with Redis/SAQ
+- **Per-Device Concurrency Control** - Prevent overwhelming devices
+- **Multi-Transport Support** - Netmiko and Scrapli adapters
 
 ## Architecture
 ### Simplified 
@@ -69,6 +87,35 @@ sequenceDiagram
 ### Detailed
 [Detailed Diagram](./docs/overal-sequence-detail.md)
 
+## Documentation
+
+- [API Endpoints](./docs/api-endpoints.md) - Complete API reference
+- [OAuth/JWT Implementation](./docs/oauth-implementation.md) - JWT authentication setup and configuration
+- [Roadmap](./ROADMAP.md) - Development roadmap and completed features
+
+## Quick Start
+
+### With JWT Authentication
+1. Copy the example JWT config:
+   ```bash
+   cp tom_config.jwt.example.yaml tom_config.yaml
+   ```
+
+2. Configure your OAuth providers in `tom_config.yaml`
+
+3. Start the services:
+   ```bash
+   docker compose up
+   ```
+
+4. Make authenticated API calls:
+   ```bash
+   # With JWT
+   curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:8020/api/
+
+   # With API key
+   curl -H "X-API-Key: your-api-key" http://localhost:8020/api/
+   ```
 
 ## Inspiration
 
