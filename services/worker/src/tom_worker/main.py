@@ -31,9 +31,7 @@ async def main():
         case _:
             raise ValueError(f"Unknown credential store: {settings.credential_store}")
 
-    semaphore_redis_client = redis.from_url(
-        f"redis://{settings.redis_host}:{settings.redis_port}"
-    )
+    semaphore_redis_client = redis.from_url(settings.redis_url)
 
     def worker_setup(ctx: saq.types.Context):
         ctx["credential_store"] = credential_store

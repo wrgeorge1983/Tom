@@ -349,7 +349,7 @@ async def send_inventory_command(
                 queue, "send_commands_netmiko", args, wait=wait, timeout=timeout
             )
         except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}")
+            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
 
     elif device_config.adapter == "scrapli":
         args = ScrapliSendCommandModel(
@@ -364,7 +364,7 @@ async def send_inventory_command(
                 queue, "send_commands_scrapli", args, wait=wait, timeout=timeout
             )
         except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}")
+            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
 
     else:
         raise TomException(f"Unknown device type {type(device_config)}")
@@ -416,7 +416,7 @@ async def send_inventory_commands(
                 queue, "send_commands_netmiko", args, wait=wait
             )
         except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}")
+            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
 
     elif device_config.adapter == "scrapli":
         args = ScrapliSendCommandModel(**kwargs)
@@ -425,7 +425,7 @@ async def send_inventory_commands(
                 queue, "send_commands_scrapli", args, wait=wait
             )
         except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}")
+            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
 
     else:
         raise TomException(f"Unknown device type {type(device_config)}")

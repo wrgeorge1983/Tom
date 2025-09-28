@@ -122,6 +122,27 @@ def create_app():
 
     @app.exception_handler(TomException)
     async def tom_exception_handler(request: Request, exc: TomException):
+        import traceback
+        import sys
+
+        # Log the full exception with stack trace
+        logging.error(f"TomException occurred: {exc}")
+        logging.error("".join(traceback.format_exception(*sys.exc_info())))
+
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal Server Error", "detail": str(exc)},
+        )
+
+    @app.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception):
+        import traceback
+
+        # Log the full exception with stack trace
+        logging.error(f"Unhandled exception occurred: {exc}")
+        logging.error("Full traceback:")
+        logging.error(traceback.format_exc())
+
         return JSONResponse(
             status_code=500,
             content={"error": "Internal Server Error", "detail": str(exc)},
