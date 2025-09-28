@@ -61,6 +61,9 @@ async def jwt_auth(request: Request) -> AuthResponse:
 
     token = auth_header[7:]  # Remove "Bearer " prefix
 
+    # Debug: Log token prefix to see what we're getting
+    logging.info(f"Attempting JWT validation with token starting: {token[:50]}...")
+
     # Check HTTPS requirement
     settings = request.app.state.settings
     if settings.jwt_require_https:
@@ -77,7 +80,10 @@ async def jwt_auth(request: Request) -> AuthResponse:
     # Try each enabled provider
     for provider_config in settings.jwt_providers:
         if not provider_config.enabled:
+            logging.debug(f"Skipping disabled provider: {provider_config.name}")
             continue
+
+        logging.info(f"Trying JWT validation with provider: {provider_config.name}")
 
         try:
             # Convert Pydantic model to dict for validator
@@ -90,6 +96,8 @@ async def jwt_auth(request: Request) -> AuthResponse:
             # Clean up validator resources
             await validator.close()
 
+            logging.info(f"JWT successfully validated by {provider_config.name} for user {user}")
+
             return {
                 "method": "jwt",
                 "user": user,
@@ -98,7 +106,7 @@ async def jwt_auth(request: Request) -> AuthResponse:
             }
 
         except JWTValidationError as e:
-            logging.debug(
+            logging.warning(
                 f"JWT validation failed for provider {provider_config.name}: {e}"
             )
             continue  # Try next provider
@@ -114,6 +122,9 @@ async def jwt_auth(request: Request) -> AuthResponse:
 
 async def do_auth(request: Request) -> AuthResponse:
     settings = request.app.state.settings
+
+    # Debug logging
+    logging.info(f"Auth check - auth_mode: {settings.auth_mode}")
 
     if settings.auth_mode == "none":
         return {"method": "none", "user": None, "provider": None, "claims": None}

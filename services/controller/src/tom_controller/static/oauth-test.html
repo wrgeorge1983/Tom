@@ -138,8 +138,12 @@
         </div>
 
         <!-- API Test Section -->
-        <div class="section hidden" id="apiSection">
+        <div class="section" id="apiSection">
             <h2>Test API Calls</h2>
+
+            <div id="authWarning" class="status info hidden">
+                ⚠️ No authentication token present - requests may fail if authentication is required
+            </div>
 
             <label for="device">Device Name:</label>
             <input type="text" id="device" placeholder="router1" />
@@ -175,6 +179,9 @@
                 // Check for existing token
                 if (jwtToken) {
                     displayToken();
+                } else {
+                    // Show warning that no auth is present
+                    document.getElementById('authWarning').classList.remove('hidden');
                 }
             }
         };
@@ -286,7 +293,7 @@
 
         function displayToken() {
             document.getElementById('tokenInfo').classList.remove('hidden');
-            document.getElementById('apiSection').classList.remove('hidden');
+            document.getElementById('authWarning').classList.add('hidden');
             document.getElementById('tokenDisplay').textContent =
                 jwtToken.substring(0, 50) + '...' + jwtToken.substring(jwtToken.length - 20);
         }
@@ -320,27 +327,30 @@
             jwtToken = '';
             localStorage.removeItem('jwtToken');
             document.getElementById('tokenInfo').classList.add('hidden');
-            document.getElementById('apiSection').classList.add('hidden');
+            document.getElementById('authWarning').classList.remove('hidden');
             document.getElementById('decodedToken').innerHTML = '';
             showStatus('authStatus', 'Logged out', 'info');
         }
 
         async function testAuthEndpoint() {
-            if (!jwtToken) {
-                showStatus('apiResponse', 'Not authenticated', 'error');
-                return;
-            }
+            showStatus('apiResponse', 'Testing authentication status...', 'info');
 
             try {
-                const response = await fetch('/api/', {
-                    headers: {
-                        'Authorization': 'Bearer ' + jwtToken
-                    }
-                });
+                // Build headers - only include auth if we have a token
+                const headers = {};
+                if (jwtToken) {
+                    headers['Authorization'] = 'Bearer ' + jwtToken;
+                }
+
+                const response = await fetch('/api/', { headers });
 
                 const data = await response.json();
+
+                // Add context about auth status
+                let authInfo = jwtToken ? '(Authenticated)' : '(No auth token)';
+
                 showStatus('apiResponse',
-                    `Response (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                    `Response ${authInfo} (${response.status}):\n${JSON.stringify(data, null, 2)}`,
                     response.ok ? 'success' : 'error'
                 );
             } catch (e) {
@@ -357,26 +367,33 @@
                 return;
             }
 
+            // Show warning but still try to send
+            let authWarning = '';
             if (!jwtToken) {
-                showStatus('apiResponse', 'Not authenticated', 'error');
-                return;
+                authWarning = ' (No authentication - may fail if auth is required)';
             }
 
-            showStatus('apiResponse', 'Sending command...', 'info');
+            showStatus('apiResponse', `Sending command${authWarning}...`, 'info');
 
             try {
                 const url = `/api/device/${encodeURIComponent(device)}/send_command?` +
                     `command=${encodeURIComponent(command)}&wait=true&rawOutput=true`;
 
-                const response = await fetch(url, {
-                    headers: {
-                        'Authorization': 'Bearer ' + jwtToken
-                    }
-                });
+                // Build headers - only include auth if we have a token
+                const headers = {};
+                if (jwtToken) {
+                    headers['Authorization'] = 'Bearer ' + jwtToken;
+                }
+
+                const response = await fetch(url, { headers });
 
                 const data = await response.text();
+
+                // Add auth context to response
+                let authInfo = jwtToken ? '(Authenticated)' : '(No auth)';
+
                 showStatus('apiResponse',
-                    `Response (${response.status}):\n${data}`,
+                    `Response ${authInfo} (${response.status}):\n${data}`,
                     response.ok ? 'success' : 'error'
                 );
             } catch (e) {

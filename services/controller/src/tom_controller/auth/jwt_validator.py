@@ -133,11 +133,12 @@ class JWTValidator:
         """
         return self.audience or self.client_id
 
-    async def validate_token(self, token: str) -> Dict[str, Any]:
+    async def validate_token(self, token: str, access_token: Optional[str] = None) -> Dict[str, Any]:
         """Validate JWT and return claims.
 
         Args:
-            token: JWT token string
+            token: JWT token string (typically an ID token)
+            access_token: Optional access token for at_hash validation
 
         Returns:
             Dictionary containing validated claims
@@ -162,8 +163,10 @@ class JWTValidator:
                 "verify_nbf": True,
                 "verify_iat": True,
                 "verify_aud": bool(self._get_validation_audience()),
+                "verify_at_hash": False,  # Don't verify at_hash since we don't have access_token
                 "require_exp": True,
                 "require_iat": True,
+                "leeway": self.leeway_seconds,  # leeway goes in options dict
             }
 
             claims = jwt.decode(
@@ -173,7 +176,6 @@ class JWTValidator:
                 audience=self._get_validation_audience(),
                 issuer=self.issuer,
                 options=options,
-                leeway=self.leeway_seconds,
             )
 
             # Additional validation
