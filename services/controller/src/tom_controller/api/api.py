@@ -98,11 +98,12 @@ async def jwt_auth(request: Request) -> AuthResponse:
 
             logging.info(f"JWT successfully validated by {provider_config.name} for user {user}")
 
+            # Include all claims for downstream use
             return {
                 "method": "jwt",
                 "user": user,
                 "provider": provider_config.name,
-                "claims": claims,
+                "claims": claims,  # This includes ALL token claims, including custom ones
             }
 
         except JWTValidationError as e:
@@ -525,6 +526,76 @@ async def send_inventory_commands(
     return response
 
 
+@router.get("/auth/debug")
+async def debug_auth(auth: AuthResponse = Depends(do_auth)) -> dict:
+    """Debug endpoint to see all authentication details including custom claims."""
+    return {
+        "method": auth["method"],
+        "user": auth["user"],
+        "provider": auth["provider"],
+        "all_claims": auth.get("claims", {}),  # This will show ALL claims from the token
+        "custom_claims": {
+            k: v for k, v in auth.get("claims", {}).items()
+            if k not in ["iss", "sub", "aud", "exp", "iat", "nbf", "jti", "at_hash", "nonce", "auth_time"]
+        }  # Filter to show only custom/non-standard claims
+    }
+
+
+@router.get("/userinfo")
+async def get_userinfo(request: Request, auth: AuthResponse = Depends(do_auth)) -> dict:
+    """Get user information from OIDC provider using the access token.
+
+    This endpoint proxies to the OIDC provider's userinfo endpoint,
+    passing along the access token to get current user details.
+    """
+    # Must be authenticated with JWT
+    if auth["method"] != "jwt":
+        raise TomAuthException("User info only available for JWT authentication")
+
+    # Get the access token from the Authorization header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise TomAuthException("Missing Bearer token")
+
+    access_token = auth_header[7:]  # Remove "Bearer " prefix
+
+    # Find the provider that was used for authentication
+    settings = request.app.state.settings
+    provider_config = None
+
+    for provider in settings.jwt_providers:
+        if provider.enabled and provider.name == auth["provider"]:
+            provider_config = provider
+            break
+
+    if not provider_config or not provider_config.user_info_url:
+        raise TomException(f"User info URL not configured for provider {auth['provider']}")
+
+    # Call the OIDC userinfo endpoint with the access token
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                provider_config.user_info_url,
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            response.raise_for_status()
+
+            user_info = response.json()
+
+            # Add provider info
+            user_info["_provider"] = auth["provider"]
+            user_info["_auth_method"] = auth["method"]
+
+            return user_info
+
+        except httpx.HTTPStatusError as e:
+            logging.error(f"Failed to get user info: {e.response.status_code} - {e.response.text}")
+            raise TomException(f"Failed to get user info from provider: {e.response.text}")
+        except Exception as e:
+            logging.error(f"Error getting user info: {e}")
+            raise TomException(f"Failed to get user info: {str(e)}")
+
+
 # OAuth endpoints (not requiring authentication)
 oauth_router = APIRouter()
 
@@ -628,6 +699,7 @@ async def get_oauth_config(request: Request) -> dict:
                 "authorization_url": provider.authorization_url,
                 "client_id": provider.client_id,
                 "redirect_uri": "http://localhost:8000/static/oauth-test.html",
+                "scopes": " ".join(provider.scopes),  # Convert list to space-separated string
             }
 
     return {"error": "No OAuth provider configured"}

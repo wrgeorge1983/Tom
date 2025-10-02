@@ -6,7 +6,8 @@ import time
 from typing import Optional, Dict, Any
 
 import httpx
-from jose import jwt, jwk, JWTError
+from jose import jwt, jwk
+from jose.exceptions import JWTError, ExpiredSignatureError, JWTClaimsError
 from jose.constants import ALGORITHMS
 
 from tom_controller.exceptions import (
@@ -163,19 +164,28 @@ class JWTValidator:
                 "verify_nbf": True,
                 "verify_iat": True,
                 "verify_aud": bool(self._get_validation_audience()),
-                "verify_at_hash": False,  # Don't verify at_hash since we don't have access_token
+                "verify_at_hash": bool(access_token),  # Verify at_hash if access_token provided
                 "require_exp": True,
                 "require_iat": True,
                 "leeway": self.leeway_seconds,  # leeway goes in options dict
             }
 
+            # Build kwargs for decode
+            decode_kwargs = {
+                "algorithms": [ALGORITHMS.RS256],
+                "audience": self._get_validation_audience(),
+                "issuer": self.issuer,
+                "options": options,
+            }
+
+            # Add access_token if provided for at_hash validation
+            if access_token:
+                decode_kwargs["access_token"] = access_token
+
             claims = jwt.decode(
                 token,
                 rsa_key,
-                algorithms=[ALGORITHMS.RS256],
-                audience=self._get_validation_audience(),
-                issuer=self.issuer,
-                options=options,
+                **decode_kwargs
             )
 
             # Additional validation
@@ -186,13 +196,13 @@ class JWTValidator:
             )
             return claims
 
-        except jwt.ExpiredSignatureError as e:
+        except ExpiredSignatureError as e:
             logger.warning(f"Token expired: {e}")
             raise JWTExpiredError(f"Token has expired: {e}")
-        except jwt.JWTClaimsError as e:
+        except JWTClaimsError as e:
             logger.warning(f"Invalid claims: {e}")
             raise JWTInvalidClaimsError(f"Invalid token claims: {e}")
-        except jwt.JWTError as e:
+        except JWTError as e:
             logger.warning(f"JWT validation failed: {e}")
             raise JWTInvalidSignatureError(f"Invalid token signature: {e}")
         except Exception as e:

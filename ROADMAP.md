@@ -22,13 +22,15 @@
 - rename core->controller
 - docs
 
-### v0.6.0 (In Progress)
+### v0.6.0
 - JWT authentication support
   - Base JWT validator with JWKS support
-  - Provider-specific validators (Duo, Google, GitHub, Microsoft Entra ID)
+  - Duo Security validator (✅ tested and working)
+  - Provider-specific validators for Google, GitHub, Microsoft Entra ID (⚠️ speculative/untested)
   - Hybrid authentication mode (JWT + API keys)
   - YAML-based provider configuration
   - Bearer token validation in API
+  - PKCE-based CLI authentication (Python reference implementation)
 
 ## Future Work
 

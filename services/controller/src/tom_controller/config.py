@@ -26,6 +26,10 @@ class JWTProviderConfig(BaseModel):
     # OAuth endpoints
     authorization_url: Optional[str] = None  # OAuth authorization endpoint
     token_url: Optional[str] = None  # OAuth token endpoint
+    user_info_url: Optional[str] = None  # OAuth user info
+
+    # OAuth scopes to request
+    scopes: list[str] = ["openid", "email", "profile"]  # Default OIDC scopes
 
     # Provider-specific fields
     app_id: Optional[str] = None  # GitHub App ID

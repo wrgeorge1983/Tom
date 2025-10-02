@@ -153,6 +153,8 @@
 
             <button onclick="sendCommand()">Send Command</button>
             <button onclick="testAuthEndpoint()">Test Auth Status</button>
+            <button onclick="getUserInfo()">Get User Info</button>
+            <button onclick="debugAuth()">Debug Auth Claims</button>
 
             <div id="apiResponse"></div>
         </div>
@@ -162,6 +164,8 @@
         // OAuth configuration from backend
         let oauthConfig = null;
         let jwtToken = localStorage.getItem('jwtToken') || '';
+        let accessToken = localStorage.getItem('accessToken') || '';
+        let idToken = localStorage.getItem('idToken') || '';
 
         // Initialize on page load
         window.onload = async function() {
@@ -224,13 +228,16 @@
             const state = generateRandomString(32);
             localStorage.setItem('oauthState', state);
 
-            // Build OAuth URL
+            // Use scopes from backend config
+            const scopes = oauthConfig.scopes || 'openid email profile';
+            console.log('Requesting OAuth scopes:', scopes);
+
             const authUrl = `${oauthConfig.authorization_url}?` +
                 `response_type=code&` +
                 `client_id=${encodeURIComponent(oauthConfig.client_id)}&` +
                 `redirect_uri=${encodeURIComponent(oauthConfig.redirect_uri)}&` +
                 `state=${state}&` +
-                `scope=openid email profile`;
+                `scope=${encodeURIComponent(scopes)}`;
 
             // Redirect to OAuth provider
             window.location.href = authUrl;
@@ -264,9 +271,16 @@
                 if (response.ok) {
                     const tokenData = await response.json();
 
-                    // Use id_token for JWT authentication (Duo returns id_token)
-                    jwtToken = tokenData.id_token || tokenData.access_token;
+                    // Store both tokens
+                    accessToken = tokenData.access_token || '';
+                    idToken = tokenData.id_token || '';
+
+                    // Use access_token for JWT authentication (proper OAuth2 pattern)
+                    jwtToken = accessToken || idToken;
+
                     localStorage.setItem('jwtToken', jwtToken);
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('idToken', idToken);
 
                     showStatus('authStatus', 'Successfully authenticated!', 'success');
                     displayToken();
@@ -300,32 +314,82 @@
 
         function decodeToken() {
             try {
-                const parts = jwtToken.split('.');
-                const header = JSON.parse(atob(parts[0]));
-                const payload = JSON.parse(atob(parts[1]));
+                let html = '<h4>Token Comparison:</h4>';
 
-                const now = Math.floor(Date.now() / 1000);
-                const exp = payload.exp;
-                const timeLeft = exp - now;
-                const expDate = new Date(exp * 1000);
+                // Decode ID Token
+                if (idToken) {
+                    try {
+                        const idParts = idToken.split('.');
+                        const idPayload = JSON.parse(atob(idParts[1]));
 
-                document.getElementById('decodedToken').innerHTML =
-                    '<h4>Token Details:</h4>' +
-                    `<p><strong>User:</strong> ${payload.email || payload.preferred_username || payload.sub}</p>` +
-                    `<p><strong>Issuer:</strong> ${payload.iss}</p>` +
-                    `<p><strong>Expires:</strong> ${expDate.toLocaleString()} (${timeLeft > 0 ? Math.floor(timeLeft/60) + ' minutes' : 'EXPIRED'})</p>` +
-                    '<details>' +
-                    '<summary>Full Token Claims</summary>' +
-                    '<pre>' + JSON.stringify(payload, null, 2) + '</pre>' +
-                    '</details>';
+                        html += '<div style="margin: 20px 0; padding: 10px; background: #f0f8ff; border-radius: 5px;">';
+                        html += '<h5>📝 ID Token Claims:</h5>';
+                        html += '<pre style="background: white; padding: 10px;">' + JSON.stringify(idPayload, null, 2) + '</pre>';
+
+                        // Show expiration
+                        if (idPayload.exp) {
+                            const exp = new Date(idPayload.exp * 1000);
+                            const now = Math.floor(Date.now() / 1000);
+                            const timeLeft = idPayload.exp - now;
+                            html += `<p><strong>Expires:</strong> ${exp.toLocaleString()} (${timeLeft > 0 ? Math.floor(timeLeft/60) + ' min' : 'EXPIRED'})</p>`;
+                        }
+                        html += '</div>';
+                    } catch (e) {
+                        html += '<p>Error decoding ID token: ' + e.message + '</p>';
+                    }
+                }
+
+                // Decode Access Token
+                if (accessToken) {
+                    try {
+                        // Access tokens might be opaque (not JWT) or JWT
+                        const accessParts = accessToken.split('.');
+                        if (accessParts.length === 3) {
+                            // It's a JWT
+                            const accessPayload = JSON.parse(atob(accessParts[1]));
+
+                            html += '<div style="margin: 20px 0; padding: 10px; background: #f0fff0; border-radius: 5px;">';
+                            html += '<h5>🔑 Access Token Claims:</h5>';
+                            html += '<pre style="background: white; padding: 10px;">' + JSON.stringify(accessPayload, null, 2) + '</pre>';
+
+                            // Show expiration
+                            if (accessPayload.exp) {
+                                const exp = new Date(accessPayload.exp * 1000);
+                                const now = Math.floor(Date.now() / 1000);
+                                const timeLeft = accessPayload.exp - now;
+                                html += `<p><strong>Expires:</strong> ${exp.toLocaleString()} (${timeLeft > 0 ? Math.floor(timeLeft/60) + ' min' : 'EXPIRED'})</p>`;
+                            }
+                            html += '</div>';
+                        } else {
+                            html += '<div style="margin: 20px 0; padding: 10px; background: #fff0f0; border-radius: 5px;">';
+                            html += '<h5>🔑 Access Token:</h5>';
+                            html += '<p>Opaque token (not a JWT): <code style="word-break: break-all;">' + accessToken.substring(0, 50) + '...</code></p>';
+                            html += '</div>';
+                        }
+                    } catch (e) {
+                        html += '<p>Error decoding access token: ' + e.message + '</p>';
+                    }
+                }
+
+                // Show which token is being used for API calls
+                html += '<div style="margin: 20px 0; padding: 10px; background: #fffacd; border-radius: 5px;">';
+                html += '<h5>🎯 Currently Using for API Authorization:</h5>';
+                html += '<p>' + (jwtToken === idToken ? 'ID Token' : jwtToken === accessToken ? 'Access Token' : 'Unknown') + '</p>';
+                html += '</div>';
+
+                document.getElementById('decodedToken').innerHTML = html;
             } catch (e) {
-                showStatus('authStatus', 'Failed to decode token: ' + e.message, 'error');
+                showStatus('authStatus', 'Failed to decode tokens: ' + e.message, 'error');
             }
         }
 
         function clearToken() {
             jwtToken = '';
+            accessToken = '';
+            idToken = '';
             localStorage.removeItem('jwtToken');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('idToken');
             document.getElementById('tokenInfo').classList.add('hidden');
             document.getElementById('authWarning').classList.remove('hidden');
             document.getElementById('decodedToken').innerHTML = '';
@@ -396,6 +460,85 @@
                     `Response ${authInfo} (${response.status}):\n${data}`,
                     response.ok ? 'success' : 'error'
                 );
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        async function getUserInfo() {
+            if (!jwtToken) {
+                showStatus('apiResponse', 'Not authenticated', 'error');
+                return;
+            }
+
+            showStatus('apiResponse', 'Getting user info from OIDC provider...', 'info');
+
+            try {
+                const response = await fetch('/api/userinfo', {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Format the user info nicely
+                    let formatted = 'User Information from OIDC Provider:\n';
+                    formatted += '=====================================\n';
+                    for (const [key, value] of Object.entries(data)) {
+                        if (!key.startsWith('_')) {
+                            formatted += `${key}: ${JSON.stringify(value)}\n`;
+                        }
+                    }
+                    formatted += '\nMetadata:\n';
+                    formatted += `---------\n`;
+                    formatted += `Provider: ${data._provider}\n`;
+                    formatted += `Auth Method: ${data._auth_method}\n`;
+
+                    showStatus('apiResponse',
+                        `Response (${response.status}):\n${formatted}`,
+                        'success'
+                    );
+                } else {
+                    showStatus('apiResponse',
+                        `Failed (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                        'error'
+                    );
+                }
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        async function debugAuth() {
+            if (!jwtToken) {
+                showStatus('apiResponse', 'Not authenticated', 'error');
+                return;
+            }
+
+            showStatus('apiResponse', 'Getting authentication debug info...', 'info');
+
+            try {
+                const response = await fetch('/api/auth/debug', {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('apiResponse',
+                        `Authentication Debug Info (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                        'success'
+                    );
+                } else {
+                    showStatus('apiResponse',
+                        `Failed (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                        'error'
+                    );
+                }
             } catch (e) {
                 showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
             }

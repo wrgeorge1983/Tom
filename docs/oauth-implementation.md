@@ -1,23 +1,32 @@
 # OAuth/JWT Implementation for Tom Smykowski
 
-## Current Status: ✅ IMPLEMENTED (v0.6.0)
+## Current Status: ✅ IMPLEMENTED (v0.6.0) - Duo Tested, Others Speculative
 
 ### What's Been Completed:
 - ✅ JWT validation infrastructure
-- ✅ Provider-specific validators (Duo, Google, GitHub, Microsoft Entra ID)
+- ✅ **Duo Security validator - TESTED AND WORKING**
+- ⚠️ Provider-specific validators (Google, GitHub, Microsoft Entra ID) - **SPECULATIVE/UNTESTED**
 - ✅ YAML-based configuration with pydantic-settings
 - ✅ Bearer token authentication in API
 - ✅ Hybrid authentication mode (JWT + API keys)
 - ✅ JWT exceptions integrated into main exception hierarchy
 - ✅ Test script for JWT token creation and validation
 - ✅ Example configuration file
+- ✅ PKCE-based CLI authentication (Python reference implementation)
+
+### Provider Status:
+- ✅ **Duo Security**: Fully tested with PKCE flow, ID tokens, and access tokens
+- ⚠️ **Google OAuth**: Speculative implementation based on OIDC standards (UNTESTED)
+- ⚠️ **GitHub Apps**: Speculative implementation (UNTESTED, may need significant work)
+- ⚠️ **Microsoft Entra ID**: Speculative implementation based on OIDC standards (UNTESTED)
 
 ### What's Remaining:
+- ⏳ Test and validate Google, GitHub, Microsoft Entra providers
 - ⏳ Frontend OAuth flow handler for testing
-- ⏳ Integration tests with real providers
 - ⏳ RBAC from JWT claims
 - ⏳ Token refresh flow
 - ⏳ Metrics and monitoring
+- ⏳ Go client library with PKCE support
 
 ## Overview
 
@@ -332,11 +341,23 @@ Added via `uv add`:
    uv run python test_jwt_auth.py
    ```
 
+## Go Client Implementation
+
+See these files for Go implementation guidance:
+- **`GO_OAUTH_MINIMAL_EXAMPLE.md`** - Complete minimal implementation (~250 lines)
+- **`GO_CLIENT_OAUTH_GUIDE.md`** - Detailed integration guide with Duo specifics
+- **`OAUTH_STATUS.md`** - Current implementation status and next steps
+
+Python reference implementations:
+- `cli_auth_pkce.py` - PKCE flow (200 lines)
+- `tom_cli_auth.py` - Config and token management (318 lines)
+- `CLI_AUTH_GUIDE.md` - Python usage guide
+
 ## References
 
 - [Duo OAuth Documentation](https://duo.com/docs/oauth)
 - [Google Identity Platform](https://developers.google.com/identity)
 - [GitHub Apps Authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app)
-- [Microsoft Identity Platform](https://docs.microsoft.com/en/azure/active-directory/develop/)
+- [Microsoft Identity Platform](https://docs.microsoft.com/en/azure/active-identity/develop/)
 - [JWT.io](https://jwt.io/)
 - [OpenID Connect Spec](https://openid.net/connect/)

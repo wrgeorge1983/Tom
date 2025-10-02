@@ -1,4 +1,11 @@
-"""Provider-specific JWT validators."""
+"""Provider-specific JWT validators.
+
+Provider Status:
+- Duo Security: ✅ TESTED AND WORKING
+- Google OAuth: ⚠️ SPECULATIVE/UNTESTED (should work, based on OIDC standards)
+- GitHub Apps: ⚠️ SPECULATIVE/UNTESTED (may need significant work)
+- Microsoft Entra ID: ⚠️ SPECULATIVE/UNTESTED (should work, based on OIDC standards)
+"""
 
 import logging
 from pathlib import Path
@@ -17,7 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 class DuoJWTValidator(JWTValidator):
-    """Duo Security JWT validator."""
+    """Duo Security JWT validator.
+    
+    ✅ TESTED AND WORKING with Duo PKCE flow.
+    """
 
     def __init__(self, provider_config: Dict[str, Any]):
         super().__init__(provider_config)
@@ -28,8 +38,9 @@ class DuoJWTValidator(JWTValidator):
         super()._validate_claims(claims)
 
         # Duo-specific validation
-        if "preferred_username" not in claims and "email" not in claims:
-            raise JWTInvalidClaimsError("Missing user identifier in Duo token")
+        # Access tokens only have 'sub', while ID tokens have email/name
+        # Both are valid - access tokens are for API access, ID tokens for identity
+        # No additional validation needed beyond base class checks
 
     def get_user_identifier(self, claims: Dict[str, Any]) -> str:
         """Extract user identifier from Duo claims."""
@@ -42,7 +53,12 @@ class DuoJWTValidator(JWTValidator):
 
 
 class GoogleJWTValidator(JWTValidator):
-    """Google OAuth JWT validator."""
+    """Google OAuth JWT validator.
+    
+    ⚠️ SPECULATIVE IMPLEMENTATION - UNTESTED
+    
+    Based on standard OIDC, should work but needs testing with real Google tokens.
+    """
 
     def __init__(self, provider_config: Dict[str, Any]):
         super().__init__(provider_config)
@@ -88,6 +104,9 @@ class GitHubJWTValidator(JWTValidator):
 
     def _load_private_key(self):
         """Load GitHub App private key from file."""
+        if not self.private_key_path:
+            raise JWTValidationError("GitHub App private key path not configured")
+            
         try:
             key_path = Path(self.private_key_path)
             if not key_path.exists():
@@ -104,23 +123,29 @@ class GitHubJWTValidator(JWTValidator):
             logger.error(f"Failed to load GitHub App private key: {e}")
             raise JWTValidationError(f"Failed to load GitHub App private key: {e}")
 
-    async def validate_token(self, token: str) -> Dict[str, Any]:
+    async def validate_token(self, token: str, access_token: Optional[str] = None) -> Dict[str, Any]:
         """Validate GitHub JWT token.
 
         GitHub tokens are typically validated differently than standard OIDC tokens.
         This is a simplified implementation - actual GitHub App authentication
         may require additional steps.
+        
+        NOTE: This is UNTESTED and may need significant changes for real GitHub integration.
         """
         if not self._private_key:
             raise JWTValidationError("GitHub App private key not configured")
 
         try:
-            # For GitHub, we might need to verify against the app's private key
-            # This is a simplified version - real implementation would need
-            # to handle GitHub's specific JWT structure
+            from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+            
+            public_key_pem = self._private_key.public_key().public_bytes(
+                encoding=Encoding.PEM,
+                format=PublicFormat.SubjectPublicKeyInfo
+            )
+            
             claims = jwt.decode(
                 token,
-                self._private_key.public_key(),
+                public_key_pem,
                 algorithms=[ALGORITHMS.RS256],
                 options={
                     "verify_signature": True,
@@ -153,7 +178,12 @@ class GitHubJWTValidator(JWTValidator):
 
 
 class EntraJWTValidator(JWTValidator):
-    """Microsoft Entra ID (formerly Azure AD) JWT validator."""
+    """Microsoft Entra ID (formerly Azure AD) JWT validator.
+    
+    ⚠️ SPECULATIVE IMPLEMENTATION - UNTESTED
+    
+    Based on standard OIDC, should work but needs testing with real Entra ID tokens.
+    """
 
     def __init__(self, provider_config: Dict[str, Any]):
         super().__init__(provider_config)

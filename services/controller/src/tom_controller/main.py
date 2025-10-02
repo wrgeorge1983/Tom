@@ -8,7 +8,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "tom_core.main:app",
+        "tom_controller.main:app",
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level,
