@@ -51,9 +51,8 @@ system details (looking at you, Templating Libraries!)
 ### Authentication & Security
 - **API Key Authentication** - Simple key-based auth for service accounts
 - **JWT/OAuth2 Support** (v0.6.0) - Validate JWTs from OAuth providers:
-  - **Duo Security** ✅ (tested with PKCE)
-  - Google OAuth ⚠️ (speculative, untested)
-  - GitHub Apps ⚠️ (speculative, untested)
+  - **Duo Security** ✅ (tested - ID tokens and access tokens work)
+  - **Google OAuth** ✅ (tested - ID tokens work, access tokens are opaque)
   - Microsoft Entra ID ⚠️ (speculative, untested)
 - **Hybrid Auth Mode** - Use both API keys and JWTs simultaneously
 - **HashiCorp Vault Integration** - Secure credential storage
@@ -95,7 +94,9 @@ sequenceDiagram
 
 ### OAuth/JWT Authentication
 - [OAuth Implementation](./docs/oauth-implementation.md) - Complete JWT authentication documentation
+- [OIDC Discovery](./docs/oidc-discovery.md) - Automatic provider configuration with OIDC discovery
 - [OAuth Status](./OAUTH_STATUS.md) - Current implementation status (Duo tested, others speculative)
+- [Testing New Providers](./TESTING_NEW_OAUTH_PROVIDER.md) - Step-by-step guide to test new OAuth providers
 - [CLI Auth Guide](./CLI_AUTH_GUIDE.md) - Python CLI authentication guide
 - [Go Client Guide](./GO_CLIENT_OAUTH_GUIDE.md) - Integration guide for Go developers
 - [Go Minimal Example](./GO_OAUTH_MINIMAL_EXAMPLE.md) - ~250 lines of Go code to implement PKCE

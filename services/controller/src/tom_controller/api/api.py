@@ -77,11 +77,39 @@ async def jwt_auth(request: Request) -> AuthResponse:
             ]:
                 raise TomAuthException("JWT authentication requires HTTPS")
 
+    # Pre-check: Extract token issuer WITHOUT verification to find the right provider
+    # This avoids expensive validation attempts with wrong providers
+    try:
+        from jose import jwt as jose_jwt
+        unverified_claims = jose_jwt.get_unverified_claims(token)
+        token_issuer = unverified_claims.get("iss")
+        logging.info(f"Token issuer (unverified): {token_issuer}")
+        
+        # Use pre-built issuer map to find the right provider (populated at startup)
+        if token_issuer and hasattr(request.app.state, 'jwt_issuer_map'):
+            matched_provider = request.app.state.jwt_issuer_map.get(token_issuer)
+            if matched_provider:
+                logging.info(f"Token issuer matched provider: {matched_provider}")
+            else:
+                logging.debug(f"Token issuer '{token_issuer}' not in known providers")
+    except Exception as e:
+        logging.warning(f"Could not extract issuer from token: {e}")
+        token_issuer = None
+        matched_provider = None
+
     # Try each enabled provider
+    # Note: Provider caches (OIDC discovery + JWKS) are pre-warmed at startup
     for provider_config in settings.jwt_providers:
         if not provider_config.enabled:
             logging.debug(f"Skipping disabled provider: {provider_config.name}")
             continue
+
+        # Quick issuer check: skip providers that don't match the token issuer
+        # This avoids validation attempts with wrong providers (caches already warmed at startup)
+        if token_issuer and matched_provider:
+            if provider_config.name != matched_provider:
+                logging.debug(f"Skipping {provider_config.name}: issuer mismatch (token issuer maps to {matched_provider})")
+                continue
 
         logging.info(f"Trying JWT validation with provider: {provider_config.name}")
 

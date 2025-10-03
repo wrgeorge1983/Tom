@@ -33,6 +33,7 @@ class JWTValidator:
         """
         self.config = provider_config
         self.name = provider_config.get("name", "unknown")
+        self.discovery_url = provider_config.get("discovery_url")
         self.issuer = provider_config.get("issuer")
         self.audience = provider_config.get("audience")
         self.client_id = provider_config.get("client_id")
@@ -43,6 +44,10 @@ class JWTValidator:
         self._jwks_cache: Optional[Dict[str, Any]] = None
         self._jwks_cache_time: float = 0
         self._jwks_cache_ttl: int = 3600  # Cache for 1 hour
+        
+        # Discovery cache
+        self._discovery_cache: Optional[Dict[str, Any]] = None
+        self._discovery_initialized: bool = False
 
         # HTTP client for fetching JWKS
         self._http_client: Optional[httpx.AsyncClient] = None
@@ -59,6 +64,37 @@ class JWTValidator:
             await self._http_client.aclose()
             self._http_client = None
 
+    async def _ensure_discovery(self):
+        """Ensure OIDC discovery has been performed if discovery_url is configured."""
+        if self._discovery_initialized:
+            return
+            
+        if self.discovery_url:
+            logger.info(f"Performing OIDC discovery for {self.name} from {self.discovery_url}")
+            try:
+                from .oidc_discovery import OIDCDiscovery
+                
+                discovery = OIDCDiscovery(self.discovery_url)
+                doc = await discovery.discover()
+                await discovery.close()
+                
+                # Override config with discovered values (only if not manually set)
+                if not self.issuer:
+                    self.issuer = doc.get("issuer")
+                    logger.info(f"Discovered issuer: {self.issuer}")
+                    
+                if not self.jwks_uri:
+                    self.jwks_uri = doc.get("jwks_uri")
+                    logger.info(f"Discovered jwks_uri: {self.jwks_uri}")
+                
+                self._discovery_cache = doc
+                
+            except Exception as e:
+                logger.error(f"OIDC discovery failed for {self.name}: {e}")
+                # Don't raise - allow manual config to work as fallback
+        
+        self._discovery_initialized = True
+
     async def fetch_jwks(self) -> Dict[str, Any]:
         """Fetch JWKS from the provider's JWKS URI.
 
@@ -68,8 +104,14 @@ class JWTValidator:
         Raises:
             JWKSFetchError: If fetching JWKS fails
         """
+        # Try discovery first if configured
+        await self._ensure_discovery()
+        
         if not self.jwks_uri:
-            raise JWKSFetchError(f"No JWKS URI configured for {self.name}")
+            if self.discovery_url:
+                raise JWKSFetchError(f"OIDC discovery failed to find jwks_uri for {self.name}")
+            else:
+                raise JWKSFetchError(f"No JWKS URI configured for {self.name}. Either provide 'jwks_uri' or 'discovery_url' in config.")
 
         # Check cache
         now = time.time()
@@ -150,6 +192,9 @@ class JWTValidator:
             JWTInvalidSignatureError: If signature is invalid
             JWTInvalidClaimsError: If claims are invalid
         """
+        # Ensure discovery has been performed if configured
+        await self._ensure_discovery()
+        
         try:
             # Get the signing key
             signing_key = await self.get_signing_key(token)

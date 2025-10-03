@@ -59,6 +59,45 @@ def create_app():
         else:
             raise ValueError(f"Unknown inventory_type: {settings.inventory_type}")
         this_app.state.queue = queue
+        
+        # Pre-warm JWT provider caches (OIDC discovery + JWKS) and build issuer->provider map
+        if settings.auth_mode in ["jwt", "hybrid"]:
+            logger.info("Pre-warming JWT provider caches...")
+            from tom_controller.auth import get_jwt_validator
+            
+            # Create a map of issuer -> provider_name for fast lookups
+            this_app.state.jwt_issuer_map = {}
+            
+            for provider_config in settings.jwt_providers:
+                if not provider_config.enabled:
+                    continue
+                    
+                try:
+                    logger.info(f"Initializing JWT provider: {provider_config.name}")
+                    config_dict = provider_config.model_dump()
+                    validator = get_jwt_validator(config_dict)
+                    
+                    # Trigger discovery if configured
+                    if provider_config.discovery_url or not provider_config.issuer:
+                        await validator._ensure_discovery()
+                        logger.info(f"  Issuer: {validator.issuer}")
+                    
+                    # Pre-fetch JWKS to warm cache
+                    if validator.jwks_uri:
+                        await validator.fetch_jwks()
+                        logger.info(f"  JWKS cached from: {validator.jwks_uri}")
+                    
+                    # Map issuer to provider name for fast lookup
+                    if validator.issuer:
+                        this_app.state.jwt_issuer_map[validator.issuer] = provider_config.name
+                        logger.info(f"  Mapped issuer '{validator.issuer}' -> provider '{provider_config.name}'")
+                    
+                    await validator.close()
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to initialize {provider_config.name}: {e}")
+                    # Don't fail startup, just log the warning
+        
         yield
         # Cleanup on shutdown if needed
 

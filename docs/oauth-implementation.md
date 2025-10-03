@@ -16,8 +16,7 @@
 
 ### Provider Status:
 - ✅ **Duo Security**: Fully tested with PKCE flow, ID tokens, and access tokens
-- ⚠️ **Google OAuth**: Speculative implementation based on OIDC standards (UNTESTED)
-- ⚠️ **GitHub Apps**: Speculative implementation (UNTESTED, may need significant work)
+- ✅ **Google OAuth**: Fully tested with PKCE flow and ID tokens (access tokens are opaque, not JWTs)
 - ⚠️ **Microsoft Entra ID**: Speculative implementation based on OIDC standards (UNTESTED)
 
 ### What's Remaining:
@@ -62,6 +61,25 @@ sequenceDiagram
 5. **Explicit Code Paths**: Balance between DRY and obvious behavior
 
 ## Configuration
+
+### OIDC Discovery Support
+
+Tom supports **OIDC Discovery** for automatic provider configuration. See [docs/oidc-discovery.md](./oidc-discovery.md) for details.
+
+**Current Status:**
+- ✅ Config schema supports `discovery_url`
+- ⚠️ Discovery helper module implemented but not integrated into validators yet
+- ⚠️ Validators use hardcoded defaults for now
+
+**Recommended Configuration (when discovery is fully integrated):**
+```yaml
+jwt_providers:
+  - name: google
+    enabled: true
+    client_id: "your-client-id"
+    discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+    # Everything else auto-discovered!
+```
 
 ### YAML Configuration Structure
 

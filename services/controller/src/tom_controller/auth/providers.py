@@ -1,20 +1,16 @@
 """Provider-specific JWT validators.
 
 Provider Status:
-- Duo Security: ✅ TESTED AND WORKING
-- Google OAuth: ⚠️ SPECULATIVE/UNTESTED (should work, based on OIDC standards)
-- GitHub Apps: ⚠️ SPECULATIVE/UNTESTED (may need significant work)
+- Duo Security: ✅ TESTED AND WORKING (ID tokens and access tokens)
+- Google OAuth: ✅ TESTED AND WORKING (ID tokens only - access tokens are opaque)
 - Microsoft Entra ID: ⚠️ SPECULATIVE/UNTESTED (should work, based on OIDC standards)
+
+Note: Providers can use OIDC discovery to auto-configure issuer and JWKS URI.
+Set 'discovery_url' in provider config to enable auto-discovery.
 """
 
 import logging
-from pathlib import Path
 from typing import Dict, Any, Optional
-
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
-from jose import jwt, jwk
-from jose.constants import ALGORITHMS
 
 from .jwt_validator import JWTValidator
 from tom_controller.exceptions import JWTValidationError, JWTInvalidClaimsError
@@ -55,9 +51,9 @@ class DuoJWTValidator(JWTValidator):
 class GoogleJWTValidator(JWTValidator):
     """Google OAuth JWT validator.
     
-    ⚠️ SPECULATIVE IMPLEMENTATION - UNTESTED
+    ✅ TESTED AND WORKING with Google ID tokens.
     
-    Based on standard OIDC, should work but needs testing with real Google tokens.
+    Note: Only ID tokens work. Google access tokens are opaque (not JWTs) and cannot be validated.
     """
 
     def __init__(self, provider_config: Dict[str, Any]):
@@ -85,96 +81,6 @@ class GoogleJWTValidator(JWTValidator):
     def get_user_identifier(self, claims: Dict[str, Any]) -> str:
         """Extract user identifier from Google claims."""
         return claims.get("email", claims.get("sub", "unknown"))
-
-
-class GitHubJWTValidator(JWTValidator):
-    """GitHub App JWT validator.
-
-    GitHub uses app-specific signing with private keys rather than JWKS.
-    """
-
-    def __init__(self, provider_config: Dict[str, Any]):
-        super().__init__(provider_config)
-        self.app_id = provider_config.get("app_id")
-        self.private_key_path = provider_config.get("private_key_path")
-        self._private_key = None
-
-        if self.private_key_path:
-            self._load_private_key()
-
-    def _load_private_key(self):
-        """Load GitHub App private key from file."""
-        if not self.private_key_path:
-            raise JWTValidationError("GitHub App private key path not configured")
-            
-        try:
-            key_path = Path(self.private_key_path)
-            if not key_path.exists():
-                raise JWTValidationError(
-                    f"GitHub App private key not found: {self.private_key_path}"
-                )
-
-            with open(key_path, "rb") as key_file:
-                self._private_key = serialization.load_pem_private_key(
-                    key_file.read(), password=None, backend=default_backend()
-                )
-            logger.info(f"Loaded GitHub App private key from {self.private_key_path}")
-        except Exception as e:
-            logger.error(f"Failed to load GitHub App private key: {e}")
-            raise JWTValidationError(f"Failed to load GitHub App private key: {e}")
-
-    async def validate_token(self, token: str, access_token: Optional[str] = None) -> Dict[str, Any]:
-        """Validate GitHub JWT token.
-
-        GitHub tokens are typically validated differently than standard OIDC tokens.
-        This is a simplified implementation - actual GitHub App authentication
-        may require additional steps.
-        
-        NOTE: This is UNTESTED and may need significant changes for real GitHub integration.
-        """
-        if not self._private_key:
-            raise JWTValidationError("GitHub App private key not configured")
-
-        try:
-            from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-            
-            public_key_pem = self._private_key.public_key().public_bytes(
-                encoding=Encoding.PEM,
-                format=PublicFormat.SubjectPublicKeyInfo
-            )
-            
-            claims = jwt.decode(
-                token,
-                public_key_pem,
-                algorithms=[ALGORITHMS.RS256],
-                options={
-                    "verify_signature": True,
-                    "verify_exp": True,
-                    "require_exp": True,
-                },
-            )
-
-            self._validate_claims(claims)
-            return claims
-
-        except Exception as e:
-            logger.error(f"GitHub JWT validation failed: {e}")
-            raise JWTValidationError(f"GitHub token validation failed: {e}")
-
-    def _validate_claims(self, claims: Dict[str, Any]):
-        """Validate GitHub-specific claims."""
-        super()._validate_claims(claims)
-
-        # GitHub-specific validation
-        # GitHub tokens might have different claim structures
-        pass
-
-    def get_user_identifier(self, claims: Dict[str, Any]) -> str:
-        """Extract user identifier from GitHub claims."""
-        # GitHub might use login, email, or sub
-        return (
-            claims.get("login") or claims.get("email") or claims.get("sub", "unknown")
-        )
 
 
 class EntraJWTValidator(JWTValidator):
@@ -238,7 +144,6 @@ def get_jwt_validator(provider_config: Dict[str, Any]) -> JWTValidator:
     validators = {
         "duo": DuoJWTValidator,
         "google": GoogleJWTValidator,
-        "github": GitHubJWTValidator,
         "entra": EntraJWTValidator,
         "azure": EntraJWTValidator,  # Alias for Entra
         "azuread": EntraJWTValidator,  # Another alias

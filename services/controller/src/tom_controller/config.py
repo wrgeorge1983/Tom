@@ -12,29 +12,51 @@ from tom_shared.config import SharedSettings
 
 
 class JWTProviderConfig(BaseModel):
-    """Configuration for a JWT authentication provider."""
+    """Configuration for a JWT authentication provider.
+    
+    OIDC Discovery Support:
+    If 'discovery_url' is provided, the provider will use OIDC discovery to
+    automatically configure issuer, jwks_uri, and endpoints. This is the
+    recommended approach for OIDC-compliant providers.
+    
+    Minimal config with discovery:
+        name: google
+        enabled: true
+        client_id: "your-client-id"
+        discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+    
+    Manual config (for providers without OIDC discovery):
+        name: duo
+        enabled: true
+        issuer: "https://sso-xxx.sso.duosecurity.com/oidc/CLIENT_ID"
+        client_id: "CLIENT_ID"
+        jwks_uri: "https://sso-xxx.sso.duosecurity.com/oidc/CLIENT_ID/jwks"
+    """
 
-    name: Literal["duo", "google", "github", "entra"] = "duo"
+    name: Literal["duo", "google", "entra"] = "duo"
     enabled: bool = True
+    
+    # OIDC Discovery (recommended for standard OIDC providers)
+    discovery_url: Optional[str] = None  # e.g., "https://accounts.google.com/.well-known/openid-configuration"
+    
+    # Manual configuration (required if discovery_url not provided)
     issuer: Optional[str] = None
     client_id: Optional[str] = None
-    client_secret: Optional[str] = None  # OAuth client secret for token exchange
+    client_secret: Optional[str] = None  # OAuth client secret for token exchange (rarely needed with PKCE)
     jwks_uri: Optional[str] = None
-    audience: Optional[str] = None
+    audience: Optional[str] = None  # Defaults to client_id if not specified
     leeway_seconds: int = 30
 
-    # OAuth endpoints
+    # OAuth endpoints (auto-discovered if discovery_url provided)
     authorization_url: Optional[str] = None  # OAuth authorization endpoint
     token_url: Optional[str] = None  # OAuth token endpoint
-    user_info_url: Optional[str] = None  # OAuth user info
+    user_info_url: Optional[str] = None  # OAuth user info endpoint
 
     # OAuth scopes to request
     scopes: list[str] = ["openid", "email", "profile"]  # Default OIDC scopes
 
     # Provider-specific fields
-    app_id: Optional[str] = None  # GitHub App ID
-    private_key_path: Optional[str] = None  # GitHub App private key path
-    tenant_id: Optional[str] = None  # Microsoft Entra tenant ID
+    tenant_id: Optional[str] = None  # Microsoft Entra tenant ID (can be used to build discovery_url)
 
 
 class SolarWindsMatchCriteria(BaseModel):

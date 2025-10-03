@@ -8,53 +8,144 @@ auth_mode: jwt
 # JWT Settings
 jwt_require_https: true  # Enforce HTTPS for JWT auth (except localhost)
 
-# JWT Provider Configurations
-jwt_providers:
-  # Duo Security Configuration
-  - name: duo
-    enabled: false
-    issuer: "https://your-tenant.duosecurity.com"
-    client_id: "your-duo-client-id"
-    jwks_uri: "https://your-tenant.duosecurity.com/oauth/v1/keys"
-    audience: "your-api-audience"  # Optional, defaults to client_id
-    leeway_seconds: 30
+# ============================================================================
+# JWT PROVIDER CONFIGURATIONS
+# ============================================================================
+#
+# Two ways to configure providers:
+#
+# 1. OIDC DISCOVERY (Recommended for standard OIDC providers)
+#    - Minimal configuration needed
+#    - Automatically discovers issuer, jwks_uri, and endpoints
+#    - Works for: Google, Microsoft Entra, Okta, Auth0, etc.
+#
+# 2. MANUAL CONFIGURATION
+#    - Full control over all settings
+#    - Required for non-standard providers (like Duo)
+#    - Required for providers without OIDC discovery
+#
+# ============================================================================
 
-  # Google OAuth Configuration
+jwt_providers:
+  # ========================================
+  # Duo Security (Tested and Working ✅)
+  # ========================================
+  # Duo supports OIDC discovery!
+  - name: duo
+    enabled: true
+    client_id: "YOUR_CLIENT_ID"
+    discovery_url: "https://sso-XXXXXXXX.sso.duosecurity.com/oidc/YOUR_CLIENT_ID/.well-known/openid-configuration"
+    leeway_seconds: 30
+    scopes:
+      - "openid"
+      - "email"
+      - "profile"
+  
+  # Alternative: Manual configuration (if discovery doesn't work)
+  # - name: duo
+  #   enabled: true
+  #   issuer: "https://sso-XXXXXXXX.sso.duosecurity.com/oidc/YOUR_CLIENT_ID"
+  #   client_id: "YOUR_CLIENT_ID"
+  #   jwks_uri: "https://sso-XXXXXXXX.sso.duosecurity.com/oidc/YOUR_CLIENT_ID/jwks"
+  #   leeway_seconds: 30
+
+  # ========================================
+  # Google OAuth (Speculative - Untested ⚠️)
+  # ========================================
+  # Method 1: Using OIDC Discovery (Recommended)
   - name: google
     enabled: false
     client_id: "your-client-id.apps.googleusercontent.com"
-    # Google's issuer and JWKS URI are set automatically if not provided
-    # issuer: "https://accounts.google.com"
-    # jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+    discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+    # Everything else (issuer, jwks_uri, endpoints) discovered automatically
     leeway_seconds: 30
 
-  # GitHub App Configuration
-  - name: github
-    enabled: false
-    app_id: "123456"  # Your GitHub App ID
-    private_key_path: "/path/to/github-app-private-key.pem"
-    # GitHub uses app-specific signing, not JWKS
-    leeway_seconds: 30
+  # Method 2: Manual Configuration (if discovery doesn't work)
+  # - name: google
+  #   enabled: false
+  #   client_id: "your-client-id.apps.googleusercontent.com"
+  #   issuer: "https://accounts.google.com"
+  #   jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+  #   leeway_seconds: 30
 
-  # Microsoft Entra ID (Azure AD) Configuration
+  # ========================================
+  # Microsoft Entra ID / Azure AD (Speculative - Untested ⚠️)
+  # ========================================
+  # Method 1: Using OIDC Discovery (Recommended)
   - name: entra
     enabled: false
-    tenant_id: "your-tenant-id"
     client_id: "your-app-client-id"
-    # Entra issuer and JWKS URI are built automatically from tenant_id
-    # issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
-    # jwks_uri: "https://login.microsoftonline.com/your-tenant-id/discovery/v2.0/keys"
-    audience: "api://your-app-id"  # Optional
+    tenant_id: "your-tenant-id"  # Or "common" for multi-tenant
+    discovery_url: "https://login.microsoftonline.com/your-tenant-id/v2.0/.well-known/openid-configuration"
+    # Optional: audience for API access
+    # audience: "api://your-app-id"
     leeway_seconds: 30
 
-# Hybrid Mode Example: Both JWT and API Keys
+  # Method 2: Manual Configuration (if discovery doesn't work)
+  # - name: entra
+  #   enabled: false
+  #   tenant_id: "your-tenant-id"
+  #   client_id: "your-app-client-id"
+  #   issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+  #   jwks_uri: "https://login.microsoftonline.com/your-tenant-id/discovery/v2.0/keys"
+  #   audience: "api://your-app-id"
+  #   leeway_seconds: 30
+
+
+
+# ========================================
+# OTHER OIDC PROVIDERS (Examples)
+# ========================================
+# Most OIDC-compliant providers can be configured similarly:
+
+# Okta Example:
+# - name: okta
+#   enabled: false
+#   client_id: "your-okta-client-id"
+#   discovery_url: "https://your-domain.okta.com/.well-known/openid-configuration"
+#   leeway_seconds: 30
+
+# Auth0 Example:
+# - name: auth0
+#   enabled: false
+#   client_id: "your-auth0-client-id"
+#   discovery_url: "https://your-domain.auth0.com/.well-known/openid-configuration"
+#   leeway_seconds: 30
+
+# ============================================================================
+# HYBRID MODE EXAMPLE: Both JWT and API Keys
+# ============================================================================
+# Use this to support both modern JWT auth and legacy API keys
+# - JWT tokens are tried first
+# - Falls back to API keys if JWT not present/invalid
+# - Useful during migration period
+#
 # auth_mode: hybrid
+#
+# # API key configuration
 # api_key_headers:
 #   - "X-API-Key"
-#   - "Authorization"  # Can also check Authorization header for API keys
 # api_keys:
 #   - "secret-key-1:service-account-1"
 #   - "secret-key-2:service-account-2"
+#
+# # JWT providers (as above)
+# jwt_providers:
+#   - name: duo
+#     enabled: true
+#     # ... (duo config)
+
+# ============================================================================
+# TESTING A NEW PROVIDER
+# ============================================================================
+# 1. Set enabled: true for your provider
+# 2. Use discovery_url if the provider supports OIDC discovery
+# 3. Start Tom with this config: TOM_CONFIG_FILE=tom_config.yaml
+# 4. Run: python TESTING_NEW_OAUTH_PROVIDER.md test script
+# 5. Check logs in Tom controller for JWT validation details
+# 6. Use /api/auth/debug endpoint to see decoded token claims
+#
+# See TESTING_NEW_OAUTH_PROVIDER.md for complete testing guide
 
 # Redis settings (inherited from SharedSettings)
 redis_host: localhost
