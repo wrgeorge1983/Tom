@@ -64,14 +64,14 @@ sequenceDiagram
 
 ### OIDC Discovery Support
 
-Tom supports **OIDC Discovery** for automatic provider configuration. See [docs/oidc-discovery.md](./oidc-discovery.md) for details.
+Tom's config schema supports `discovery_url` for automatic provider configuration, but this is not yet implemented in the validators.
 
 **Current Status:**
 - ✅ Config schema supports `discovery_url`
-- ⚠️ Discovery helper module implemented but not integrated into validators yet
-- ⚠️ Validators use hardcoded defaults for now
+- ❌ Discovery helper module not implemented
+- ⚠️ Validators use hardcoded defaults
 
-**Recommended Configuration (when discovery is fully integrated):**
+**Future Configuration (when discovery is implemented):**
 ```yaml
 jwt_providers:
   - name: google
@@ -359,17 +359,9 @@ Added via `uv add`:
    uv run python test_jwt_auth.py
    ```
 
-## Go Client Implementation
+## Client Implementation
 
-See these files for Go implementation guidance:
-- **`GO_OAUTH_MINIMAL_EXAMPLE.md`** - Complete minimal implementation (~250 lines)
-- **`GO_CLIENT_OAUTH_GUIDE.md`** - Detailed integration guide with Duo specifics
-- **`OAUTH_STATUS.md`** - Current implementation status and next steps
-
-Python reference implementations:
-- `cli_auth_pkce.py` - PKCE flow (200 lines)
-- `tom_cli_auth.py` - Config and token management (318 lines)
-- `CLI_AUTH_GUIDE.md` - Python usage guide
+Clients must implement the OAuth PKCE flow to obtain JWT tokens from your chosen provider (Duo, Google, etc.), then pass the token to Tom via the `Authorization: Bearer` header. Tom only validates tokens - it does not issue them.
 
 ## References
 

@@ -94,12 +94,6 @@ sequenceDiagram
 
 ### OAuth/JWT Authentication
 - [OAuth Implementation](./docs/oauth-implementation.md) - Complete JWT authentication documentation
-- [OIDC Discovery](./docs/oidc-discovery.md) - Automatic provider configuration with OIDC discovery
-- [OAuth Status](./OAUTH_STATUS.md) - Current implementation status (Duo tested, others speculative)
-- [Testing New Providers](./TESTING_NEW_OAUTH_PROVIDER.md) - Step-by-step guide to test new OAuth providers
-- [CLI Auth Guide](./CLI_AUTH_GUIDE.md) - Python CLI authentication guide
-- [Go Client Guide](./GO_CLIENT_OAUTH_GUIDE.md) - Integration guide for Go developers
-- [Go Minimal Example](./GO_OAUTH_MINIMAL_EXAMPLE.md) - ~250 lines of Go code to implement PKCE
 
 ## Quick Start
 

@@ -196,11 +196,37 @@ class JWTValidator:
         await self._ensure_discovery()
         
         try:
+            # Log the token we received (first 100 chars)
+            logger.info(f"Validating token (first 100 chars): {token[:100]}...")
+            
+            # Get unverified claims to log what we're working with
+            try:
+                unverified_claims = jwt.get_unverified_claims(token)
+                logger.info(f"Token unverified claims - iss: {unverified_claims.get('iss')}, aud: {unverified_claims.get('aud')}, exp: {unverified_claims.get('exp')}")
+            except Exception as e:
+                logger.warning(f"Could not decode unverified claims: {e}")
+            
             # Get the signing key
             signing_key = await self.get_signing_key(token)
 
+            # Filter out non-standard JWK fields that some providers add
+            standard_jwk_fields = {'kty', 'use', 'kid', 'x5t', 'n', 'e', 'alg', 'crv', 'x', 'y', 'd', 'p', 'q', 'dp', 'dq', 'qi', 'k'}
+            filtered_key = {k: v for k, v in signing_key.items() if k in standard_jwk_fields}
+            
+            # Ensure alg is set for jwk.construct
+            if 'alg' not in filtered_key and 'kty' in filtered_key:
+                if filtered_key['kty'] == 'RSA':
+                    filtered_key['alg'] = 'RS256'
+                elif filtered_key['kty'] == 'EC':
+                    filtered_key['alg'] = 'ES256'
+            
+            logger.debug(f"Filtered JWK key fields: {list(filtered_key.keys())}, kid: {filtered_key.get('kid')}")
+
             # Convert JWK to RSA key
-            rsa_key = jwk.construct(signing_key)
+            rsa_key = jwk.construct(filtered_key)
+            
+            # Log validation parameters
+            logger.debug(f"Validating with audience={self._get_validation_audience()}, issuer={self.issuer}")
 
             # Decode and validate the token
             options = {
@@ -227,6 +253,8 @@ class JWTValidator:
             if access_token:
                 decode_kwargs["access_token"] = access_token
 
+            logger.debug(f"Calling jwt.decode with: algorithms={decode_kwargs.get('algorithms')}, audience={decode_kwargs.get('audience')}, issuer={decode_kwargs.get('issuer')}")
+            
             claims = jwt.decode(
                 token,
                 rsa_key,
@@ -249,6 +277,7 @@ class JWTValidator:
             raise JWTInvalidClaimsError(f"Invalid token claims: {e}")
         except JWTError as e:
             logger.warning(f"JWT validation failed: {e}")
+            logger.debug(f"Token validation failed with params: aud={self._get_validation_audience()}, iss={self.issuer}, alg=RS256")
             raise JWTInvalidSignatureError(f"Invalid token signature: {e}")
         except Exception as e:
             logger.error(f"Unexpected error during JWT validation: {e}")
