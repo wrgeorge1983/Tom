@@ -30,6 +30,8 @@ This directory contains recorded JWT tokens from real OAuth providers used for t
 
 ### Recording Fixtures
 
+**Recommended Method: Using tomclient CLI**
+
 1. **Enable test recording mode:**
    ```bash
    export TOM_ENABLE_TEST_RECORDING=true
@@ -41,22 +43,28 @@ This directory contains recorded JWT tokens from real OAuth providers used for t
    uv run tom-controller
    ```
 
-3. **Get a JWT from your provider:**
+3. **Use tomclient to authenticate and record:**
+   ```bash
+   # Authenticate with your OAuth provider
+   tomclient auth login
    
-    * The only really tested / supported path right now is via `tomclient` cli. 
-    * `tomclient auth login`
-    * `tomclient auth record` 
-      * this POSTs to the JWT recording endpoint
+   # Record the JWT token to Tom's test fixtures
+   tomclient auth record
+   ```
+   
+   The `tomclient auth record` command POSTs your JWT to Tom's `/api/dev/record-jwt` endpoint, which automatically creates a test fixture.
 
-5. **Fixture is created:**
+4. **Fixture is created:**
    ```
    tests/fixtures/jwt/{provider}_{valid|invalid}_{timestamp}.yaml
    ```
 
-6. **Disable recording:**
+5. **Disable recording:**
    ```bash
    unset TOM_ENABLE_TEST_RECORDING
    ```
+
+**Note:** `tomclient` is the recommended CLI tool for interacting with Tom. See the `tomclient` repository for installation and usage.
 
 ### Recording Invalid Tokens
 

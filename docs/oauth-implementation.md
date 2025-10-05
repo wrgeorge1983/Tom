@@ -344,13 +344,14 @@ Added via `uv add`:
    uv run uvicorn tom_controller.main:app
    ```
 
-3. **Make authenticated API calls**:
+3. **Use tomclient to interact with Tom**:
    ```bash
-   # With JWT token
-   curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:8020/api/
-
-   # With API key (in hybrid mode)
-   curl -H "X-API-Key: your-api-key" http://localhost:8020/api/
+   # Authenticate with your OAuth provider
+   tomclient auth login
+   
+   # Make API calls
+   tomclient jobs list
+   tomclient jobs get <job-id>
    ```
 
 4. **Test with the test script**:
@@ -360,6 +361,25 @@ Added via `uv add`:
    ```
 
 ## Client Implementation
+
+### Using tomclient (Recommended)
+
+The `tomclient` CLI tool provides a complete OAuth PKCE flow implementation and is the recommended way to interact with Tom:
+
+```bash
+# Authenticate with your OAuth provider
+tomclient auth login
+
+# Make API calls (automatically includes JWT token)
+tomclient inventory 
+
+# Record JWT for testing
+tomclient auth record
+```
+
+See the `tomclient` repository for installation and usage.
+
+### Custom Client Implementation
 
 Clients must implement the OAuth PKCE flow to obtain JWT tokens from your chosen provider (Duo, Google, etc.), then pass the token to Tom via the `Authorization: Bearer` header. Tom only validates tokens - it does not issue them.
 

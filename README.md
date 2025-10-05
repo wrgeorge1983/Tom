@@ -110,14 +110,17 @@ sequenceDiagram
    docker compose up
    ```
 
-4. Make authenticated API calls:
+4. Use `tomclient` to interact with Tom:
    ```bash
-   # With JWT
-   curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:8020/api/
-
-   # With API key
-   curl -H "X-API-Key: your-api-key" http://localhost:8020/api/
+   # Authenticate with your OAuth provider
+   tomclient auth login
+   
+   # Make API calls
+   tomclient inventory
+   tomclient device router1 "show ip int bri"
    ```
+
+**Note:** The `tomclient` CLI tool is the recommended way to interact with Tom. See the `tomclient` repository for installation and usage.
 
 ## Inspiration
 

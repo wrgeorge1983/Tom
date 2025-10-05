@@ -29,7 +29,7 @@ tests/
 
 ## Recording JWT Fixtures
 
-To record a JWT for testing:
+**Recommended Method: Using tomclient CLI**
 
 1. **Enable test recording mode:**
    ```bash
@@ -42,20 +42,23 @@ To record a JWT for testing:
    uv run tom-controller
    ```
 
-3. **Get a JWT from your provider** (via oauth-test.html or your app)
-
-4. **Record it:**
+3. **Use tomclient to authenticate and record:**
    ```bash
-   curl -X POST http://localhost:8020/api/dev/record-jwt \
-     -H "Authorization: Bearer eyJhbGci..."
+   # Authenticate with your OAuth provider
+   tomclient auth login
+   
+   # Record the JWT token to Tom's test fixtures
+   tomclient auth record
    ```
 
-5. **Fixture saved to:** `tests/fixtures/jwt/{provider}_{valid|invalid}_{timestamp}.yaml`
+4. **Fixture saved to:** `tests/fixtures/jwt/{provider}_{valid|invalid}_{timestamp}.yaml`
 
-6. **Disable recording:**
+5. **Disable recording:**
    ```bash
    unset TOM_ENABLE_TEST_RECORDING
    ```
+
+**Note:** `tomclient` is the recommended CLI tool for interacting with Tom. See the `tomclient` repository for installation and usage.
 
 ## Running Tests
 
