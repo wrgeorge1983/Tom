@@ -582,6 +582,9 @@ async def get_userinfo(
     if not settings.oauth_test_enabled:
         raise TomException("OAuth test endpoints not enabled. Set oauth_test_enabled: true in config.")
 
+    # Restrict to localhost when test endpoints are enabled
+    _ensure_localhost(request)
+
     if not validator.oauth_test_userinfo_endpoint:
         raise TomException(f"Userinfo endpoint not available for provider {target_provider} - ensure discovery_url is configured")
 
@@ -612,6 +615,13 @@ async def get_userinfo(
 
 # OAuth endpoints (not requiring authentication)
 oauth_router = APIRouter()
+
+
+def _ensure_localhost(request: Request):
+    host = request.client.host if request.client else None
+    if host not in {"127.0.0.1", "::1", "localhost"}:
+        # Some proxies may set X-Forwarded-For; we intentionally keep this strict
+        raise HTTPException(status_code=403, detail="OAuth test endpoints are restricted to localhost")
 
 
 class TokenRequest(BaseModel):
@@ -650,6 +660,9 @@ async def exchange_token(
             status_code=503,
             detail="OAuth test endpoints not enabled. Set oauth_test_enabled: true in config.",
         )
+
+    # Restrict to localhost when test endpoints are enabled
+    _ensure_localhost(request)
 
     # Find the validator for the requested provider (or first if not specified)
     validator = None
@@ -740,6 +753,9 @@ async def get_oauth_config(request: Request) -> dict:
     if not settings.oauth_test_enabled:
         return {"error": "OAuth test endpoints not enabled. Set oauth_test_enabled: true in config."}
 
+    # Restrict to localhost when test endpoints are enabled
+    _ensure_localhost(request)
+
     # Build redirect URI from actual request
     redirect_uri = f"{request.url.scheme}://{request.url.netloc}/static/oauth-test.html"
 
@@ -773,6 +789,8 @@ if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
     logger.warning("WARN:\t  TOM_ENABLE_TEST_RECORDING=true - this is a DEVELOPER ONLY feature")
     @oauth_router.post("/dev/record-jwt")
     async def record_jwt_for_testing(request: Request):
+        # Restrict to localhost regardless of oauth_test_enabled flag
+        _ensure_localhost(request)
         """
         DEVELOPER ONLY: Record a JWT for test fixtures.
         

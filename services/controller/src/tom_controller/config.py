@@ -32,7 +32,8 @@ class JWTProviderConfig(BaseModel):
     client_id: str
     
     # Optional JWT validation settings
-    audience: Optional[str] = None  # Defaults to client_id if not specified
+    # audience can be a string or a list of strings (OIDC allows both)
+    audience: Optional[str | list[str]] = None  # Defaults to client_id if not specified
     leeway_seconds: int = 30
     tenant_id: Optional[str] = None  # Microsoft Entra tenant ID
 

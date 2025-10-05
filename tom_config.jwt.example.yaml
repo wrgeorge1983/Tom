@@ -6,6 +6,9 @@ auth_mode: jwt
 
 # JWT Settings
 jwt_require_https: true  # Enforce HTTPS (except localhost)
+# Note on algorithms: Tom trusts the provider's discovery document to determine
+# which ID token signing algorithms are supported, and will only accept tokens
+# signed with an algorithm listed by the provider.
 
 # OAuth Test Endpoints (optional)
 # Enable built-in OAuth flow testing via /api/oauth/* and oauth-test.html
@@ -35,6 +38,10 @@ jwt_providers:
     enabled: false
     client_id: "your-client-id.apps.googleusercontent.com"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+    # Optional: Audience to validate against. If omitted, defaults to client_id.
+    # Can be a string or a list of strings (OIDC allows aud to be an array):
+    # audience: "your-client-id.apps.googleusercontent.com"
+    # audience: ["your-client-id.apps.googleusercontent.com", "another-audience"]
     
     # Optional: OAuth test config
     # oauth_test_client_secret: "YOUR_CLIENT_SECRET"

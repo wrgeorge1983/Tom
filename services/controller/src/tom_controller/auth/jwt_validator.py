@@ -11,6 +11,7 @@ from jose.exceptions import JWTError, ExpiredSignatureError, JWTClaimsError
 from jose.constants import ALGORITHMS
 
 from tom_controller.exceptions import (
+    TomException,
     JWTValidationError,
     JWTExpiredError,
     JWTInvalidSignatureError,
@@ -241,6 +242,27 @@ class JWTValidator:
             # Log validation parameters
             logger.debug(f"Validating with audience={self._get_validation_audience()}, issuer={self.issuer}")
 
+            # Determine allowed algorithm(s) based on token header and discovery doc
+            header = jwt.get_unverified_header(token)
+            header_alg = header.get("alg")
+            if not header_alg:
+                raise JWTValidationError("No alg found in token header")
+
+            # Trust discovery when available
+            allowed_from_discovery = None
+            if self._discovery_cache:
+                allowed_from_discovery = self._discovery_cache.get("id_token_signing_alg_values_supported")
+
+            if allowed_from_discovery is not None:
+                if header_alg not in allowed_from_discovery:
+                    raise JWTInvalidClaimsError(
+                        f"Token alg '{header_alg}' not allowed by provider (supported: {allowed_from_discovery})"
+                    )
+                algorithms = [header_alg]
+            else:
+                # Fall back to allowing only the header alg (assumed safe set handled by provider)
+                algorithms = [header_alg]
+
             # Decode and validate the token
             options = {
                 "verify_signature": True,
@@ -251,12 +273,12 @@ class JWTValidator:
                 "verify_at_hash": bool(access_token),  # Verify at_hash if access_token provided
                 "require_exp": True,
                 "require_iat": True,
-                "leeway": self.leeway_seconds,  # leeway goes in options dict
+                "leeway": self.leeway_seconds,
             }
 
             # Build kwargs for decode
             decode_kwargs = {
-                "algorithms": [ALGORITHMS.RS256],
+                "algorithms": algorithms,
                 "audience": self._get_validation_audience(),
                 "issuer": self.issuer,
                 "options": options,
