@@ -100,6 +100,17 @@ def create_app():
                 finally:
                     await validator.close()
 
+        # Print OAuth test endpoint URL if enabled
+        if settings.oauth_test_enabled:
+            # Use localhost for display if host is 0.0.0.0
+            display_host = "localhost" if settings.host in ("0.0.0.0", "::") else settings.host
+            oauth_url = f"http://{display_host}:{settings.port}/static/oauth-test.html"
+            print("\n" + "="*80)
+            print("🔐 OAuth Test Endpoint Active")
+            print(f"   URL: {oauth_url}")
+            print("="*80 + "\n")
+            logger.info(f"OAuth test endpoint available at: {oauth_url}")
+
         yield
         # Cleanup on shutdown if needed
 

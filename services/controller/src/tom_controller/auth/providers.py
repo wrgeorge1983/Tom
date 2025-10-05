@@ -56,16 +56,6 @@ class GoogleJWTValidator(JWTValidator):
     Note: Only ID tokens work. Google access tokens are opaque (not JWTs) and cannot be validated.
     """
 
-    def __init__(self, provider_config: Dict[str, Any]):
-        super().__init__(provider_config)
-        # Google's well-known JWKS URI if not provided
-        if not self.jwks_uri:
-            self.jwks_uri = "https://www.googleapis.com/oauth2/v3/certs"
-
-        # Google typically uses issuer accounts.google.com or https://accounts.google.com
-        if not self.issuer:
-            self.issuer = "https://accounts.google.com"
-
     def _validate_claims(self, claims: Dict[str, Any]):
         """Validate Google-specific claims."""
         super()._validate_claims(claims)
@@ -86,22 +76,12 @@ class GoogleJWTValidator(JWTValidator):
 class EntraJWTValidator(JWTValidator):
     """Microsoft Entra ID (formerly Azure AD) JWT validator.
     
-    ⚠️ SPECULATIVE IMPLEMENTATION - UNTESTED
-    
-    Based on standard OIDC, should work but needs testing with real Entra ID tokens.
+    ✅ TESTED AND WORKING with Entra ID tokens.
     """
 
     def __init__(self, provider_config: Dict[str, Any]):
         super().__init__(provider_config)
         self.tenant_id = provider_config.get("tenant_id")
-
-        # Build Entra ID URIs if not provided
-        if not self.jwks_uri and self.tenant_id:
-            self.jwks_uri = f"https://login.microsoftonline.com/{self.tenant_id}/discovery/v2.0/keys"
-
-        if not self.issuer and self.tenant_id:
-            # Entra ID can have multiple issuer formats
-            self.issuer = f"https://login.microsoftonline.com/{self.tenant_id}/v2.0"
 
     def _validate_claims(self, claims: Dict[str, Any]):
         """Validate Entra ID-specific claims."""

@@ -548,8 +548,8 @@ async def debug_auth(auth: AuthResponse = Depends(do_auth)) -> dict:
 async def get_userinfo(request: Request, auth: AuthResponse = Depends(do_auth)) -> dict:
     """Get user information from OIDC provider using the access token.
 
-    This endpoint proxies to the OIDC provider's userinfo endpoint,
-    passing along the access token to get current user details.
+    This is a convenience/test endpoint. In production, clients should call
+    the provider's userinfo endpoint directly.
     """
     # Must be authenticated with JWT
     if auth["method"] != "jwt":
@@ -562,23 +562,30 @@ async def get_userinfo(request: Request, auth: AuthResponse = Depends(do_auth)) 
 
     access_token = auth_header[7:]  # Remove "Bearer " prefix
 
-    # Find the provider that was used for authentication
+    # Find the validator instance that was used for authentication
     settings = request.app.state.settings
-    provider_config = None
+    validator = None
 
-    for provider in settings.jwt_providers:
-        if provider.enabled and provider.name == auth["provider"]:
-            provider_config = provider
+    for v in request.app.state.jwt_providers:
+        if v.name == auth["provider"]:
+            validator = v
             break
 
-    if not provider_config or not provider_config.user_info_url:
-        raise TomException(f"User info URL not configured for provider {auth['provider']}")
+    if not validator:
+        raise TomException(f"Provider {auth['provider']} not found")
+
+    # Check if OAuth test endpoints are enabled globally
+    if not settings.oauth_test_enabled:
+        raise TomException("OAuth test endpoints not enabled. Set oauth_test_enabled: true in config.")
+
+    if not validator.oauth_test_userinfo_endpoint:
+        raise TomException(f"Userinfo endpoint not available for provider {auth['provider']} - ensure discovery_url is configured")
 
     # Call the OIDC userinfo endpoint with the access token
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                provider_config.user_info_url,
+                validator.oauth_test_userinfo_endpoint,
                 headers={"Authorization": f"Bearer {access_token}"}
             )
             response.raise_for_status()
@@ -626,34 +633,49 @@ async def exchange_token(
 ) -> TokenResponse:
     """Exchange OAuth authorization code for JWT token.
 
-    This endpoint handles the token exchange for the OAuth flow.
-    It's not protected by authentication since it's part of the auth flow itself.
+    This is a TEST/CONVENIENCE endpoint. In production, clients should handle
+    OAuth flows themselves and only send validated JWTs to Tom.
     """
     settings = request.app.state.settings
 
-    # Find the first enabled OAuth provider with token exchange capability
+    # Check if OAuth test endpoints are enabled globally
+    if not settings.oauth_test_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="OAuth test endpoints not enabled. Set oauth_test_enabled: true in config.",
+        )
+
+    # Find the first enabled validator with necessary test configuration
+    validator = None
     provider_config = None
-    for provider in settings.jwt_providers:
-        if provider.enabled and provider.client_secret and provider.token_url:
-            provider_config = provider
+    
+    for v in request.app.state.jwt_providers:
+        # Find matching config to get client_secret
+        for cfg in settings.jwt_providers:
+            if cfg.enabled and cfg.name == v.name and cfg.oauth_test_client_secret:
+                if v.oauth_test_token_endpoint:
+                    validator = v
+                    provider_config = cfg
+                    break
+        if validator:
             break
 
-    if not provider_config:
+    if not validator or not provider_config:
         raise HTTPException(
-            status_code=500,
-            detail="No OAuth provider configured with token exchange capability",
+            status_code=503,
+            detail="No provider configured with oauth_test_client_secret and valid discovery_url.",
         )
 
     # Exchange the authorization code for tokens
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                provider_config.token_url,
+                validator.oauth_test_token_endpoint,
                 data={
                     "grant_type": "authorization_code",
                     "code": token_request.code,
-                    "client_id": provider_config.client_id,
-                    "client_secret": provider_config.client_secret,
+                    "client_id": validator.client_id,
+                    "client_secret": provider_config.oauth_test_client_secret,
                     "redirect_uri": token_request.redirect_uri,
                 },
                 headers={"Accept": "application/json"},
@@ -688,21 +710,32 @@ async def exchange_token(
 
 @oauth_router.get("/oauth/config")
 async def get_oauth_config(request: Request) -> dict:
-    """Get OAuth configuration for the frontend.
+    """Get OAuth configuration for the test frontend.
 
-    Returns the OAuth URLs needed by the frontend to initiate the flow.
+    This is a TEST/CONVENIENCE endpoint that returns config for oauth-test.html.
     """
     settings = request.app.state.settings
 
-    # Find the first enabled OAuth provider
-    for provider in settings.jwt_providers:
-        if provider.enabled and provider.authorization_url:
+    # Check if OAuth test endpoints are enabled globally
+    if not settings.oauth_test_enabled:
+        return {"error": "OAuth test endpoints not enabled. Set oauth_test_enabled: true in config."}
+
+    # Find the first enabled validator with test authorization endpoint
+    for validator in request.app.state.jwt_providers:
+        if validator.oauth_test_authorization_endpoint:
+            # Find matching config for scopes
+            provider_scopes = ["openid", "email", "profile"]  # default
+            for cfg in settings.jwt_providers:
+                if cfg.enabled and cfg.name == validator.name:
+                    provider_scopes = cfg.oauth_test_scopes
+                    break
+            
             return {
-                "provider": provider.name,
-                "authorization_url": provider.authorization_url,
-                "client_id": provider.client_id,
+                "provider": validator.name,
+                "authorization_url": validator.oauth_test_authorization_endpoint,
+                "client_id": validator.client_id,
                 "redirect_uri": "http://localhost:8000/static/oauth-test.html",
-                "scopes": " ".join(provider.scopes),  # Convert list to space-separated string
+                "scopes": " ".join(provider_scopes),
             }
 
-    return {"error": "No OAuth provider configured"}
+    return {"error": "No provider with valid discovery_url configured."}

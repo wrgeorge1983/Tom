@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import Literal, Optional, Any
 
-from pydantic import BaseModel, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 from pydantic_settings import (
     SettingsConfigDict,
 )
@@ -14,50 +14,33 @@ from tom_shared.config import SharedSettings
 class JWTProviderConfig(BaseModel):
     """Configuration for a JWT authentication provider.
     
-    OIDC Discovery Support:
-    If 'discovery_url' is provided, the provider will use OIDC discovery to
-    automatically configure issuer, jwks_uri, and endpoints. This is the
-    recommended approach for OIDC-compliant providers.
+    Tom validates JWTs using OIDC discovery. Clients obtain tokens from their
+    OAuth provider and present them to Tom for validation.
     
-    Minimal config with discovery:
+    Required configuration:
         name: google
         enabled: true
         client_id: "your-client-id"
         discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
-    
-    Manual config (for providers without OIDC discovery):
-        name: duo
-        enabled: true
-        issuer: "https://sso-xxx.sso.duosecurity.com/oidc/CLIENT_ID"
-        client_id: "CLIENT_ID"
-        jwks_uri: "https://sso-xxx.sso.duosecurity.com/oidc/CLIENT_ID/jwks"
     """
 
     name: Literal["duo", "google", "entra"] = "duo"
     enabled: bool = True
     
-    # OIDC Discovery (recommended for standard OIDC providers)
-    discovery_url: Optional[str] = None  # e.g., "https://accounts.google.com/.well-known/openid-configuration"
+    # OIDC Discovery (required)
+    discovery_url: str
+    client_id: str
     
-    # Manual configuration (required if discovery_url not provided)
-    issuer: Optional[str] = None
-    client_id: Optional[str] = None
-    client_secret: Optional[str] = None  # OAuth client secret for token exchange (rarely needed with PKCE)
-    jwks_uri: Optional[str] = None
+    # Optional JWT validation settings
     audience: Optional[str] = None  # Defaults to client_id if not specified
     leeway_seconds: int = 30
+    tenant_id: Optional[str] = None  # Microsoft Entra tenant ID
 
-    # OAuth endpoints (auto-discovered if discovery_url provided)
-    authorization_url: Optional[str] = None  # OAuth authorization endpoint
-    token_url: Optional[str] = None  # OAuth token endpoint
-    user_info_url: Optional[str] = None  # OAuth user info endpoint
-
-    # OAuth scopes to request
-    scopes: list[str] = ["openid", "email", "profile"]  # Default OIDC scopes
-
-    # Provider-specific fields
-    tenant_id: Optional[str] = None  # Microsoft Entra tenant ID (can be used to build discovery_url)
-
+    # OAuth test endpoints (optional - only used if oauth_test_enabled: true)
+    oauth_test_client_secret: Optional[str] = None
+    oauth_test_scopes: list[str] = ["openid", "email", "profile"]
+    
+    model_config = ConfigDict(extra="forbid")
 
 class SolarWindsMatchCriteria(BaseModel):
     """Match criteria for SolarWinds devices."""
@@ -139,6 +122,11 @@ class Settings(SharedSettings):
     # JWT Settings
     jwt_providers: list[JWTProviderConfig] = []
     jwt_require_https: bool = True
+    
+    # OAuth Test Endpoints (optional - for testing only)
+    # These endpoints help test OAuth flows without building a client
+    # In production, clients should handle OAuth and send JWTs to Tom
+    oauth_test_enabled: bool = False
 
     @field_validator("api_keys")
     @classmethod
@@ -173,6 +161,7 @@ class Settings(SharedSettings):
         env_file=os.getenv("TOM_ENV_FILE", "foo.env"),
         yaml_file=os.getenv("TOM_CONFIG_FILE", "tom_config.yaml"),
         case_sensitive=False,
+        extra="forbid",
     )
 
 

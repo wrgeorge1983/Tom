@@ -33,12 +33,19 @@ class JWTValidator:
         """
         self.config = provider_config
         self.name = provider_config.get("name", "unknown")
-        self.discovery_url = provider_config.get("discovery_url")
-        self.issuer = provider_config.get("issuer")
+        self.discovery_url = provider_config["discovery_url"]  # Required
         self.audience = provider_config.get("audience")
-        self.client_id = provider_config.get("client_id")
-        self.jwks_uri = provider_config.get("jwks_uri")
+        self.client_id = provider_config["client_id"]  # Required
         self.leeway_seconds = provider_config.get("leeway_seconds", 30)
+
+        # Populated from OIDC discovery
+        self.issuer: Optional[str] = None
+        self.jwks_uri: Optional[str] = None
+        
+        # OAuth test endpoint URLs (populated from OIDC discovery)
+        self.oauth_test_authorization_endpoint: Optional[str] = None
+        self.oauth_test_token_endpoint: Optional[str] = None
+        self.oauth_test_userinfo_endpoint: Optional[str] = None
 
         # Cache for JWKS keys
         self._jwks_cache: Optional[Dict[str, Any]] = None
@@ -65,34 +72,40 @@ class JWTValidator:
             self._http_client = None
 
     async def _ensure_discovery(self):
-        """Ensure OIDC discovery has been performed if discovery_url is configured."""
+        """Perform OIDC discovery to populate issuer, jwks_uri, and OAuth endpoints."""
         if self._discovery_initialized:
             return
             
-        if self.discovery_url:
-            logger.info(f"Performing OIDC discovery for {self.name} from {self.discovery_url}")
-            try:
-                from .oidc_discovery import OIDCDiscovery
-                
-                discovery = OIDCDiscovery(self.discovery_url)
-                doc = await discovery.discover()
-                await discovery.close()
-                
-                # Override config with discovered values (only if not manually set)
-                if not self.issuer:
-                    self.issuer = doc.get("issuer")
-                    logger.info(f"Discovered issuer: {self.issuer}")
-                    
-                if not self.jwks_uri:
-                    self.jwks_uri = doc.get("jwks_uri")
-                    logger.info(f"Discovered jwks_uri: {self.jwks_uri}")
-                
-                self._discovery_cache = doc
-                
-            except Exception as e:
-                logger.error(f"OIDC discovery failed for {self.name}: {e}")
-                # Don't raise - allow manual config to work as fallback
+        logger.info(f"Performing OIDC discovery for {self.name} from {self.discovery_url}")
         
+        from .oidc_discovery import OIDCDiscovery
+        
+        discovery = OIDCDiscovery(self.discovery_url)
+        doc = await discovery.discover()
+        await discovery.close()
+        
+        # Populate from discovered values
+        self.issuer = doc.get("issuer")
+        self.jwks_uri = doc.get("jwks_uri")
+        
+        if not self.issuer or not self.jwks_uri:
+            raise TomException(
+                f"OIDC discovery for {self.name} did not return required fields. "
+                f"Got issuer={self.issuer}, jwks_uri={self.jwks_uri}"
+            )
+        
+        logger.info(f"Discovered issuer: {self.issuer}")
+        logger.info(f"Discovered jwks_uri: {self.jwks_uri}")
+        
+        # Populate OAuth test endpoints
+        self.oauth_test_authorization_endpoint = doc.get("authorization_endpoint")
+        self.oauth_test_token_endpoint = doc.get("token_endpoint")
+        self.oauth_test_userinfo_endpoint = doc.get("userinfo_endpoint")
+        
+        logger.debug(f"Discovered OAuth endpoints - auth: {self.oauth_test_authorization_endpoint}, "
+                   f"token: {self.oauth_test_token_endpoint}, userinfo: {self.oauth_test_userinfo_endpoint}")
+        
+        self._discovery_cache = doc
         self._discovery_initialized = True
 
     async def fetch_jwks(self) -> Dict[str, Any]:
