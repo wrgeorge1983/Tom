@@ -1,4 +1,8 @@
 import logging
+import os
+import yaml
+from datetime import datetime
+from pathlib import Path
 from typing import Optional, TypedDict, Literal, Dict, Any
 
 from fastapi import APIRouter, Depends, Request, Query, HTTPException
@@ -23,6 +27,8 @@ from tom_controller.inventory.inventory import (
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
 from tom_controller.auth import get_jwt_validator, JWTValidationError, JWTValidator
+
+logger = logging.getLogger(__name__)
 
 
 def get_inventory_store(request: Request) -> InventoryStore:
@@ -187,12 +193,6 @@ router = AuthRouter()
 @router.get("/")
 async def root():
     return {"message": "Hello World"}
-
-
-@router.get("/foo")
-async def foo(request: Request) -> JobResponse:
-    queue: saq.Queue = request.app.state.queue
-    return JobResponse.from_job(job)
 
 
 @router.get("/job/{job_id}")
@@ -739,3 +739,135 @@ async def get_oauth_config(request: Request) -> dict:
             }
 
     return {"error": "No provider with valid discovery_url configured."}
+
+if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
+    logger.warning("WARN:\t  TOM_ENABLE_TEST_RECORDING=true - this is a DEVELOPER ONLY feature")
+    @oauth_router.post("/dev/record-jwt")
+    async def record_jwt_for_testing(request: Request):
+        """
+        DEVELOPER ONLY: Record a JWT for test fixtures.
+        
+        Set TOM_ENABLE_TEST_RECORDING=true to enable this endpoint.
+        Send a valid JWT via Authorization header, and this will:
+        1. Validate it (or record validation failure)
+        2. Extract all claims
+        3. Save to tests/fixtures/jwt/{provider}_{validity}_{timestamp}.yaml
+        
+        This endpoint accepts both valid and invalid tokens.
+        Disabled in production by default.
+        """
+        
+        # Get raw token
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return {
+                "error": "Missing or invalid Authorization header",
+                "expected": "Authorization: Bearer <token>"
+            }
+        
+        token = auth_header[7:]  # Remove "Bearer " prefix
+        
+        # Try to validate the token
+        valid = False
+        error = None
+        provider = None
+        user = None
+        claims = None
+        validator = None
+        
+        try:
+            # Use the internal JWT auth function
+            auth_result = await _jwt_auth(token, request.app.state.jwt_providers)
+            valid = True
+            provider = auth_result["provider"]
+            user = auth_result["user"]
+            claims = auth_result["claims"]
+            
+            # Find the validator that was used
+            for v in request.app.state.jwt_providers:
+                if v.name == provider:
+                    validator = v
+                    break
+        except TomAuthException as e:
+            error = str(e)
+            # Try to extract provider from unverified token for filename
+            try:
+                unverified = jose_jwt.get_unverified_claims(token)
+                issuer = unverified.get("iss", "unknown")
+                # Try to match issuer to provider name
+                for p in request.app.state.jwt_providers:
+                    if p.issuer == issuer:
+                        provider = p.name
+                        validator = p
+                        break
+                if not provider:
+                    provider = "unknown"
+            except:
+                provider = "unknown"
+        
+        # Create fixture structure
+        fixture = {
+            "description": f"Recorded from live {provider} token" if valid else f"Invalid token - {error}",
+            "recorded_at": datetime.utcnow().isoformat() + "Z",
+            "provider": provider,
+            "jwt": token,
+            "expected": {
+                "valid": valid,
+            }
+        }
+        
+        # Add provider configuration used for validation
+        if validator:
+            fixture["provider_config"] = {
+                "name": validator.name,
+                "discovery_url": validator.discovery_url,
+                "client_id": validator.client_id,
+                "issuer": validator.issuer,
+                "jwks_uri": validator.jwks_uri,
+                "audience": validator.audience,
+                "leeway_seconds": validator.leeway_seconds,
+            }
+            # Add tenant_id for Entra
+            if hasattr(validator, 'tenant_id') and validator.tenant_id:
+                fixture["provider_config"]["tenant_id"] = validator.tenant_id
+        
+        # Add error if invalid
+        if not valid:
+            fixture["expected"]["error"] = error
+        
+        # Add claims and user info if valid
+        if valid and claims is not None:
+            fixture["expected"]["user"] = user
+            fixture["expected"]["provider"] = provider
+            fixture["expected"]["claims"] = claims
+            
+            # Add time information for expiration testing
+            iat = claims.get("iat")
+            if iat:
+                fixture["validation_time"] = datetime.utcfromtimestamp(iat).isoformat() + "Z"
+            exp = claims.get("exp")
+            if exp:
+                fixture["expiration_time"] = datetime.utcfromtimestamp(exp).isoformat() + "Z"
+        
+        # Create fixtures directory
+        project_root = Path(request.app.state.settings.project_root)
+        fixtures_dir = project_root / "tests" / "fixtures" / "jwt"
+        fixtures_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create filename
+        timestamp = int(datetime.utcnow().timestamp())
+        validity = "valid" if valid else "invalid"
+        filename = f"{provider}_{validity}_{timestamp}.yaml"
+        filepath = fixtures_dir / filename
+        
+        # Save fixture
+        with open(filepath, "w") as f:
+            yaml.dump(fixture, f, default_flow_style=False, sort_keys=False)
+        
+        return {
+            "message": "JWT fixture recorded",
+            "file": str(filepath.relative_to(project_root)),
+            "valid": valid,
+            "provider": provider,
+            "user": user if valid else None,
+        }
