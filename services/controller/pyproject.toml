@@ -20,8 +20,13 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "freezegun>=1.5.5",
     "pytest",
+    "pytest-asyncio>=1.2.0",
+    "pytest-recording>=0.13.4",
+    "pyyaml>=6.0.2",
     "ruff",
+    "vcrpy>=7.0.0",
 ]
 
 [tool.uv.sources]
