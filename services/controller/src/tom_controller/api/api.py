@@ -2,12 +2,16 @@ import logging
 from typing import Optional, TypedDict, Literal, Dict, Any
 
 from fastapi import APIRouter, Depends, Request, Query, HTTPException
+import httpx
+from jose import jwt as jose_jwt
+from jose.exceptions import JWTError
 from pydantic import BaseModel
 import saq
-import httpx
 
 from tom_controller.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
+
+from tom_controller.config import JWTProviderConfig
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
@@ -18,7 +22,7 @@ from tom_controller.inventory.inventory import (
     DeviceConfig,
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
-from tom_controller.auth import get_jwt_validator, JWTValidationError
+from tom_controller.auth import get_jwt_validator, JWTValidationError, JWTValidator
 
 
 def get_inventory_store(request: Request) -> InventoryStore:
@@ -53,6 +57,46 @@ def api_key_auth(request: Request) -> AuthResponse:
     )
 
 
+async def _jwt_auth(token: str, providers: list[JWTValidator]) -> AuthResponse:
+    """Validate JWT against providers in order."""
+
+    token_issuer = None
+
+    try:
+        unverified_claims = jose_jwt.get_unverified_claims(token)
+        token_issuer = unverified_claims.get("iss")
+        oauth_provider = next(provider for provider in providers if provider.issuer == token_issuer)
+    except JWTError as e:
+        logging.error(f"JWT validation failed: {e}")
+        raise TomAuthException("Invalid JWT token - could not extract issuer") from e
+    except StopIteration:
+        logging.error(f"No matching provider found for issuer: {token_issuer}")
+        raise TomAuthException("Invalid JWT token - issuer not found")
+
+    logging.info(f"Token issuer (unverified): {token_issuer}")
+
+    try:
+        claims = await oauth_provider.validate_token(token)
+        user = oauth_provider.get_user_identifier(claims)
+    except JWTValidationError as e:
+        logging.warning(f"JWT validation failed for provider {oauth_provider.name}: {e}")
+        raise TomAuthException("Invalid JWT token - could not validate token") from e
+    finally:
+        await oauth_provider.close()
+
+    logging.info(f"JWT successfully validated by {oauth_provider.name} for user {user}")
+
+    return {
+        "method": "jwt",
+        "user": user,
+        "provider": oauth_provider.name,
+        "claims": claims,
+    }
+
+
+
+
+
 async def jwt_auth(request: Request) -> AuthResponse:
     """Validate JWT from Authorization header."""
     auth_header = request.headers.get("Authorization")
@@ -77,76 +121,7 @@ async def jwt_auth(request: Request) -> AuthResponse:
             ]:
                 raise TomAuthException("JWT authentication requires HTTPS")
 
-    # Pre-check: Extract token issuer WITHOUT verification to find the right provider
-    # This avoids expensive validation attempts with wrong providers
-    try:
-        from jose import jwt as jose_jwt
-        unverified_claims = jose_jwt.get_unverified_claims(token)
-        token_issuer = unverified_claims.get("iss")
-        logging.info(f"Token issuer (unverified): {token_issuer}")
-        
-        # Use pre-built issuer map to find the right provider (populated at startup)
-        if token_issuer and hasattr(request.app.state, 'jwt_issuer_map'):
-            matched_provider = request.app.state.jwt_issuer_map.get(token_issuer)
-            if matched_provider:
-                logging.info(f"Token issuer matched provider: {matched_provider}")
-            else:
-                logging.debug(f"Token issuer '{token_issuer}' not in known providers")
-    except Exception as e:
-        logging.warning(f"Could not extract issuer from token: {e}")
-        token_issuer = None
-        matched_provider = None
-
-    # Try each enabled provider
-    # Note: Provider caches (OIDC discovery + JWKS) are pre-warmed at startup
-    for provider_config in settings.jwt_providers:
-        if not provider_config.enabled:
-            logging.debug(f"Skipping disabled provider: {provider_config.name}")
-            continue
-
-        # Quick issuer check: skip providers that don't match the token issuer
-        # This avoids validation attempts with wrong providers (caches already warmed at startup)
-        if token_issuer and matched_provider:
-            if provider_config.name != matched_provider:
-                logging.debug(f"Skipping {provider_config.name}: issuer mismatch (token issuer maps to {matched_provider})")
-                continue
-
-        logging.info(f"Trying JWT validation with provider: {provider_config.name}")
-
-        try:
-            # Convert Pydantic model to dict for validator
-            config_dict = provider_config.model_dump()
-            validator = get_jwt_validator(config_dict)
-
-            claims = await validator.validate_token(token)
-            user = validator.get_user_identifier(claims)
-
-            # Clean up validator resources
-            await validator.close()
-
-            logging.info(f"JWT successfully validated by {provider_config.name} for user {user}")
-
-            # Include all claims for downstream use
-            return {
-                "method": "jwt",
-                "user": user,
-                "provider": provider_config.name,
-                "claims": claims,  # This includes ALL token claims, including custom ones
-            }
-
-        except JWTValidationError as e:
-            logging.warning(
-                f"JWT validation failed for provider {provider_config.name}: {e}"
-            )
-            continue  # Try next provider
-
-        except Exception as e:
-            logging.error(
-                f"Unexpected error validating JWT with {provider_config.name}: {e}"
-            )
-            continue
-
-    raise TomAuthException("Invalid JWT token - no provider could validate it")
+    return await _jwt_auth(token, request.app.state.jwt_providers)
 
 
 async def do_auth(request: Request) -> AuthResponse:

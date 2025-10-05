@@ -59,14 +59,12 @@ def create_app():
         else:
             raise ValueError(f"Unknown inventory_type: {settings.inventory_type}")
         this_app.state.queue = queue
-        
+        this_app.state.jwt_providers= []
+
         # Pre-warm JWT provider caches (OIDC discovery + JWKS) and build issuer->provider map
         if settings.auth_mode in ["jwt", "hybrid"]:
             logger.info("Pre-warming JWT provider caches...")
             from tom_controller.auth import get_jwt_validator
-            
-            # Create a map of issuer -> provider_name for fast lookups
-            this_app.state.jwt_issuer_map = {}
             
             for provider_config in settings.jwt_providers:
                 if not provider_config.enabled:
@@ -76,28 +74,32 @@ def create_app():
                     logger.info(f"Initializing JWT provider: {provider_config.name}")
                     config_dict = provider_config.model_dump()
                     validator = get_jwt_validator(config_dict)
-                    
+                except Exception as e:
+                    logger.error(f"Failed to initialize {provider_config.name}: {e}")
+                try:
+                    await validator._ensure_discovery()
                     # Trigger discovery if configured
-                    if provider_config.discovery_url or not provider_config.issuer:
-                        await validator._ensure_discovery()
-                        logger.info(f"  Issuer: {validator.issuer}")
-                    
+                    # if provider_config.discovery_url or not provider_config.issuer:
+                    #     await validator._ensure_discovery()
+                    #     logger.info(f"  Issuer: {validator.issuer}")
+
+                    if not validator.issuer:
+                        raise TomException(f"Issuer not configured for provider {provider_config.name}")
+
+                    if not validator.jwks_uri:
+                        raise TomException(f"JWKS URI not configured for provider {provider_config.name}")
+
                     # Pre-fetch JWKS to warm cache
-                    if validator.jwks_uri:
-                        await validator.fetch_jwks()
-                        logger.info(f"  JWKS cached from: {validator.jwks_uri}")
-                    
-                    # Map issuer to provider name for fast lookup
-                    if validator.issuer:
-                        this_app.state.jwt_issuer_map[validator.issuer] = provider_config.name
-                        logger.info(f"  Mapped issuer '{validator.issuer}' -> provider '{provider_config.name}'")
-                    
-                    await validator.close()
-                    
+                    await validator.fetch_jwks()
+                    logger.info(f"  JWKS cached from: {validator.jwks_uri}")
+
+                    this_app.state.jwt_providers.append(validator)
                 except Exception as e:
                     logger.warning(f"Failed to initialize {provider_config.name}: {e}")
-                    # Don't fail startup, just log the warning
-        
+
+                finally:
+                    await validator.close()
+
         yield
         # Cleanup on shutdown if needed
 
