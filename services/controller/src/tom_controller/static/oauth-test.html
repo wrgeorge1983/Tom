@@ -120,10 +120,13 @@
         <div class="section">
             <h2>Authentication</h2>
             <div id="authSection">
-                <div id="providerInfo" class="hidden">
-                    <p>Provider: <strong id="providerName"></strong></p>
+                <div id="providerSelection" class="hidden">
+                    <label for="providerSelect">Select OAuth Provider:</label>
+                    <select id="providerSelect">
+                        <option value="">-- Select a provider --</option>
+                    </select>
                 </div>
-                <button id="loginBtn" onclick="initiateOAuth()">Login with OAuth</button>
+                <button id="loginBtn" onclick="initiateOAuth()" disabled>Login with OAuth</button>
                 <button onclick="clearToken()">Logout</button>
             </div>
 
@@ -163,6 +166,7 @@
     <script>
         // OAuth configuration from backend
         let oauthConfig = null;
+        let selectedProvider = null;
         let jwtToken = localStorage.getItem('jwtToken') || '';
         let accessToken = localStorage.getItem('accessToken') || '';
         let idToken = localStorage.getItem('idToken') || '';
@@ -203,10 +207,31 @@
                         document.getElementById('loginBtn').disabled = true;
                     } else {
                         showStatus('authStatus', '', '');
-                        document.getElementById('providerInfo').classList.remove('hidden');
-                        document.getElementById('providerName').textContent =
-                            oauthConfig.provider.charAt(0).toUpperCase() + oauthConfig.provider.slice(1);
-                        document.getElementById('loginBtn').textContent = `Login with ${oauthConfig.provider.charAt(0).toUpperCase() + oauthConfig.provider.slice(1)}`;
+                        
+                        // Populate provider dropdown
+                        const select = document.getElementById('providerSelect');
+                        select.innerHTML = '<option value="">-- Select a provider --</option>';
+                        
+                        oauthConfig.providers.forEach(provider => {
+                            const option = document.createElement('option');
+                            option.value = provider.name;
+                            option.textContent = provider.name.charAt(0).toUpperCase() + provider.name.slice(1);
+                            select.appendChild(option);
+                        });
+                        
+                        // Show provider selection
+                        document.getElementById('providerSelection').classList.remove('hidden');
+                        
+                        // Enable login when provider is selected
+                        select.addEventListener('change', function() {
+                            selectedProvider = this.value ? oauthConfig.providers.find(p => p.name === this.value) : null;
+                            document.getElementById('loginBtn').disabled = !selectedProvider;
+                            if (selectedProvider) {
+                                document.getElementById('loginBtn').textContent = `Login with ${selectedProvider.name.charAt(0).toUpperCase() + selectedProvider.name.slice(1)}`;
+                            } else {
+                                document.getElementById('loginBtn').textContent = 'Login with OAuth';
+                            }
+                        });
                     }
                 } else {
                     showStatus('authStatus', 'Failed to load OAuth configuration', 'error');
@@ -218,26 +243,41 @@
             }
         }
 
-        function initiateOAuth() {
-            if (!oauthConfig || !oauthConfig.authorization_url) {
-                showStatus('authStatus', 'OAuth not configured properly', 'error');
+        async function initiateOAuth() {
+            if (!selectedProvider) {
+                showStatus('authStatus', 'Please select a provider', 'error');
+                return;
+            }
+
+            if (!selectedProvider.authorization_url) {
+                showStatus('authStatus', 'OAuth not configured properly for this provider', 'error');
                 return;
             }
 
             // Generate random state for CSRF protection
             const state = generateRandomString(32);
             localStorage.setItem('oauthState', state);
+            localStorage.setItem('oauthProvider', selectedProvider.name);
+
+            // Generate PKCE code_verifier and code_challenge
+            const codeVerifier = generateRandomString(128);
+            localStorage.setItem('codeVerifier', codeVerifier);
+            
+            const codeChallenge = await generateCodeChallenge(codeVerifier);
 
             // Use scopes from backend config
-            const scopes = oauthConfig.scopes || 'openid email profile';
+            const scopes = selectedProvider.scopes || 'openid email profile';
             console.log('Requesting OAuth scopes:', scopes);
+            console.log('Using PKCE code_challenge:', codeChallenge);
 
-            const authUrl = `${oauthConfig.authorization_url}?` +
+            const authUrl = `${selectedProvider.authorization_url}?` +
                 `response_type=code&` +
-                `client_id=${encodeURIComponent(oauthConfig.client_id)}&` +
+                `client_id=${encodeURIComponent(selectedProvider.client_id)}&` +
                 `redirect_uri=${encodeURIComponent(oauthConfig.redirect_uri)}&` +
                 `state=${state}&` +
-                `scope=${encodeURIComponent(scopes)}`;
+                `scope=${encodeURIComponent(scopes)}&` +
+                `code_challenge=${encodeURIComponent(codeChallenge)}&` +
+                `code_challenge_method=S256`;
 
             // Redirect to OAuth provider
             window.location.href = authUrl;
@@ -254,19 +294,33 @@
             }
             localStorage.removeItem('oauthState');
 
+            // Get PKCE code_verifier
+            const codeVerifier = localStorage.getItem('codeVerifier');
+            localStorage.removeItem('codeVerifier');
+
             // Exchange code for token via backend
             try {
+                const savedProvider = localStorage.getItem('oauthProvider');
+                const requestBody = {
+                    code: code,
+                    state: state,
+                    redirect_uri: window.location.origin + window.location.pathname,
+                    provider: savedProvider
+                };
+                
+                // Include code_verifier for PKCE if present
+                if (codeVerifier) {
+                    requestBody.code_verifier = codeVerifier;
+                }
+
                 const response = await fetch('/api/oauth/token', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        code: code,
-                        state: state,
-                        redirect_uri: window.location.origin + window.location.pathname
-                    })
+                    body: JSON.stringify(requestBody)
                 });
+                localStorage.removeItem('oauthProvider');
 
                 if (response.ok) {
                     const tokenData = await response.json();
@@ -275,8 +329,17 @@
                     accessToken = tokenData.access_token || '';
                     idToken = tokenData.id_token || '';
 
-                    // Use access_token for JWT authentication (proper OAuth2 pattern)
-                    jwtToken = accessToken || idToken;
+                    // Determine which token to use for JWT authentication
+                    // Try ID token first (always a JWT), then access token (may be opaque)
+                    jwtToken = idToken || accessToken;
+                    
+                    // If we have an ID token, prefer it for validation (always works)
+                    // If only access token, try it (works for Duo, not for Google)
+                    if (idToken) {
+                        console.log('Using ID token for authentication');
+                    } else if (accessToken) {
+                        console.log('Using access token for authentication (may not work if opaque)');
+                    }
 
                     localStorage.setItem('jwtToken', jwtToken);
                     localStorage.setItem('accessToken', accessToken);
@@ -471,10 +534,17 @@
                 return;
             }
 
+            if (!accessToken) {
+                showStatus('apiResponse', 'No access token available (only have ID token)', 'error');
+                return;
+            }
+
             showStatus('apiResponse', 'Getting user info from OIDC provider...', 'info');
 
             try {
-                const response = await fetch('/api/userinfo', {
+                // Userinfo endpoint requires access token as a query parameter
+                // Authentication uses the ID/JWT token in Authorization header
+                const response = await fetch(`/api/userinfo?access_token=${encodeURIComponent(accessToken)}`, {
                     headers: {
                         'Authorization': 'Bearer ' + jwtToken
                     }
@@ -559,12 +629,23 @@
         }
 
         function generateRandomString(length) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
             let result = '';
             for (let i = 0; i < length; i++) {
                 result += chars.charAt(Math.floor(Math.random() * chars.length));
             }
             return result;
+        }
+
+        async function generateCodeChallenge(verifier) {
+            // SHA256 hash the verifier
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            
+            // Base64URL encode the hash
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
+            return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
         }
 
         function escapeHtml(unsafe) {

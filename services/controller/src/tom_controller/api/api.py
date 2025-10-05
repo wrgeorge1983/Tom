@@ -545,41 +545,45 @@ async def debug_auth(auth: AuthResponse = Depends(do_auth)) -> dict:
 
 
 @router.get("/userinfo")
-async def get_userinfo(request: Request, auth: AuthResponse = Depends(do_auth)) -> dict:
+async def get_userinfo(
+    request: Request,
+    access_token: str = Query(..., description="OAuth access token to use for userinfo request"),
+    provider: Optional[str] = Query(None, description="Provider name (auto-detected from auth if not specified)"),
+    auth: AuthResponse = Depends(do_auth)
+) -> dict:
     """Get user information from OIDC provider using the access token.
 
     This is a convenience/test endpoint. In production, clients should call
     the provider's userinfo endpoint directly.
+    
+    Note: Requires an access token, not an ID token. Access tokens are used
+    for accessing resources, while ID tokens are used for authentication.
     """
     # Must be authenticated with JWT
     if auth["method"] != "jwt":
         raise TomAuthException("User info only available for JWT authentication")
 
-    # Get the access token from the Authorization header
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise TomAuthException("Missing Bearer token")
-
-    access_token = auth_header[7:]  # Remove "Bearer " prefix
-
-    # Find the validator instance that was used for authentication
+    # Find the validator instance
     settings = request.app.state.settings
     validator = None
+    
+    # Use provider from query param, or fall back to authenticated provider
+    target_provider = provider or auth["provider"]
 
     for v in request.app.state.jwt_providers:
-        if v.name == auth["provider"]:
+        if v.name == target_provider:
             validator = v
             break
 
     if not validator:
-        raise TomException(f"Provider {auth['provider']} not found")
+        raise TomException(f"Provider {target_provider} not found")
 
     # Check if OAuth test endpoints are enabled globally
     if not settings.oauth_test_enabled:
         raise TomException("OAuth test endpoints not enabled. Set oauth_test_enabled: true in config.")
 
     if not validator.oauth_test_userinfo_endpoint:
-        raise TomException(f"Userinfo endpoint not available for provider {auth['provider']} - ensure discovery_url is configured")
+        raise TomException(f"Userinfo endpoint not available for provider {target_provider} - ensure discovery_url is configured")
 
     # Call the OIDC userinfo endpoint with the access token
     async with httpx.AsyncClient() as client:
@@ -593,7 +597,7 @@ async def get_userinfo(request: Request, auth: AuthResponse = Depends(do_auth)) 
             user_info = response.json()
 
             # Add provider info
-            user_info["_provider"] = auth["provider"]
+            user_info["_provider"] = target_provider
             user_info["_auth_method"] = auth["method"]
 
             return user_info
@@ -615,7 +619,9 @@ class TokenRequest(BaseModel):
 
     code: str
     state: str
-    redirect_uri: str = "http://localhost:8000/static/oauth-test.html"
+    redirect_uri: str
+    provider: Optional[str] = None
+    code_verifier: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -645,39 +651,52 @@ async def exchange_token(
             detail="OAuth test endpoints not enabled. Set oauth_test_enabled: true in config.",
         )
 
-    # Find the first enabled validator with necessary test configuration
+    # Find the validator for the requested provider (or first if not specified)
     validator = None
     provider_config = None
     
     for v in request.app.state.jwt_providers:
-        # Find matching config to get client_secret
+        # Find matching config
         for cfg in settings.jwt_providers:
-            if cfg.enabled and cfg.name == v.name and cfg.oauth_test_client_secret:
+            if cfg.enabled and cfg.name == v.name:
                 if v.oauth_test_token_endpoint:
-                    validator = v
-                    provider_config = cfg
-                    break
-        if validator:
-            break
+                    # Use this provider if it matches the request or no provider specified yet
+                    if token_request.provider == v.name or (not validator and not token_request.provider):
+                        validator = v
+                        provider_config = cfg
+                        if token_request.provider:
+                            break  # Exact match found
+        if validator and token_request.provider:
+            break  # Exact match found
 
     if not validator or not provider_config:
         raise HTTPException(
             status_code=503,
-            detail="No provider configured with oauth_test_client_secret and valid discovery_url.",
+            detail=f"Provider '{token_request.provider}' not configured with valid discovery_url." if token_request.provider else "No provider configured with valid discovery_url.",
         )
 
     # Exchange the authorization code for tokens
+    # Build token request data - support both PKCE and client_secret flows
+    token_data = {
+        "grant_type": "authorization_code",
+        "code": token_request.code,
+        "client_id": validator.client_id,
+        "redirect_uri": token_request.redirect_uri,
+    }
+    
+    # PKCE: include code_verifier if present
+    if token_request.code_verifier:
+        token_data["code_verifier"] = token_request.code_verifier
+    
+    # Traditional OAuth: include client_secret if present
+    if provider_config.oauth_test_client_secret:
+        token_data["client_secret"] = provider_config.oauth_test_client_secret
+
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 validator.oauth_test_token_endpoint,
-                data={
-                    "grant_type": "authorization_code",
-                    "code": token_request.code,
-                    "client_id": validator.client_id,
-                    "client_secret": provider_config.oauth_test_client_secret,
-                    "redirect_uri": token_request.redirect_uri,
-                },
+                data=token_data,
                 headers={"Accept": "application/json"},
             )
             response.raise_for_status()
@@ -713,6 +732,7 @@ async def get_oauth_config(request: Request) -> dict:
     """Get OAuth configuration for the test frontend.
 
     This is a TEST/CONVENIENCE endpoint that returns config for oauth-test.html.
+    Returns all enabled providers with OAuth test endpoints.
     """
     settings = request.app.state.settings
 
@@ -720,7 +740,11 @@ async def get_oauth_config(request: Request) -> dict:
     if not settings.oauth_test_enabled:
         return {"error": "OAuth test endpoints not enabled. Set oauth_test_enabled: true in config."}
 
-    # Find the first enabled validator with test authorization endpoint
+    # Build redirect URI from actual request
+    redirect_uri = f"{request.url.scheme}://{request.url.netloc}/static/oauth-test.html"
+
+    # Collect all enabled providers with test authorization endpoints
+    providers = []
     for validator in request.app.state.jwt_providers:
         if validator.oauth_test_authorization_endpoint:
             # Find matching config for scopes
@@ -730,15 +754,20 @@ async def get_oauth_config(request: Request) -> dict:
                     provider_scopes = cfg.oauth_test_scopes
                     break
             
-            return {
-                "provider": validator.name,
+            providers.append({
+                "name": validator.name,
                 "authorization_url": validator.oauth_test_authorization_endpoint,
                 "client_id": validator.client_id,
-                "redirect_uri": "http://localhost:8000/static/oauth-test.html",
                 "scopes": " ".join(provider_scopes),
-            }
+            })
 
-    return {"error": "No provider with valid discovery_url configured."}
+    if not providers:
+        return {"error": "No provider with valid discovery_url configured."}
+
+    return {
+        "redirect_uri": redirect_uri,
+        "providers": providers,
+    }
 
 if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
     logger.warning("WARN:\t  TOM_ENABLE_TEST_RECORDING=true - this is a DEVELOPER ONLY feature")
