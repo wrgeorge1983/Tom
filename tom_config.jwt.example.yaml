@@ -6,6 +6,11 @@ auth_mode: jwt
 
 # JWT Settings
 jwt_require_https: true  # Enforce HTTPS (except localhost)
+# Privacy and PII logging:
+# By default, Tom does NOT log token contents or user-identifying details.
+# Set this to true only in secure dev environments if you want logs to include
+# potentially sensitive details (token snippets, claims, user emails, etc.).
+permit_logging_user_details: false
 # Note on algorithms: Tom trusts the provider's discovery document to determine
 # which ID token signing algorithms are supported, and will only accept tokens
 # signed with an algorithm listed by the provider.

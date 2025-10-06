@@ -123,6 +123,9 @@ class Settings(SharedSettings):
     # JWT Settings
     jwt_providers: list[JWTProviderConfig] = []
     jwt_require_https: bool = True
+    # When true (default false), logs may include potentially sensitive user/token details.
+    # Keep this false in production for safer logs.
+    permit_logging_user_details: bool = False
     
     # OAuth Test Endpoints (optional - for testing only)
     # These endpoints help test OAuth flows without building a client

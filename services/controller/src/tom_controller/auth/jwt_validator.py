@@ -10,6 +10,7 @@ from jose import jwt, jwk
 from jose.exceptions import JWTError, ExpiredSignatureError, JWTClaimsError
 from jose.constants import ALGORITHMS
 
+from tom_controller.config import settings as app_settings
 from tom_controller.exceptions import (
     TomException,
     JWTValidationError,
@@ -210,16 +211,22 @@ class JWTValidator:
         await self._ensure_discovery()
         
         try:
-            # Log the token we received (first 100 chars)
-            logger.info(f"Validating token (first 100 chars): {token[:100]}...")
-            
-            # Get unverified claims to log what we're working with
+            # Basic validation start log without PII by default
+            if app_settings.permit_logging_user_details:
+                logger.info(f"Validating token (first 100 chars): {token[:100]}...")
+
+            else:
+                logger.info("Validating token")
+
+            # Get unverified claims to log what we're working with (may include PII)
             try:
                 unverified_claims = jwt.get_unverified_claims(token)
-                logger.info(f"Token unverified claims - iss: {unverified_claims.get('iss')}, aud: {unverified_claims.get('aud')}, exp: {unverified_claims.get('exp')}")
+                logger.info(
+                    f"Token unverified claims - iss: {unverified_claims.get('iss')}, aud: {unverified_claims.get('aud')}, exp: {unverified_claims.get('exp')}"
+                )
             except Exception as e:
                 logger.warning(f"Could not decode unverified claims: {e}")
-            
+
             # Get the signing key
             signing_key = await self.get_signing_key(token)
 
@@ -299,9 +306,18 @@ class JWTValidator:
             # Additional validation
             self._validate_claims(claims)
 
-            logger.info(
-                f"Successfully validated JWT from {self.name} for user: {claims.get('sub')}"
-            )
+            if app_settings.permit_logging_user_details:
+                user_ident = self.get_user_identifier(claims)
+                # If the identifier is just an opaque subject, shorten for logging clarity
+                display_user = user_ident
+                sub = claims.get("sub")
+                if isinstance(sub, str) and user_ident == sub and len(sub) >= 24:
+                    display_user = f"sub:{sub[:8]}\u2026"
+                logger.info(
+                    f"Successfully validated JWT from {self.name} for user: {display_user}"
+                )
+            else:
+                logger.info(f"Successfully validated JWT from {self.name}")
             return claims
 
         except ExpiredSignatureError as e:

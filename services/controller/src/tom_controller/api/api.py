@@ -16,6 +16,7 @@ from tom_controller.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 
 from tom_controller.config import JWTProviderConfig
+from tom_controller.config import settings as app_settings
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
@@ -90,7 +91,10 @@ async def _jwt_auth(token: str, providers: list[JWTValidator]) -> AuthResponse:
     finally:
         await oauth_provider.close()
 
-    logging.info(f"JWT successfully validated by {oauth_provider.name} for user {user}")
+    if app_settings.permit_logging_user_details:
+        logging.info(f"JWT successfully validated by {oauth_provider.name} for user {user}")
+    else:
+        logging.info(f"JWT successfully validated by {oauth_provider.name}")
 
     return {
         "method": "jwt",
@@ -111,8 +115,11 @@ async def jwt_auth(request: Request) -> AuthResponse:
 
     token = auth_header[7:]  # Remove "Bearer " prefix
 
-    # Debug: Log token prefix to see what we're getting
-    logging.info(f"Attempting JWT validation with token starting: {token[:50]}...")
+    # Debug: Log token prefix only when PII logging is permitted
+    if app_settings.permit_logging_user_details:
+        logging.info(f"Attempting JWT validation with token starting: {token[:50]}...")
+    else:
+        logging.info("Attempting JWT validation")
 
     # Check HTTPS requirement
     settings = request.app.state.settings
@@ -716,10 +723,14 @@ async def exchange_token(
 
             token_data = response.json()
 
-            # Return the token(s)
+            # Log what tokens we received for debugging
+            has_access = bool(token_data.get("access_token"))
+            has_id = bool(token_data.get("id_token"))
+            logging.info(f"Token exchange successful for {token_request.provider}: access_token={has_access}, id_token={has_id}")
+
+            # Return the token(s) exactly as provided by the OAuth provider
             return TokenResponse(
-                access_token=token_data.get("access_token")
-                or token_data.get("id_token"),
+                access_token=token_data.get("access_token", ""),
                 token_type=token_data.get("token_type", "Bearer"),
                 expires_in=token_data.get("expires_in"),
                 id_token=token_data.get("id_token"),

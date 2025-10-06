@@ -1,18 +1,18 @@
 """Provider-specific JWT validators.
 
 Provider Status:
-- Duo Security: ✅ TESTED AND WORKING (ID tokens and access tokens)
-- Google OAuth: ✅ TESTED AND WORKING (ID tokens only - access tokens are opaque)
-- Microsoft Entra ID: ⚠️ SPECULATIVE/UNTESTED (should work, based on OIDC standards)
+- Duo Security: TESTED AND WORKING
+- Google OAuth: TESTED AND WORKING
+- Microsoft Entra ID: TESTED AND WORKING
 
-Note: Providers can use OIDC discovery to auto-configure issuer and JWKS URI.
-Set 'discovery_url' in provider config to enable auto-discovery.
+Note: Providers use OIDC discovery to auto-configure issuer and JWKS URI.
 """
 
 import logging
 from typing import Dict, Any, Optional
 
 from .jwt_validator import JWTValidator
+from tom_controller.config import settings as app_settings
 from tom_controller.exceptions import JWTValidationError, JWTInvalidClaimsError
 
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class DuoJWTValidator(JWTValidator):
     """Duo Security JWT validator.
     
-    ✅ TESTED AND WORKING with Duo PKCE flow.
+    TESTED AND WORKING with Duo PKCE flow.
     """
 
     def __init__(self, provider_config: Dict[str, Any]):
@@ -51,7 +51,7 @@ class DuoJWTValidator(JWTValidator):
 class GoogleJWTValidator(JWTValidator):
     """Google OAuth JWT validator.
     
-    ✅ TESTED AND WORKING with Google ID tokens.
+    TESTED AND WORKING with Google ID tokens.
     
     Note: Only ID tokens work. Google access tokens are opaque (not JWTs) and cannot be validated.
     """
@@ -66,7 +66,10 @@ class GoogleJWTValidator(JWTValidator):
 
         # Optionally verify email is verified
         if not claims.get("email_verified", False):
-            logger.warning(f"Email not verified for Google user: {claims.get('email')}")
+            if app_settings.permit_logging_user_details:
+                logger.warning(f"Email not verified for Google user: {claims.get('email')}")
+            else:
+                logger.warning("Email not verified for Google user")
 
     def get_user_identifier(self, claims: Dict[str, Any]) -> str:
         """Extract user identifier from Google claims."""
@@ -76,7 +79,7 @@ class GoogleJWTValidator(JWTValidator):
 class EntraJWTValidator(JWTValidator):
     """Microsoft Entra ID (formerly Azure AD) JWT validator.
     
-    ✅ TESTED AND WORKING with Entra ID tokens.
+    TESTED AND WORKING with Entra ID tokens.
     """
 
     def __init__(self, provider_config: Dict[str, Any]):
