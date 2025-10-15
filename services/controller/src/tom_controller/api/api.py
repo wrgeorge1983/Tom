@@ -20,6 +20,7 @@ from tom_controller.config import settings as app_settings
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
+    TomAuthorizationException,
     TomNotFoundException,
 )
 from tom_controller.inventory.inventory import (
@@ -129,7 +130,7 @@ async def _jwt_auth(token: str, providers: list[JWTValidator]) -> AuthResponse:
                     )
 
                 if not regex_ok:
-                    raise TomAuthException(f"Access denied: {canonical_user=} not permitted by policy")
+                    raise TomAuthorizationException(f"Access denied: {canonical_user=} not permitted by policy")
 
     if app_settings.permit_logging_user_details:
         logging.info(f"JWT successfully validated by {oauth_provider.name} for user {user}")

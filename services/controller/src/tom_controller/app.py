@@ -17,6 +17,7 @@ from tom_controller.inventory.solarwinds import ModifiedSwisClient, SwisInventor
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
+    TomAuthorizationException,
     TomNotFoundException,
     TomValidationException,
 )
@@ -160,6 +161,13 @@ def create_app():
         logging.warning(f"Authentication failed: {exc}")
         return JSONResponse(
             status_code=401, content={"error": "Unauthorized", "detail": str(exc)}
+        )
+
+    @app.exception_handler(TomAuthorizationException)
+    async def authz_exception_handler(request: Request, exc: TomAuthorizationException):
+        logging.warning(f"Authorization denied: {exc}")
+        return JSONResponse(
+            status_code=403, content={"error": "Forbidden", "detail": str(exc)}
         )
 
     @app.exception_handler(TomNotFoundException)

@@ -8,7 +8,13 @@ class TomException(Exception):
 
 
 class TomAuthException(TomException):
-    """Authentication/authorization errors."""
+    """Authentication errors (401)."""
+
+    pass
+
+
+class TomAuthorizationException(TomException):
+    """Authorization errors (403) - authenticated but not permitted."""
 
     pass
 
