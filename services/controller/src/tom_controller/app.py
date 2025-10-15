@@ -157,12 +157,14 @@ def create_app():
     # Exception handlers
     @app.exception_handler(TomAuthException)
     async def auth_exception_handler(request: Request, exc: TomAuthException):
+        logging.warning(f"Authentication failed: {exc}")
         return JSONResponse(
             status_code=401, content={"error": "Unauthorized", "detail": str(exc)}
         )
 
     @app.exception_handler(TomNotFoundException)
     async def not_found_exception_handler(request: Request, exc: TomNotFoundException):
+        logging.info(f"Resource not found: {exc}")
         return JSONResponse(
             status_code=404, content={"error": "Not Found", "detail": str(exc)}
         )
@@ -171,6 +173,7 @@ def create_app():
     async def validation_exception_handler(
         request: Request, exc: TomValidationException
     ):
+        logging.warning(f"Validation error: {exc}")
         return JSONResponse(
             status_code=400, content={"error": "Bad Request", "detail": str(exc)}
         )
