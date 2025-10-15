@@ -67,6 +67,8 @@ def api_key_auth(request: Request) -> AuthResponse:
 async def _jwt_auth(token: str, providers: list[JWTValidator]) -> AuthResponse:
     """Validate JWT against providers in order."""
 
+    import re
+
     token_issuer = None
 
     try:
@@ -90,6 +92,44 @@ async def _jwt_auth(token: str, providers: list[JWTValidator]) -> AuthResponse:
         raise TomAuthException("Invalid JWT token - could not validate token") from e
     finally:
         await oauth_provider.close()
+
+    # Enforce simple allow policy for JWT-authenticated users.
+    # Precedence: allowed_users > allowed_domains > allowed_user_regex
+    allowed_users = [u.lower() for u in app_settings.allowed_users]
+    allowed_domains = [d.lower() for d in app_settings.allowed_domains]
+    allowed_user_regex = app_settings.allowed_user_regex or []
+
+    if allowed_users or allowed_domains or allowed_user_regex:
+        canonical_user = (user or "").lower()
+
+        # 1) Exact user allowlist
+        if allowed_users and canonical_user in allowed_users:
+            pass  # allowed
+        else:
+            # Determine email-like identifier for domain matching
+            email_like = None
+            for k in ("email", "preferred_username", "upn"):
+                v = claims.get(k)
+                if isinstance(v, str) and "@" in v:
+                    email_like = v
+                    break
+
+            # 2) Domain allowlist
+            domain_ok = False
+            if allowed_domains and email_like:
+                domain = email_like.split("@")[-1].lower()
+                domain_ok = domain in allowed_domains
+
+            if not domain_ok:
+                # 3) Regex against canonical user, then email if present
+                regex_ok = False
+                if allowed_user_regex:
+                    regex_ok = any(re.search(p, canonical_user, flags=re.IGNORECASE) for p in allowed_user_regex) or (
+                        isinstance(email_like, str) and any(re.search(p, email_like, flags=re.IGNORECASE) for p in allowed_user_regex)
+                    )
+
+                if not regex_ok:
+                    raise TomAuthException(f"Access denied: {canonical_user=} not permitted by policy")
 
     if app_settings.permit_logging_user_details:
         logging.info(f"JWT successfully validated by {oauth_provider.name} for user {user}")

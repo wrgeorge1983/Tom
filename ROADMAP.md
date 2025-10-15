@@ -26,11 +26,16 @@
 - JWT authentication support
   - Base JWT validator with JWKS support
   - Duo Security validator (✅ tested and working)
-  - Provider-specific validators for Google, GitHub, Microsoft Entra ID (⚠️ speculative/untested)
+  - Google OAuth validator (✅ tested and working)
+  - Microsoft Entra ID validator (✅ fully supported)
   - Hybrid authentication mode (JWT + API keys)
   - YAML-based provider configuration
   - Bearer token validation in API
   - PKCE-based CLI authentication (Python reference implementation)
+- Email-based authorization
+  - Exact user allowlist (allowed_users)
+  - Domain allowlist (allowed_domains)
+  - Regex pattern matching (allowed_user_regex)
 
 ## Future Work
 
@@ -51,10 +56,12 @@
 
 ### Security
 - ~~JWT/OAuth2 authentication support~~ ✅ v0.6.0
-- Role-based access control (RBAC) from JWT claims
+- ~~Email-based authorization~~ ✅ v0.6.0
+- Enhanced RBAC from JWT claims (arbitrary claim matching)
 - OAuth2 scope-based permissions
 - Token refresh flow
 - Frontend OAuth flow handler (for testing/demo)
+- Per-provider authorization overrides
 
 ### Plugin model
 - Plugin API

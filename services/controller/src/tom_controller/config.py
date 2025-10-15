@@ -126,6 +126,13 @@ class Settings(SharedSettings):
     # When true (default false), logs may include potentially sensitive user/token details.
     # Keep this false in production for safer logs.
     permit_logging_user_details: bool = False
+
+    # Simple access control for JWT-authenticated users (OAuth)
+    # Precedence: allowed_users > allowed_domains > allowed_user_regex
+    # Any match grants access; if all lists are empty, allow all authenticated users.
+    allowed_users: list[str] = []
+    allowed_domains: list[str] = []
+    allowed_user_regex: list[str] = []
     
     # OAuth Test Endpoints (optional - for testing only)
     # These endpoints help test OAuth flows without building a client
@@ -143,6 +150,24 @@ class Settings(SharedSettings):
             if ":" not in key:
                 raise ValueError(
                     "api_keys must be a list of strings in the format 'key:user'"
+                )
+        return v
+
+    @field_validator("allowed_user_regex")
+    @classmethod
+    def validate_allowed_user_regex(cls, v) -> list[str]:
+        if not isinstance(v, list):
+            raise ValueError("allowed_user_regex must be a list of strings")
+        
+        import re
+        for i, pattern in enumerate(v):
+            if not isinstance(pattern, str):
+                raise ValueError(f"allowed_user_regex[{i}] must be a string")
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                raise ValueError(
+                    f"allowed_user_regex[{i}] is not a valid regex pattern: '{pattern}' - {e}"
                 )
         return v
 

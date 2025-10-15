@@ -20,6 +20,13 @@ permit_logging_user_details: false
 # In production, clients handle OAuth and only send JWTs to Tom
 oauth_test_enabled: false
 
+# Simple Access Control for JWT (OAuth)
+# Precedence: allowed_users -> allowed_domains -> allowed_user_regex
+# Any match grants access. If all are empty, any valid JWT is authorized.
+allowed_users: []         # e.g., ["alice@example.com", "service.account"]
+allowed_domains: []       # e.g., ["example.com", "sub.example.org"]
+allowed_user_regex: []    # e.g., ['^netops-.*@example\\.com$', '^[a-z]+\\.admin@example\\.com$']
+
 # ============================================================================
 # JWT PROVIDERS - Use OIDC Discovery (Recommended)
 # ============================================================================

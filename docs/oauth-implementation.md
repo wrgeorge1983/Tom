@@ -1,11 +1,12 @@
 # OAuth/JWT Implementation for Tom Smykowski
 
-## Current Status: ✅ IMPLEMENTED (v0.6.0) - Duo Tested, Others Speculative
+## Current Status: ✅ IMPLEMENTED (v0.6.0)
 
 ### What's Been Completed:
 - ✅ JWT validation infrastructure
 - ✅ **Duo Security validator - TESTED AND WORKING**
-- ⚠️ Provider-specific validators (Google, GitHub, Microsoft Entra ID) - **SPECULATIVE/UNTESTED**
+- ✅ **Google OAuth validator - TESTED AND WORKING**
+- ✅ **Microsoft Entra ID validator - FULLY SUPPORTED**
 - ✅ YAML-based configuration with pydantic-settings
 - ✅ Bearer token authentication in API
 - ✅ Hybrid authentication mode (JWT + API keys)
@@ -17,12 +18,11 @@
 ### Provider Status:
 - ✅ **Duo Security**: Fully tested with PKCE flow, ID tokens, and access tokens
 - ✅ **Google OAuth**: Fully tested with PKCE flow and ID tokens (access tokens are opaque, not JWTs)
-- ⚠️ **Microsoft Entra ID**: Speculative implementation based on OIDC standards (UNTESTED)
+- ✅ **Microsoft Entra ID**: Fully supported with OIDC discovery
 
 ### What's Remaining:
-- ⏳ Test and validate Google, GitHub, Microsoft Entra providers
 - ⏳ Frontend OAuth flow handler for testing
-- ⏳ RBAC from JWT claims
+- ⏳ Enhanced RBAC from JWT claims (arbitrary claim matching)
 - ⏳ Token refresh flow
 - ⏳ Metrics and monitoring
 - ⏳ Go client library with PKCE support
@@ -56,7 +56,7 @@ sequenceDiagram
 
 1. **JWT Validation Only**: Tom validates tokens but doesn't issue them
 2. **Multiple Providers**: Support multiple IdPs simultaneously
-3. **Authenticated = Authorized**: Initial implementation treats any valid JWT as full access
+3. **Email-Based Authorization**: A valid JWT must pass authorization check (allowed_users → allowed_domains → allowed_user_regex). If all are empty, any valid JWT is authorized.
 4. **Configuration-Driven**: Provider settings in YAML config files
 5. **Explicit Code Paths**: Balance between DRY and obvious behavior
 
@@ -64,12 +64,12 @@ sequenceDiagram
 
 ### OIDC Discovery Support
 
-Tom's config schema supports `discovery_url` for automatic provider configuration, but this is not yet implemented in the validators.
+Tom uses `discovery_url` for automatic provider configuration.
 
 **Current Status:**
 - ✅ Config schema supports `discovery_url`
-- ❌ Discovery helper module not implemented
-- ⚠️ Validators use hardcoded defaults
+- ✅ Discovery helper module implemented
+- ✅ Validators use OIDC discovery
 
 **Future Configuration (when discovery is implemented):**
 ```yaml
@@ -124,6 +124,49 @@ Simple settings remain as environment variables:
 - `TOM_AUTH_MODE=jwt`
 - `TOM_JWT_REQUIRE_HTTPS=true`
 - `TOM_JWT_LEEWAY_SECONDS=30`
+
+## Access Control (Authorization)
+
+Tom implements email-based authorization for JWT-authenticated users:
+
+### Configuration Options
+
+- **allowed_users**: List of exact usernames/emails (case-insensitive match against canonical user identifier)
+- **allowed_domains**: List of email domains like "example.com" (extracted from email-like claims)
+- **allowed_user_regex**: List of regex patterns tested against canonical user and email (case-insensitive)
+
+### Authorization Logic
+
+- **Precedence**: allowed_users → allowed_domains → allowed_user_regex
+- **Any match grants access** (OR logic between rules)
+- **If all three lists are empty**, any valid JWT is authorized (backward compatible)
+- **Canonical user**: The identifier returned by the provider validator (email | preferred_username | upn | sub)
+- **Domain checks**: Extract domain from email-like claims when available
+- **Scope**: Applies to JWT/OAuth authentication only. API key auth is unaffected.
+
+### Example Configuration
+
+```yaml
+# tom_config.yaml - Global authorization rules for all JWT providers
+allowed_users:
+  - alice@example.com
+  - bob@company.com
+  - service.account
+
+allowed_domains:
+  - example.com
+  - subsidiary.com
+
+allowed_user_regex:
+  - '^netops-.*@example\.com$'
+  - '^[a-z]+\.admin@example\.com$'
+```
+
+### Implementation
+
+- Config: `services/controller/src/tom_controller/config.py` lines 133-135
+- Logic: `services/controller/src/tom_controller/api/api.py` lines 96-136
+- Error message: "Access denied: user not permitted by policy"
 
 ## Implementation Details
 
@@ -317,12 +360,13 @@ async def jwt_auth(request: Request) -> AuthResponse:
 
 ## Future Enhancements
 
-1. **RBAC**: Role-based access control from JWT claims
-2. **Scopes**: OAuth scope-based permissions
-3. **Token Refresh**: Handle refresh token flow
-4. **Revocation**: Check token revocation lists
-5. **Custom Claims**: Support custom claim validation
+1. **Enhanced RBAC**: Arbitrary claim matching (e.g., Google `hd`, Entra `groups`, custom claims)
+2. **Per-Provider Authorization**: Override global rules per provider
+3. **Scopes**: OAuth scope-based permissions
+4. **Token Refresh**: Handle refresh token flow
+5. **Revocation**: Check token revocation lists
 6. **Metrics**: Auth success/failure metrics
+7. **403 vs 401**: Return 403 Forbidden for authorization failures (currently returns 401)
 
 ## Dependencies (Installed)
 
