@@ -1,0 +1,101 @@
+# Tom Smykowski JWT Configuration Example
+# Copy this to tom_config.yaml and configure your providers
+
+# Authentication mode: none, api_key, jwt, or hybrid
+auth_mode: jwt
+
+# JWT Settings
+jwt_require_https: true  # Enforce HTTPS (except localhost)
+# Privacy and PII logging:
+# By default, Tom does NOT log token contents or user-identifying details.
+# Set this to true only in secure dev environments if you want logs to include
+# potentially sensitive details (token snippets, claims, user emails, etc.).
+permit_logging_user_details: false
+# Note on algorithms: Tom trusts the provider's discovery document to determine
+# which ID token signing algorithms are supported, and will only accept tokens
+# signed with an algorithm listed by the provider.
+
+# OAuth Test Endpoints (optional)
+# Enable built-in OAuth flow testing via /api/oauth/* and oauth-test.html
+# In production, clients handle OAuth and only send JWTs to Tom
+oauth_test_enabled: false
+
+# Simple Access Control for JWT (OAuth)
+# Precedence: allowed_users -> allowed_domains -> allowed_user_regex
+# Any match grants access. If all are empty, any valid JWT is authorized.
+allowed_users: []         # e.g., ["alice@example.com", "service.account"]
+allowed_domains: []       # e.g., ["example.com", "sub.example.org"]
+allowed_user_regex: []    # e.g., ['^netops-.*@example\\.com$', '^[a-z]+\\.admin@example\\.com$']
+
+# ============================================================================
+# JWT PROVIDERS - Use OIDC Discovery (Recommended)
+# ============================================================================
+# Tom validates JWTs using OIDC discovery to auto-configure endpoints.
+# Required: discovery_url, client_id
+# Optional: oauth_test_client_secret (only if oauth_test_enabled: true)
+
+jwt_providers:
+  # Duo Security (Tested ✅)
+  - name: duo
+    enabled: true
+    client_id: "YOUR_CLIENT_ID"
+    discovery_url: "https://sso-XXXXXXXX.sso.duosecurity.com/oidc/YOUR_CLIENT_ID/.well-known/openid-configuration"
+    
+    # Optional: OAuth test config (requires oauth_test_enabled: true above)
+    # oauth_test_client_secret: "YOUR_CLIENT_SECRET"
+    # oauth_test_scopes: ["openid", "email", "profile"]
+
+  # Google (Tested ✅)
+  - name: google
+    enabled: false
+    client_id: "your-client-id.apps.googleusercontent.com"
+    discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+    # Optional: Audience to validate against. If omitted, defaults to client_id.
+    # Can be a string or a list of strings (OIDC allows aud to be an array):
+    # audience: "your-client-id.apps.googleusercontent.com"
+    # audience: ["your-client-id.apps.googleusercontent.com", "another-audience"]
+    
+    # Optional: OAuth test config
+    # oauth_test_client_secret: "YOUR_CLIENT_SECRET"
+    # oauth_test_scopes: ["openid", "email", "profile"]
+
+  # Microsoft Entra ID (Tested ✅)
+  - name: entra
+    enabled: false
+    client_id: "your-app-client-id"
+    # Replace {YOUR_TENANT_ID} with your actual tenant ID
+    # you might be able to use 'common' to support literally any O365 tenant, if that's what you want
+    discovery_url: "https://login.microsoftonline.com/{YOUR_TENANT_ID}/v2.0/.well-known/openid-configuration"
+
+    # Optional: OAuth test config
+    # oauth_test_client_secret: "YOUR_CLIENT_SECRET"
+    # oauth_test_scopes: ["openid", "email", "profile"]
+
+  # Other OIDC providers (Okta, Auth0, etc.) work the same way:
+  # - name: okta
+  #   enabled: false
+  #   client_id: "your-okta-client-id"
+  #   discovery_url: "https://your-domain.okta.com/.well-known/openid-configuration"
+
+# ============================================================================
+# HYBRID MODE (Optional)
+# ============================================================================
+# Support both JWT and API key authentication
+#
+# auth_mode: hybrid
+# api_key_headers: ["X-API-Key"]
+# api_keys:
+#   - "secret-key-1:service-account-1"
+#   - "secret-key-2:service-account-2"
+
+# Redis settings (inherited from SharedSettings)
+redis_host: localhost
+redis_port: 6379
+redis_use_tls: false
+
+# Server settings
+host: "0.0.0.0"
+port: 8020
+
+# Logging
+log_level: INFO

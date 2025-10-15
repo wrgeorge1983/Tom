@@ -1,6 +1,7 @@
 import asyncio
 import signal
 import logging
+import sys
 
 import redis.asyncio as redis
 import saq, saq.types
@@ -10,18 +11,34 @@ from tom_worker.exceptions import GatingException, TransientException
 from tom_worker.jobs import foo, send_commands_netmiko, send_commands_scrapli
 from .config import settings
 
+# Configure logging before creating the queue
+logging.basicConfig(
+    level=logging.DEBUG,  # Set root to DEBUG
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+
+logger = logging.getLogger(__name__)
+
+# Enable debug logging for SAQ
+saq_logger = logging.getLogger("saq")
+saq_logger.setLevel(logging.DEBUG)
+
 queue = saq.Queue.from_url(settings.redis_url)
 
 
 async def main():
+    logger.info("Starting worker main function")
     loop = asyncio.get_running_loop()
     shutdown_event = asyncio.Event()
 
     match settings.credential_store:
         case "yaml":
+            logger.info(f"Using YAML credential store from {settings.credential_path}")
             credential_store = YamlCredentialStore(settings.credential_path)
 
         case "vault":
+            logger.info("Using Vault credential store")
             from tom_worker.credentials.vault import VaultCredentialStore, VaultClient
 
             vault_client = VaultClient.from_settings(settings)
@@ -31,9 +48,7 @@ async def main():
         case _:
             raise ValueError(f"Unknown credential store: {settings.credential_store}")
 
-    semaphore_redis_client = redis.from_url(
-        f"redis://{settings.redis_host}:{settings.redis_port}"
-    )
+    semaphore_redis_client = redis.from_url(settings.redis_url)
 
     def worker_setup(ctx: saq.types.Context):
         ctx["credential_store"] = credential_store
@@ -51,36 +66,38 @@ async def main():
         functions=[foo, send_commands_netmiko, send_commands_scrapli],
         startup=worker_setup,
     )
-    print('worker built')
+    logger.info("Worker instance created")
+
     def signal_handler(sig, frame):
-        logging.info(f"Received signal {sig}. Shutting down.")
+        logger.info(f"Received signal {sig}. Shutting down.")
         worker.stop()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, signal_handler, sig, None)
-    print('signals added')
+    logger.info("Signal handlers registered")
     try:
         await worker.queue.connect()
-        print('connected')
+        logger.info("Connected to Redis queue")
+        logger.info("Starting worker (this will block until shutdown)")
         await worker.start()
-        print('started')
+        logger.info("Worker has stopped")
     finally:
+        logger.info("Disconnecting from queue")
         await worker.queue.disconnect()
-
-        # logging.info("Shutting down worker.")
+        logger.info("Cleanup complete")
 
 
 def run():
     """entrypoint"""
-    print("Starting worker.")
+    logger.info("Worker entrypoint started")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("Received KeyboardInterrupt. Shutting down.")
+        logger.info("Received KeyboardInterrupt. Shutting down.")
     except asyncio.CancelledError:
-        logging.info("Received CancelledError. Shutting down.")
+        logger.info("Received CancelledError. Shutting down.")
     finally:
-        logging.info("Shutting down.")
+        logger.info("Worker shutdown complete")
 
 
 if __name__ == "__main__":

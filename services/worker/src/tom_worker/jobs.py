@@ -52,7 +52,9 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
         raise GatingException(f"{device_id} busy. Lease not acquired.")
 
     try:
-        async with await ScrapliAsyncAdapter.from_model(model, credential_store) as adapter:
+        async with await ScrapliAsyncAdapter.from_model(
+            model, credential_store
+        ) as adapter:
             result = await adapter.send_commands(model.commands)
         return result
     finally:

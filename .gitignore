@@ -5,3 +5,9 @@
 **/*.env
 slop/
 **/__pycache__
+tom_controller_config.yaml
+
+# Test fixtures containing real JWTs (privacy)
+tests/fixtures/jwt/*.yaml
+!tests/fixtures/jwt/.gitkeep
+!tests/fixtures/jwt/README.md

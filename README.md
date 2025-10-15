@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="services/core/src/tom_core/static/Tom-BlkBlueTrans_1000x1000.png">
-  <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" src="services/core/src/tom_core/static/Tom-BlkWhiteTrans_1000x1000.png" width="256">
+  <source media="(prefers-color-scheme: dark)" srcset="services/controller/src/tom_controller/static/Tom-BlkBlueTrans_1000x1000.png">
+  <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" src="services/controller/src/tom_controller/static/Tom-BlkWhiteTrans_1000x1000.png" width="256">
 </picture>
 
 # Tom Smykowski
@@ -28,11 +28,13 @@ doing so well, and securely) is a huge challenge.
 - **Transport/Drivers** - Netmiko, scrapli, etc.
 - **Parsing engines and templates** - TextFSM, ttp, genie, etc.
 - **Rendering templates** - Jinja2, ttp, etc.
-- **Inventory** - TBD - something about talking to a SOT to get device inventory, 
-  map it to transport drivers, etc
-- **Security** - TBD - something about managing credentials, maybe also RBAC
+- **Inventory** - Talk to your source-of-truth, digest inventory files, map drivers 
+    to different gear from different vendors, make sure you use the correct  
+    parsing templates, etc. 
+- **Security** - Storing credentials in a way that won't give your security team
+    a heart attack, using the right creds for the right gear, JWT/OAuth authentication, etc. 
 
-All of these are solveable, but there's rarely a reason to solve them differently for
+All of these are solvable, but there's rarely a reason to solve them differently for
 each project.  Also, they can be cumbersome and fragile with unpleasant dependence on
 system details (looking at you, Templating Libraries!)
 
@@ -44,6 +46,81 @@ system details (looking at you, Templating Libraries!)
 - **Support runtime changes** - You can update your service config as time goes on
 - **Support immutable state** - You can bake your own images so you're guaranteed to have an always redeployable artifact without a bunch of setup or external dependencies.
 
+## Features
+
+### Authentication & Security
+- **API Key Authentication** - Simple key-based auth for service accounts
+- **JWT/OAuth2 Support** (v0.6.0) - Validate JWTs from OAuth providers:
+  - **Duo Security** ✅ (tested - ID tokens and access tokens work)
+  - **Google OAuth** ✅ (tested - ID tokens work, access tokens are opaque)
+  - **Microsoft Entra ID** ✅ (fully supported)
+- **Hybrid Auth Mode** - Use both API keys and JWTs simultaneously
+- **HashiCorp Vault Integration** - Secure credential storage
+
+### Inventory & Automation
+- **Multiple Inventory Sources** - YAML files or SolarWinds SWIS
+- **Queue-Based Processing** - Async job execution with Redis/SAQ
+- **Per-Device Concurrency Control** - Prevent overwhelming devices
+- **Multi-Transport Support** - Netmiko and Scrapli adapters
+
+## Architecture
+### Simplified 
+```mermaid
+sequenceDiagram
+    actor C as Client 
+    participant T as Tom
+    participant D as Network Device<br/>R1<br/>192.168.1.1
+        
+    C ->> T: /send_command
+        note over C,T: device=R1<br/>command="sh ip int bri"
+    T ->> T: lookup inventory (inc. host & credential ref)
+    T ->> T: lookup credential
+    T ->> D: sh ip int bri
+    activate D
+        D -->> T: <raw output>
+    deactivate D
+    T ->> T: parse if needed
+    T -->> C: final response 
+```
+
+### Detailed
+[Detailed Diagram](./docs/overal-sequence-detail.md)
+
+## Documentation
+
+### API & Architecture
+- [API Endpoints](./docs/api-endpoints.md) - Complete API reference
+- [Roadmap](./ROADMAP.md) - Development roadmap and completed features
+
+### OAuth/JWT Authentication
+- [OAuth Implementation](./docs/oauth-implementation.md) - Complete JWT authentication documentation
+
+## Quick Start
+
+### With JWT Authentication
+1. Copy the example JWT config:
+   ```bash
+   cp tom_config.jwt.example.yaml tom_config.yaml
+   ```
+
+2. Configure your OAuth providers in `tom_config.yaml`
+
+3. Start the services:
+   ```bash
+   docker compose up
+   ```
+
+4. Use `tomclient` to interact with Tom:
+   ```bash
+   # Authenticate with your OAuth provider
+   tomclient auth login
+   
+   # Make API calls
+   tomclient inventory
+   tomclient device router1 "show ip int bri"
+   ```
+
+**Note:** The `tomclient` CLI tool is the recommended way to interact with Tom. See the `tomclient` repository for installation and usage.
 
 ## Inspiration
 

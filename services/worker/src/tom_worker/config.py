@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from tom_shared.config import SharedSettings
 
+
 class Settings(SharedSettings):
     """
     Settings class manages configuration options.
@@ -36,7 +37,6 @@ class Settings(SharedSettings):
     )
 
     credential_store: Literal["yaml", "vault"] = "yaml"
-
 
     @computed_field
     @property

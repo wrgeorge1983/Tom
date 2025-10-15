@@ -8,9 +8,13 @@ All endpoints are prefixed with `/api/`
 
 ## Authentication
 
-Authentication is configurable via the `TOM_CORE_AUTH_MODE` environment variable:
+Authentication modes (configure via `tom_config.yaml` or env):
 - `none` (default): No authentication required
-- `api_key`: Requires API key in header (default header: `X-API-Key`)
+- `api_key`: Requires API key in header (default `X-API-Key`)
+- `jwt`: Bearer JWT via OAuth/OIDC providers
+- `hybrid`: Accept either API key or JWT
+
+When using `jwt`/`hybrid`, simple allow policy applies (if configured): precedence `allowed_users` → `allowed_domains` → `allowed_user_regex`; any match grants access. See docs/oauth-implementation.md.
 
 ## Endpoints
 

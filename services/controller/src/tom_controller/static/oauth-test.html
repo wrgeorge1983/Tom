@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tom Smykowski - OAuth Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #555;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            color: #666;
+            font-weight: 500;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .hidden {
+            display: none;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .token-display {
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Tom Smykowski - OAuth Test</h1>
+
+        <!-- Authentication Section -->
+        <div class="section">
+            <h2>Authentication</h2>
+            <div id="authSection">
+                <div id="providerSelection" class="hidden">
+                    <label for="providerSelect">Select OAuth Provider:</label>
+                    <select id="providerSelect">
+                        <option value="">-- Select a provider --</option>
+                    </select>
+                </div>
+                <button id="loginBtn" onclick="initiateOAuth()" disabled>Login with OAuth</button>
+                <button onclick="clearToken()">Logout</button>
+            </div>
+
+            <div id="authStatus"></div>
+
+            <div id="tokenInfo" class="hidden">
+                <h3>Authenticated ✓</h3>
+                <div class="token-display" id="tokenDisplay"></div>
+                <button onclick="decodeToken()">Show Token Details</button>
+                <div id="decodedToken"></div>
+            </div>
+        </div>
+
+        <!-- API Test Section -->
+        <div class="section" id="apiSection">
+            <h2>Test API Calls</h2>
+
+            <div id="authWarning" class="status info hidden">
+                ⚠️ No authentication token present - requests may fail if authentication is required
+            </div>
+
+            <label for="device">Device Name:</label>
+            <input type="text" id="device" placeholder="router1" />
+
+            <label for="command">Command:</label>
+            <input type="text" id="command" placeholder="show version" />
+
+            <button onclick="sendCommand()">Send Command</button>
+            <button onclick="testAuthEndpoint()">Test Auth Status</button>
+            <button onclick="getUserInfo()">Get User Info</button>
+            <button onclick="debugAuth()">Debug Auth Claims</button>
+
+            <div id="apiResponse"></div>
+        </div>
+    </div>
+
+    <script>
+        // OAuth configuration from backend
+        let oauthConfig = null;
+        let selectedProvider = null;
+        let jwtToken = localStorage.getItem('jwtToken') || '';
+        let accessToken = localStorage.getItem('accessToken') || '';
+        let idToken = localStorage.getItem('idToken') || '';
+
+        // Initialize on page load
+        window.onload = async function() {
+            // Check if we're returning from OAuth redirect
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+
+            if (code && state) {
+                await handleOAuthCallback(code, state);
+            } else {
+                // Load OAuth config from backend
+                await loadOAuthConfig();
+
+                // Check for existing token
+                if (jwtToken) {
+                    displayToken();
+                } else {
+                    // Show warning that no auth is present
+                    document.getElementById('authWarning').classList.remove('hidden');
+                }
+            }
+        };
+
+        async function loadOAuthConfig() {
+            try {
+                showStatus('authStatus', 'Loading configuration...', 'info');
+                const response = await fetch('/api/oauth/config');
+
+                if (response.ok) {
+                    oauthConfig = await response.json();
+
+                    if (oauthConfig.error) {
+                        showStatus('authStatus', `Configuration error: ${oauthConfig.error}`, 'error');
+                        document.getElementById('loginBtn').disabled = true;
+                    } else {
+                        showStatus('authStatus', '', '');
+                        
+                        // Populate provider dropdown
+                        const select = document.getElementById('providerSelect');
+                        select.innerHTML = '<option value="">-- Select a provider --</option>';
+                        
+                        oauthConfig.providers.forEach(provider => {
+                            const option = document.createElement('option');
+                            option.value = provider.name;
+                            option.textContent = provider.name.charAt(0).toUpperCase() + provider.name.slice(1);
+                            select.appendChild(option);
+                        });
+                        
+                        // Show provider selection
+                        document.getElementById('providerSelection').classList.remove('hidden');
+                        
+                        // Enable login when provider is selected
+                        select.addEventListener('change', function() {
+                            selectedProvider = this.value ? oauthConfig.providers.find(p => p.name === this.value) : null;
+                            document.getElementById('loginBtn').disabled = !selectedProvider;
+                            if (selectedProvider) {
+                                document.getElementById('loginBtn').textContent = `Login with ${selectedProvider.name.charAt(0).toUpperCase() + selectedProvider.name.slice(1)}`;
+                            } else {
+                                document.getElementById('loginBtn').textContent = 'Login with OAuth';
+                            }
+                        });
+                    }
+                } else {
+                    showStatus('authStatus', 'Failed to load OAuth configuration', 'error');
+                    document.getElementById('loginBtn').disabled = true;
+                }
+            } catch (e) {
+                showStatus('authStatus', `Error loading configuration: ${e.message}`, 'error');
+                document.getElementById('loginBtn').disabled = true;
+            }
+        }
+
+        async function initiateOAuth() {
+            if (!selectedProvider) {
+                showStatus('authStatus', 'Please select a provider', 'error');
+                return;
+            }
+
+            if (!selectedProvider.authorization_url) {
+                showStatus('authStatus', 'OAuth not configured properly for this provider', 'error');
+                return;
+            }
+
+            // Generate random state for CSRF protection
+            const state = generateRandomString(32);
+            localStorage.setItem('oauthState', state);
+            localStorage.setItem('oauthProvider', selectedProvider.name);
+
+            // Generate PKCE code_verifier and code_challenge
+            const codeVerifier = generateRandomString(128);
+            localStorage.setItem('codeVerifier', codeVerifier);
+            
+            const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+            // Use scopes from backend config
+            const scopes = selectedProvider.scopes || 'openid email profile';
+            console.log('Requesting OAuth scopes:', scopes);
+            console.log('Using PKCE code_challenge:', codeChallenge);
+
+            const authUrl = `${selectedProvider.authorization_url}?` +
+                `response_type=code&` +
+                `client_id=${encodeURIComponent(selectedProvider.client_id)}&` +
+                `redirect_uri=${encodeURIComponent(oauthConfig.redirect_uri)}&` +
+                `state=${state}&` +
+                `scope=${encodeURIComponent(scopes)}&` +
+                `code_challenge=${encodeURIComponent(codeChallenge)}&` +
+                `code_challenge_method=S256`;
+
+            // Redirect to OAuth provider
+            window.location.href = authUrl;
+        }
+
+        async function handleOAuthCallback(code, state) {
+            showStatus('authStatus', 'Processing authentication...', 'info');
+
+            // Verify state
+            const savedState = localStorage.getItem('oauthState');
+            if (state !== savedState) {
+                showStatus('authStatus', 'Invalid state parameter - possible CSRF attack', 'error');
+                return;
+            }
+            localStorage.removeItem('oauthState');
+
+            // Get PKCE code_verifier
+            const codeVerifier = localStorage.getItem('codeVerifier');
+            localStorage.removeItem('codeVerifier');
+
+            // Exchange code for token via backend
+            try {
+                const savedProvider = localStorage.getItem('oauthProvider');
+                const requestBody = {
+                    code: code,
+                    state: state,
+                    redirect_uri: window.location.origin + window.location.pathname,
+                    provider: savedProvider
+                };
+                
+                // Include code_verifier for PKCE if present
+                if (codeVerifier) {
+                    requestBody.code_verifier = codeVerifier;
+                }
+
+                const response = await fetch('/api/oauth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                localStorage.removeItem('oauthProvider');
+
+                if (response.ok) {
+                    const tokenData = await response.json();
+
+                    // Store both tokens
+                    accessToken = tokenData.access_token || '';
+                    idToken = tokenData.id_token || '';
+
+                    // Determine which token to use for JWT authentication
+                    // Try ID token first (always a JWT), then access token (may be opaque)
+                    jwtToken = idToken || accessToken;
+                    
+                    // If we have an ID token, prefer it for validation (always works)
+                    // If only access token, try it (works for Duo, not for Google)
+                    if (idToken) {
+                        console.log('Using ID token for authentication');
+                    } else if (accessToken) {
+                        console.log('Using access token for authentication (may not work if opaque)');
+                    }
+
+                    localStorage.setItem('jwtToken', jwtToken);
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('idToken', idToken);
+
+                    showStatus('authStatus', 'Successfully authenticated!', 'success');
+                    displayToken();
+
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    // Load config for UI
+                    await loadOAuthConfig();
+                } else {
+                    const error = await response.text();
+                    showStatus('authStatus', `Authentication failed: ${error}`, 'error');
+
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+
+                    // Load config for UI
+                    await loadOAuthConfig();
+                }
+            } catch (e) {
+                showStatus('authStatus', `Failed to complete authentication: ${e.message}`, 'error');
+            }
+        }
+
+        function displayToken() {
+            document.getElementById('tokenInfo').classList.remove('hidden');
+            document.getElementById('authWarning').classList.add('hidden');
+            document.getElementById('tokenDisplay').textContent =
+                jwtToken.substring(0, 50) + '...' + jwtToken.substring(jwtToken.length - 20);
+        }
+
+        function decodeToken() {
+            try {
+                let html = '<h4>Token Comparison:</h4>';
+
+                // Decode ID Token
+                if (idToken) {
+                    try {
+                        const idParts = idToken.split('.');
+                        const idPayload = JSON.parse(atob(idParts[1]));
+
+                        html += '<div style="margin: 20px 0; padding: 10px; background: #f0f8ff; border-radius: 5px;">';
+                        html += '<h5>📝 ID Token Claims:</h5>';
+                        html += '<pre style="background: white; padding: 10px;">' + JSON.stringify(idPayload, null, 2) + '</pre>';
+
+                        // Show expiration
+                        if (idPayload.exp) {
+                            const exp = new Date(idPayload.exp * 1000);
+                            const now = Math.floor(Date.now() / 1000);
+                            const timeLeft = idPayload.exp - now;
+                            html += `<p><strong>Expires:</strong> ${exp.toLocaleString()} (${timeLeft > 0 ? Math.floor(timeLeft/60) + ' min' : 'EXPIRED'})</p>`;
+                        }
+                        html += '</div>';
+                    } catch (e) {
+                        html += '<p>Error decoding ID token: ' + e.message + '</p>';
+                    }
+                }
+
+                // Decode Access Token
+                if (accessToken) {
+                    try {
+                        // Access tokens might be opaque (not JWT) or JWT
+                        const accessParts = accessToken.split('.');
+                        if (accessParts.length === 3) {
+                            // It's a JWT
+                            const accessPayload = JSON.parse(atob(accessParts[1]));
+
+                            html += '<div style="margin: 20px 0; padding: 10px; background: #f0fff0; border-radius: 5px;">';
+                            html += '<h5>🔑 Access Token Claims:</h5>';
+                            html += '<pre style="background: white; padding: 10px;">' + JSON.stringify(accessPayload, null, 2) + '</pre>';
+
+                            // Show expiration
+                            if (accessPayload.exp) {
+                                const exp = new Date(accessPayload.exp * 1000);
+                                const now = Math.floor(Date.now() / 1000);
+                                const timeLeft = accessPayload.exp - now;
+                                html += `<p><strong>Expires:</strong> ${exp.toLocaleString()} (${timeLeft > 0 ? Math.floor(timeLeft/60) + ' min' : 'EXPIRED'})</p>`;
+                            }
+                            html += '</div>';
+                        } else {
+                            html += '<div style="margin: 20px 0; padding: 10px; background: #fff0f0; border-radius: 5px;">';
+                            html += '<h5>🔑 Access Token:</h5>';
+                            html += '<p>Opaque token (not a JWT): <code style="word-break: break-all;">' + accessToken.substring(0, 50) + '...</code></p>';
+                            html += '</div>';
+                        }
+                    } catch (e) {
+                        html += '<p>Error decoding access token: ' + e.message + '</p>';
+                    }
+                }
+
+                // Show which token is being used for API calls
+                html += '<div style="margin: 20px 0; padding: 10px; background: #fffacd; border-radius: 5px;">';
+                html += '<h5>🎯 Currently Using for API Authorization:</h5>';
+                html += '<p>' + (jwtToken === idToken ? 'ID Token' : jwtToken === accessToken ? 'Access Token' : 'Unknown') + '</p>';
+                html += '</div>';
+
+                document.getElementById('decodedToken').innerHTML = html;
+            } catch (e) {
+                showStatus('authStatus', 'Failed to decode tokens: ' + e.message, 'error');
+            }
+        }
+
+        function clearToken() {
+            jwtToken = '';
+            accessToken = '';
+            idToken = '';
+            localStorage.removeItem('jwtToken');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('idToken');
+            document.getElementById('tokenInfo').classList.add('hidden');
+            document.getElementById('authWarning').classList.remove('hidden');
+            document.getElementById('decodedToken').innerHTML = '';
+            showStatus('authStatus', 'Logged out', 'info');
+        }
+
+        async function testAuthEndpoint() {
+            showStatus('apiResponse', 'Testing authentication status...', 'info');
+
+            try {
+                // Build headers - only include auth if we have a token
+                const headers = {};
+                if (jwtToken) {
+                    headers['Authorization'] = 'Bearer ' + jwtToken;
+                }
+
+                const response = await fetch('/api/', { headers });
+
+                const data = await response.json();
+
+                // Add context about auth status
+                let authInfo = jwtToken ? '(Authenticated)' : '(No auth token)';
+
+                showStatus('apiResponse',
+                    `Response ${authInfo} (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                    response.ok ? 'success' : 'error'
+                );
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        async function sendCommand() {
+            const device = document.getElementById('device').value;
+            const command = document.getElementById('command').value;
+
+            if (!device || !command) {
+                showStatus('apiResponse', 'Please enter device and command', 'error');
+                return;
+            }
+
+            // Show warning but still try to send
+            let authWarning = '';
+            if (!jwtToken) {
+                authWarning = ' (No authentication - may fail if auth is required)';
+            }
+
+            showStatus('apiResponse', `Sending command${authWarning}...`, 'info');
+
+            try {
+                const url = `/api/device/${encodeURIComponent(device)}/send_command?` +
+                    `command=${encodeURIComponent(command)}&wait=true&rawOutput=true`;
+
+                // Build headers - only include auth if we have a token
+                const headers = {};
+                if (jwtToken) {
+                    headers['Authorization'] = 'Bearer ' + jwtToken;
+                }
+
+                const response = await fetch(url, { headers });
+
+                const data = await response.text();
+
+                // Add auth context to response
+                let authInfo = jwtToken ? '(Authenticated)' : '(No auth)';
+
+                showStatus('apiResponse',
+                    `Response ${authInfo} (${response.status}):\n${data}`,
+                    response.ok ? 'success' : 'error'
+                );
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        async function getUserInfo() {
+            if (!jwtToken) {
+                showStatus('apiResponse', 'Not authenticated', 'error');
+                return;
+            }
+
+            if (!accessToken) {
+                showStatus('apiResponse', 'No access token available (only have ID token)', 'error');
+                return;
+            }
+
+            showStatus('apiResponse', 'Getting user info from OIDC provider...', 'info');
+
+            try {
+                // Userinfo endpoint requires access token as a query parameter
+                // Authentication uses the ID/JWT token in Authorization header
+                const response = await fetch(`/api/userinfo?access_token=${encodeURIComponent(accessToken)}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Format the user info nicely
+                    let formatted = 'User Information from OIDC Provider:\n';
+                    formatted += '=====================================\n';
+                    for (const [key, value] of Object.entries(data)) {
+                        if (!key.startsWith('_')) {
+                            formatted += `${key}: ${JSON.stringify(value)}\n`;
+                        }
+                    }
+                    formatted += '\nMetadata:\n';
+                    formatted += `---------\n`;
+                    formatted += `Provider: ${data._provider}\n`;
+                    formatted += `Auth Method: ${data._auth_method}\n`;
+
+                    showStatus('apiResponse',
+                        `Response (${response.status}):\n${formatted}`,
+                        'success'
+                    );
+                } else {
+                    showStatus('apiResponse',
+                        `Failed (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                        'error'
+                    );
+                }
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        async function debugAuth() {
+            if (!jwtToken) {
+                showStatus('apiResponse', 'Not authenticated', 'error');
+                return;
+            }
+
+            showStatus('apiResponse', 'Getting authentication debug info...', 'info');
+
+            try {
+                const response = await fetch('/api/auth/debug', {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('apiResponse',
+                        `Authentication Debug Info (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                        'success'
+                    );
+                } else {
+                    showStatus('apiResponse',
+                        `Failed (${response.status}):\n${JSON.stringify(data, null, 2)}`,
+                        'error'
+                    );
+                }
+            } catch (e) {
+                showStatus('apiResponse', 'Request failed: ' + e.message, 'error');
+            }
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (!message) {
+                element.className = '';
+                element.textContent = '';
+                return;
+            }
+            element.className = 'status ' + type;
+            element.textContent = message;
+            if (message.includes('\n')) {
+                element.innerHTML = '<pre>' + escapeHtml(message) + '</pre>';
+            }
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        async function generateCodeChallenge(verifier) {
+            // SHA256 hash the verifier
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            
+            // Base64URL encode the hash
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)));
+            return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
