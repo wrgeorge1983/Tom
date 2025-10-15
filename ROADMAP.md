@@ -24,10 +24,10 @@
 
 ### v0.6.0
 - JWT authentication support
-  - Base JWT validator with JWKS support
-  - Duo Security validator (✅ tested and working)
-  - Google OAuth validator (✅ tested and working)
-  - Microsoft Entra ID validator (✅ fully supported)
+  - Base JWT validator with JWKS and OIDC discovery
+  - Duo Security validator (tested and working)
+  - Google OAuth validator (tested and working)
+  - Microsoft Entra ID validator (fully supported)
   - Hybrid authentication mode (JWT + API keys)
   - YAML-based provider configuration
   - Bearer token validation in API
@@ -36,6 +36,7 @@
   - Exact user allowlist (allowed_users)
   - Domain allowlist (allowed_domains)
   - Regex pattern matching (allowed_user_regex)
+  - Proper 403 vs 401 error codes
 
 ## Future Work
 
@@ -55,8 +56,6 @@
 - Jinja2 templating for command generation
 
 ### Security
-- ~~JWT/OAuth2 authentication support~~ ✅ v0.6.0
-- ~~Email-based authorization~~ ✅ v0.6.0
 - Enhanced RBAC from JWT claims (arbitrary claim matching)
 - OAuth2 scope-based permissions
 - Token refresh flow

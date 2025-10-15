@@ -51,9 +51,10 @@ system details (looking at you, Templating Libraries!)
 ### Authentication & Security
 - **API Key Authentication** - Simple key-based auth for service accounts
 - **JWT/OAuth2 Support** (v0.6.0) - Validate JWTs from OAuth providers:
-  - **Duo Security** ✅ (tested - ID tokens and access tokens work)
-  - **Google OAuth** ✅ (tested - ID tokens work, access tokens are opaque)
-  - **Microsoft Entra ID** ✅ (fully supported)
+  - **Duo Security** - Tested with ID tokens and access tokens
+  - **Google OAuth** - Tested with ID tokens (access tokens are opaque)
+  - **Microsoft Entra ID** - Fully supported
+- **Email-Based Authorization** - Control access by user, domain, or regex pattern
 - **Hybrid Auth Mode** - Use both API keys and JWTs simultaneously
 - **HashiCorp Vault Integration** - Secure credential storage
 

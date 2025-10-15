@@ -14,7 +14,7 @@ Authentication modes (configure via `tom_config.yaml` or env):
 - `jwt`: Bearer JWT via OAuth/OIDC providers
 - `hybrid`: Accept either API key or JWT
 
-When using `jwt`/`hybrid`, simple allow policy applies (if configured): precedence `allowed_users` → `allowed_domains` → `allowed_user_regex`; any match grants access. See docs/oauth-implementation.md.
+When using `jwt`/`hybrid`, authorization policy applies (if configured): precedence `allowed_users` → `allowed_domains` → `allowed_user_regex`. Any match grants access. See [OAuth Implementation](oauth-implementation.md) for details.
 
 ## Endpoints
 
@@ -179,11 +179,14 @@ GET /api/inventory/filters
 
 ## Configuration
 
-Key environment variables:
-- `TOM_CORE_INVENTORY_TYPE`: "yaml" or "swis" (default: "yaml")
-- `TOM_CORE_SWAPI_HOST`: SolarWinds hostname (for swis inventory)
-- `TOM_CORE_SWAPI_USERNAME`: SolarWinds username
-- `TOM_CORE_SWAPI_PASSWORD`: SolarWinds password
-- `TOM_CORE_SWAPI_DEFAULT_CRED_NAME`: Default credential name (default: "default")
-- `TOM_CORE_AUTH_MODE`: "none" or "api_key" (default: "none")
-- `TOM_CORE_API_KEYS`: List of valid API keys (when using api_key auth)
+Configuration is managed via `tom_config.yaml` or environment variables with `TOM_` prefix.
+
+Key settings:
+- `inventory_type`: "yaml" or "swis" (default: "yaml")
+- `swapi_host`, `swapi_username`, `swapi_password`: SolarWinds connection (for swis inventory)
+- `auth_mode`: "none", "api_key", "jwt", or "hybrid" (default: "none")
+- `api_keys`: List of "key:user" pairs (when using api_key auth)
+- `jwt_providers`: List of OAuth/OIDC provider configurations (when using jwt auth)
+- `allowed_users`, `allowed_domains`, `allowed_user_regex`: Authorization settings (when using jwt auth)
+
+See `tom_config.jwt.example.yaml` for complete configuration examples.

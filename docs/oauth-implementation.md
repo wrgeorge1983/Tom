@@ -1,31 +1,27 @@
 # OAuth/JWT Implementation for Tom Smykowski
 
-## Current Status: ✅ IMPLEMENTED (v0.6.0)
+## Current Status: IMPLEMENTED (v0.6.0)
 
-### What's Been Completed:
-- ✅ JWT validation infrastructure
-- ✅ **Duo Security validator - TESTED AND WORKING**
-- ✅ **Google OAuth validator - TESTED AND WORKING**
-- ✅ **Microsoft Entra ID validator - FULLY SUPPORTED**
-- ✅ YAML-based configuration with pydantic-settings
-- ✅ Bearer token authentication in API
-- ✅ Hybrid authentication mode (JWT + API keys)
-- ✅ JWT exceptions integrated into main exception hierarchy
-- ✅ Test script for JWT token creation and validation
-- ✅ Example configuration file
-- ✅ PKCE-based CLI authentication (Python reference implementation)
+### Completed Features:
+- JWT validation infrastructure with JWKS and OIDC discovery
+- Duo Security validator (tested with PKCE flow, ID tokens, and access tokens)
+- Google OAuth validator (tested with PKCE flow and ID tokens)
+- Microsoft Entra ID validator (fully supported with OIDC discovery)
+- YAML-based configuration with pydantic-settings
+- Bearer token authentication in API
+- Hybrid authentication mode (JWT + API keys)
+- Email-based authorization (users, domains, regex patterns)
+- Proper 401 vs 403 error codes
+- Test script for JWT token creation and validation
+- Example configuration file
+- PKCE-based CLI authentication (Python reference implementation)
 
-### Provider Status:
-- ✅ **Duo Security**: Fully tested with PKCE flow, ID tokens, and access tokens
-- ✅ **Google OAuth**: Fully tested with PKCE flow and ID tokens (access tokens are opaque, not JWTs)
-- ✅ **Microsoft Entra ID**: Fully supported with OIDC discovery
-
-### What's Remaining:
-- ⏳ Frontend OAuth flow handler for testing
-- ⏳ Enhanced RBAC from JWT claims (arbitrary claim matching)
-- ⏳ Token refresh flow
-- ⏳ Metrics and monitoring
-- ⏳ Go client library with PKCE support
+### Future Enhancements:
+- Frontend OAuth flow handler for testing
+- Enhanced RBAC from JWT claims (arbitrary claim matching)
+- Token refresh flow
+- Metrics and monitoring
+- Go client library with PKCE support
 
 ## Overview
 
@@ -66,12 +62,9 @@ sequenceDiagram
 
 Tom uses `discovery_url` for automatic provider configuration.
 
-**Current Status:**
-- ✅ Config schema supports `discovery_url`
-- ✅ Discovery helper module implemented
-- ✅ Validators use OIDC discovery
+Tom automatically discovers OAuth endpoints using the standard OIDC discovery protocol.
 
-**Future Configuration (when discovery is implemented):**
+**Configuration Example:**
 ```yaml
 jwt_providers:
   - name: google
