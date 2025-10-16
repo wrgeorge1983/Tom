@@ -8,6 +8,7 @@ dependencies = [
     "cryptography>=46.0.1",
     "fastapi[standard]>=0.116.1",
     "httpx>=0.28.1",
+    "ntc-templates>=8.1.0",
     "orionsdk>=0.4.0",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",

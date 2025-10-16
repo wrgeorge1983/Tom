@@ -616,6 +616,18 @@ wheels = [
 ]
 
 [[package]]
+name = "ntc-templates"
+version = "8.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "textfsm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d6/0c/decd784b5969ddfed7e41d95baaa309f31c896bd7ed22d3a6d29ec1117a1/ntc_templates-8.1.0.tar.gz", hash = "sha256:e570a5bb4ee829d62bfdce3fb46045a40aaa176b134aa0db21542d6518ca4be7", size = 313051, upload-time = "2025-09-22T21:02:55.83Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/6d/925c3cd513b13569f32f8a9330b061f594dcde6ca946fb26dce886868b74/ntc_templates-8.1.0-py3-none-any.whl", hash = "sha256:6cea8fdb17e8c72bd7a89bf21a94c184f241ce33c34b074570059d710318acaf", size = 623343, upload-time = "2025-09-22T21:02:53.959Z" },
+]
+
+[[package]]
 name = "orionsdk"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1113,6 +1125,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "fastapi", extra = ["standard"] },
     { name = "httpx" },
+    { name = "ntc-templates" },
     { name = "orionsdk" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -1139,6 +1152,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=46.0.1" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.116.1" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "ntc-templates", specifier = ">=8.1.0" },
     { name = "orionsdk", specifier = ">=0.4.0" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },

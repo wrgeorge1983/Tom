@@ -22,6 +22,7 @@ from tom_controller.exceptions import (
     TomAuthException,
     TomAuthorizationException,
     TomNotFoundException,
+    TomValidationException,
 )
 from tom_controller.inventory.inventory import (
     InventoryStore,
@@ -244,12 +245,59 @@ async def root():
 
 
 @router.get("/job/{job_id}")
-async def job(request: Request, job_id: str) -> Optional[JobResponse]:
+async def job(
+    request: Request, 
+    job_id: str,
+    parse: bool = Query(False, description="Parse output using TextFSM"),
+    parser: str = Query("textfsm", description="Parser to use"),
+    template: Optional[str] = Query(None, description="Template name for parsing"),
+    include_raw: bool = Query(False, description="Include raw output with parsed"),
+) -> Optional[JobResponse | dict]:
     queue: saq.Queue = request.app.state.queue
-    job = await JobResponse.from_job_id(job_id, queue)
-    if job.status == "NEW":
+    job_response = await JobResponse.from_job_id(job_id, queue)
+    if job_response.status == "NEW":
         return None
-    return job
+    
+    # If parsing requested and job is complete with results
+    if parse and job_response.status == "COMPLETE" and job_response.result:
+        from tom_controller.parsing.textfsm_parser import parse_output
+        
+        # Extract device_type and commands from metadata
+        device_type = None
+        commands = None
+        if job_response.metadata:
+            device_type = job_response.metadata.get("device_type")
+            commands = job_response.metadata.get("commands", [])
+        
+        # Parse each command result
+        parsed_results = {}
+        if isinstance(job_response.result, dict):
+            for command, raw_output in job_response.result.items():
+                if isinstance(raw_output, str):
+                    parsed_results[command] = parse_output(
+                        raw_output=raw_output,
+                        device_type=device_type,
+                        command=command,
+                        template=template,
+                        include_raw=include_raw,
+                        parser_type=parser
+                    )
+                else:
+                    parsed_results[command] = raw_output
+        else:
+            # Single result, not a dict
+            parsed_results = parse_output(
+                raw_output=str(job_response.result),
+                device_type=device_type,
+                command=commands[0] if commands else None,
+                template=template,
+                include_raw=include_raw,
+                parser_type=parser
+            )
+        
+        return parsed_results
+    
+    return job_response
 
 
 @router.get("/raw/send_netmiko_command")
@@ -457,6 +505,18 @@ async def send_inventory_command(
     rawOutput: bool = Query(
         False, description="Return raw output directly. Only works with wait=True"
     ),
+    parse: bool = Query(
+        False, description="Parse output using TextFSM. Only works with wait=True"
+    ),
+    parser: str = Query(
+        "textfsm", description="Parser to use (currently only 'textfsm' supported)"
+    ),
+    template: Optional[str] = Query(
+        None, description="Template name (e.g., 'cisco_ios_show_ip_int_brief.textfsm')"
+    ),
+    include_raw: bool = Query(
+        False, description="Include raw output along with parsed (when parse=True)"
+    ),
     timeout: int = 10,
     # Optional Inline SSH Credentials
     username: Optional[str] = Query(
@@ -469,7 +529,7 @@ async def send_inventory_command(
         description="Override password (requires username). Uses inventory "
         "credential if not provided.",
     ),
-) -> JobResponse | str:
+) -> JobResponse | str | dict:
     device_config = inventory_store.get_device_config(device_name)
 
     if username is not None and password is not None:
@@ -514,7 +574,29 @@ async def send_inventory_command(
         raise TomException(f"Unknown device type {type(device_config)}")
 
     if wait:
-        if rawOutput:
+        # Handle parsing if requested
+        if parse and not rawOutput:
+            if parser != "textfsm":
+                raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm'")
+            
+            # Get the raw output from the job result
+            raw_output = response.result.get(command, "")
+            
+            # Parse the output using shared function
+            from tom_controller.parsing.textfsm_parser import parse_output
+            
+            parsed_result = parse_output(
+                raw_output=raw_output,
+                device_type=device_config.adapter_driver,
+                command=command,
+                template=template,
+                include_raw=include_raw,
+                parser_type=parser
+            )
+            
+            return parsed_result
+        
+        elif rawOutput:
             response = response.result.get(command)
 
     return response
@@ -527,6 +609,18 @@ async def send_inventory_commands(
     commands: list[str],
     inventory_store: InventoryStore = Depends(get_inventory_store),
     wait: bool = False,
+    parse: bool = Query(
+        False, description="Parse output using TextFSM. Has no effect when wait=false. For async jobs, use /api/job/{job_id}?parse=true"
+    ),
+    parser: str = Query(
+        "textfsm", description="Parser to use (currently only 'textfsm' supported)"
+    ),
+    template: Optional[str] = Query(
+        None, description="Template name for all commands (e.g., 'cisco_ios_show_ip_int_brief.textfsm')"
+    ),
+    include_raw: bool = Query(
+        False, description="Include raw output along with parsed (when parse=True)"
+    ),
     username: Optional[str] = Query(
         None,
         description="Override username (requires password). Uses inventory "
@@ -537,7 +631,7 @@ async def send_inventory_commands(
         description="Override password (requires username). Uses inventory "
         "credential if not provided.",
     ),
-) -> JobResponse:
+) -> JobResponse | dict:
     device_config = inventory_store.get_device_config(device_name)
     if username is not None and password is not None:
         credential = InlineSSHCredential(username=username, password=password)
@@ -574,6 +668,39 @@ async def send_inventory_commands(
     else:
         raise TomException(f"Unknown device type {type(device_config)}")
 
+    # Validate parsing requirements
+    if parse and not wait:
+        raise TomValidationException("Parsing requires wait=true. For async parsing, use GET /api/job/{job_id}?parse=true")
+    
+    # Warn if parse requested without wait
+    if parse and not wait:
+        import logging
+        logging.warning("parse=true has no effect when wait=false. For async parsing, use GET /api/job/{job_id}?parse=true")
+    
+    # Handle parsing if requested
+    if wait and parse:
+        if parser != "textfsm":
+            raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm'")
+        
+        # Parse each command result
+        from tom_controller.parsing.textfsm_parser import parse_output
+        
+        parsed_results = {}
+        if response.result and isinstance(response.result, dict):
+            for command, raw_output in response.result.items():
+                if isinstance(raw_output, str):
+                    parsed_results[command] = parse_output(
+                        raw_output=raw_output,
+                        device_type=device_config.adapter_driver,
+                        command=command,
+                        template=template,  # Same template for all commands
+                        include_raw=include_raw,
+                        parser_type=parser
+                    )
+                else:
+                    parsed_results[command] = raw_output
+            return parsed_results
+    
     return response
 
 
@@ -970,3 +1097,12 @@ if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
             "provider": provider,
             "user": user if valid else None,
         }
+
+
+@router.get("/templates/textfsm")
+async def list_textfsm_templates():
+    """List all available TextFSM templates."""
+    from tom_controller.parsing.textfsm_parser import get_parser
+    
+    parser = get_parser()
+    return parser.list_templates()
