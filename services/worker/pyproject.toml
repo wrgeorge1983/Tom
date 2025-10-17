@@ -17,3 +17,8 @@ dependencies = [
 
 [tool.uv.sources]
 tom-shared = { path = "../../shared", editable = true }
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.406",
+]

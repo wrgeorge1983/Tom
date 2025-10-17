@@ -262,6 +262,8 @@ async def job(
     if parse and job_response.status == "COMPLETE" and job_response.result:
         from tom_controller.parsing.textfsm_parser import parse_output
         
+        settings = request.app.state.settings
+        
         # Extract device_type and commands from metadata
         device_type = None
         commands = None
@@ -276,6 +278,7 @@ async def job(
                 if isinstance(raw_output, str):
                     parsed_results[command] = parse_output(
                         raw_output=raw_output,
+                        settings=settings,
                         device_type=device_type,
                         command=command,
                         template=template,
@@ -288,6 +291,7 @@ async def job(
             # Single result, not a dict
             parsed_results = parse_output(
                 raw_output=str(job_response.result),
+                settings=settings,
                 device_type=device_type,
                 command=commands[0] if commands else None,
                 template=template,
@@ -587,6 +591,7 @@ async def send_inventory_command(
             
             parsed_result = parse_output(
                 raw_output=raw_output,
+                settings=request.app.state.settings,
                 device_type=device_config.adapter_driver,
                 command=command,
                 template=template,
@@ -691,6 +696,7 @@ async def send_inventory_commands(
                 if isinstance(raw_output, str):
                     parsed_results[command] = parse_output(
                         raw_output=raw_output,
+                        settings=request.app.state.settings,
                         device_type=device_config.adapter_driver,
                         command=command,
                         template=template,  # Same template for all commands
@@ -1100,9 +1106,12 @@ if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
 
 
 @router.get("/templates/textfsm")
-async def list_textfsm_templates():
+async def list_textfsm_templates(request: Request):
     """List all available TextFSM templates."""
-    from tom_controller.parsing.textfsm_parser import get_parser
+    from tom_controller.parsing.textfsm_parser import TextFSMParser
+    from pathlib import Path
     
-    parser = get_parser()
+    settings = request.app.state.settings
+    template_dir = Path(settings.textfsm_template_dir)
+    parser = TextFSMParser(custom_template_dir=template_dir)
     return parser.list_templates()

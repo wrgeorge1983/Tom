@@ -139,6 +139,10 @@ class Settings(SharedSettings):
     # In production, clients should handle OAuth and send JWTs to Tom
     oauth_test_enabled: bool = False
 
+    # Parsing template directories
+    textfsm_template_dir: str = "/app/templates/textfsm"
+    ttp_template_dir: str = "/app/templates/ttp"
+
     @field_validator("api_keys")
     @classmethod
     def validate_api_keys(cls, v) -> list[str]:

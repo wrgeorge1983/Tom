@@ -6,18 +6,6 @@ from ttp import ttp
 
 logger = logging.getLogger(__name__)
 
-_parser_instance = None
-
-def get_parser(custom_template_dir: Optional[Path] = None) -> 'TTPParser':
-    global _parser_instance
-    if _parser_instance is None:
-        if custom_template_dir is None:
-            custom_dir = Path("/app/templates/ttp")
-            if custom_dir.exists():
-                custom_template_dir = custom_dir
-        _parser_instance = TTPParser(custom_template_dir)
-    return _parser_instance
-
 
 class TTPParser:
     

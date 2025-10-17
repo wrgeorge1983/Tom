@@ -23,6 +23,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "freezegun>=1.5.5",
+    "pyright>=1.1.406",
     "pytest",
     "pytest-asyncio>=1.2.0",
     "pytest-recording>=0.13.4",

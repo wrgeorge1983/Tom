@@ -10,30 +10,10 @@ import ntc_templates
 
 logger = logging.getLogger(__name__)
 
-# Module-level parser instance (singleton)
-_parser_instance = None
-
-def get_parser(custom_template_dir: Optional[Path] = None) -> 'TextFSMParser':
-    """Get or create the singleton parser instance.
-    
-    Args:
-        custom_template_dir: Directory containing custom templates
-        
-    Returns:
-        TextFSMParser instance
-    """
-    global _parser_instance
-    if _parser_instance is None:
-        if custom_template_dir is None:
-            custom_dir = Path("/app/templates/textfsm")
-            if custom_dir.exists():
-                custom_template_dir = custom_dir
-        _parser_instance = TextFSMParser(custom_template_dir)
-    return _parser_instance
-
 
 def parse_output(
     raw_output: str,
+    settings,
     device_type: Optional[str] = None,
     command: Optional[str] = None,
     template: Optional[str] = None,
@@ -47,6 +27,7 @@ def parse_output(
     
     Args:
         raw_output: Raw text output from network device
+        settings: Settings object containing template directory configuration
         device_type: Device platform for auto-discovery (e.g., "cisco_ios")
         command: Command for auto-discovery (e.g., "show ip int brief")
         template: Explicit template name (overrides auto-discovery)
@@ -58,7 +39,8 @@ def parse_output(
         On error, returns error information with raw output.
     """
     if parser_type == "textfsm":
-        parser = get_parser()
+        template_dir = Path(settings.textfsm_template_dir)
+        parser = TextFSMParser(custom_template_dir=template_dir)
         return parser.parse(
             raw_output=raw_output,
             template_name=template,
@@ -67,8 +49,9 @@ def parse_output(
             include_raw=include_raw
         )
     elif parser_type == "ttp":
-        from tom_controller.parsing import ttp_parser
-        parser = ttp_parser.get_parser()
+        from tom_controller.parsing.ttp_parser import TTPParser
+        template_dir = Path(settings.ttp_template_dir)
+        parser = TTPParser(custom_template_dir=template_dir)
         return parser.parse(
             raw_output=raw_output,
             template_name=template,

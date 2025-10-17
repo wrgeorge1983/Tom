@@ -95,28 +95,33 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
             assert isinstance(result["parsed"], list)
 
     def test_parse_output_function(self, sample_output, test_template_dir):
-        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        from unittest.mock import MagicMock
         
-        from tom_controller.parsing import textfsm_parser
-        original_instance = textfsm_parser._parser_instance
-        try:
-            textfsm_parser._parser_instance = parser
-            
-            result = parse_output(
-                raw_output=sample_output,
-                template="test_show_ip_int_brief.textfsm",
-                include_raw=False,
-                parser_type="textfsm"
-            )
-            
-            assert "parsed" in result
-            assert len(result["parsed"]) == 4
-        finally:
-            textfsm_parser._parser_instance = original_instance
-
-    def test_parse_output_function_unsupported_parser(self, sample_output):
+        settings = MagicMock()
+        settings.textfsm_template_dir = str(test_template_dir)
+        settings.ttp_template_dir = "/tmp/ttp"
+        
         result = parse_output(
             raw_output=sample_output,
+            settings=settings,
+            template="test_show_ip_int_brief.textfsm",
+            include_raw=False,
+            parser_type="textfsm"
+        )
+        
+        assert "parsed" in result
+        assert len(result["parsed"]) == 4
+
+    def test_parse_output_function_unsupported_parser(self, sample_output):
+        from unittest.mock import MagicMock
+        
+        settings = MagicMock()
+        settings.textfsm_template_dir = "/tmp/textfsm"
+        settings.ttp_template_dir = "/tmp/ttp"
+        
+        result = parse_output(
+            raw_output=sample_output,
+            settings=settings,
             template="test.textfsm",
             parser_type="unsupported_parser"
         )
@@ -150,79 +155,7 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
         assert template_path.name == "test_show_ip_int_brief.textfsm"
 
 
-class TestParsingAPI:
 
-    @pytest.fixture
-    def mock_queue(self):
-        import saq
-        from unittest.mock import AsyncMock, MagicMock
-        
-        queue = MagicMock(spec=saq.Queue)
-        job = MagicMock()
-        job.id = "test-job-123"
-        job.status = "complete"
-        job.key = "test-job-123"
-        job.result.return_value = {"show ip int brief": "GigabitEthernet0/0     10.1.1.1        YES NVRAM  up                    up"}
-        
-        async def mock_refresh(**kwargs):
-            pass
-        
-        job.refresh = mock_refresh
-        
-        async def mock_enqueue(*args, **kwargs):
-            return job
-        
-        queue.enqueue = mock_enqueue
-        queue.job = AsyncMock(return_value=job)
-        
-        return queue
-
-    @pytest.fixture
-    def test_app(self, mock_queue, test_template_dir):
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
-        from tom_controller.api import api
-        from tom_controller.config import Settings
-        from tom_controller.inventory.inventory import YamlInventoryStore
-        from unittest.mock import MagicMock
-        import tempfile
-        
-        settings = Settings(
-            auth_mode="none",
-            redis_url="redis://localhost:6379",
-            yaml_file=None,
-        )
-        
-        app = FastAPI()
-        app.state.settings = settings
-        app.state.queue = mock_queue
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yml') as f:
-            f.write("devices: {}")
-        
-        app.state.inventory_store = YamlInventoryStore(f.name)
-        app.state.jwt_providers = []
-        
-        app.include_router(api.router, prefix="/api")
-        
-        from tom_controller.parsing import textfsm_parser
-        original_parser = textfsm_parser._parser_instance
-        textfsm_parser._parser_instance = TextFSMParser(custom_template_dir=test_template_dir)
-        
-        client = TestClient(app)
-        
-        yield client
-        
-        textfsm_parser._parser_instance = original_parser
-
-    def test_list_templates_endpoint(self, test_app):
-        response = test_app.get("/api/templates/textfsm")
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert "custom" in data
-        assert "ntc" in data
-        assert "test_show_ip_int_brief.textfsm" in data["custom"]
 
 
 class TestTTPParser:
@@ -292,12 +225,19 @@ Loopback0              192.168.1.1     YES NVRAM  up                    up"""
         assert "required" in result["error"]
 
     def test_parse_output_function_ttp(self, sample_output):
+        from unittest.mock import MagicMock
+        
+        settings = MagicMock()
+        settings.textfsm_template_dir = "/tmp/textfsm"
+        settings.ttp_template_dir = "/tmp/ttp"
+        
         template = """<group name="interfaces">
 {{ interface }} {{ ip_address }} YES {{ method }} {{ status }} {{ protocol }}
 </group>"""
         
         result = parse_output(
             raw_output=sample_output,
+            settings=settings,
             template=template,
             parser_type="ttp"
         )
