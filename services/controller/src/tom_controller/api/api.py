@@ -506,10 +506,10 @@ async def send_inventory_command(
         False, description="Return raw output directly. Only works with wait=True"
     ),
     parse: bool = Query(
-        False, description="Parse output using TextFSM. Only works with wait=True"
+        False, description="Parse output using specified parser. Only works with wait=True"
     ),
     parser: str = Query(
-        "textfsm", description="Parser to use (currently only 'textfsm' supported)"
+        "textfsm", description="Parser to use ('textfsm' or 'ttp')"
     ),
     template: Optional[str] = Query(
         None, description="Template name (e.g., 'cisco_ios_show_ip_int_brief.textfsm')"
@@ -576,8 +576,8 @@ async def send_inventory_command(
     if wait:
         # Handle parsing if requested
         if parse and not rawOutput:
-            if parser != "textfsm":
-                raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm'")
+            if parser not in ["textfsm", "ttp"]:
+                raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")
             
             # Get the raw output from the job result
             raw_output = response.result.get(command, "")
@@ -610,10 +610,10 @@ async def send_inventory_commands(
     inventory_store: InventoryStore = Depends(get_inventory_store),
     wait: bool = False,
     parse: bool = Query(
-        False, description="Parse output using TextFSM. Has no effect when wait=false. For async jobs, use /api/job/{job_id}?parse=true"
+        False, description="Parse output using specified parser. Has no effect when wait=false. For async jobs, use /api/job/{job_id}?parse=true"
     ),
     parser: str = Query(
-        "textfsm", description="Parser to use (currently only 'textfsm' supported)"
+        "textfsm", description="Parser to use ('textfsm' or 'ttp')"
     ),
     template: Optional[str] = Query(
         None, description="Template name for all commands (e.g., 'cisco_ios_show_ip_int_brief.textfsm')"
@@ -679,8 +679,8 @@ async def send_inventory_commands(
     
     # Handle parsing if requested
     if wait and parse:
-        if parser != "textfsm":
-            raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm'")
+        if parser not in ["textfsm", "ttp"]:
+            raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")
         
         # Parse each command result
         from tom_controller.parsing.textfsm_parser import parse_output

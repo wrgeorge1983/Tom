@@ -17,6 +17,7 @@ services:
     volumes:
       - ./inventory:/app/inventory
       - ./tom_controller_config.yaml:/app/tom_controller_config.yaml
+      - ./templates:/app/templates
     command:
       - ".venv/bin/fastapi"
       - "run"

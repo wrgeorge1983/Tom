@@ -51,26 +51,35 @@ def parse_output(
         command: Command for auto-discovery (e.g., "show ip int brief")
         template: Explicit template name (overrides auto-discovery)
         include_raw: If True, include raw output in response
-        parser_type: Parser to use (currently only "textfsm")
+        parser_type: Parser to use ("textfsm" or "ttp")
         
     Returns:
         Dict containing parsed data and optionally raw output.
         On error, returns error information with raw output.
     """
-    if parser_type != "textfsm":
+    if parser_type == "textfsm":
+        parser = get_parser()
+        return parser.parse(
+            raw_output=raw_output,
+            template_name=template,
+            platform=device_type,
+            command=command,
+            include_raw=include_raw
+        )
+    elif parser_type == "ttp":
+        from tom_controller.parsing import ttp_parser
+        parser = ttp_parser.get_parser()
+        return parser.parse(
+            raw_output=raw_output,
+            template_name=template,
+            platform=device_type,
+            include_raw=include_raw
+        )
+    else:
         return {
             "error": f"Parser type '{parser_type}' not supported",
             "raw": raw_output if include_raw else None
         }
-    
-    parser = get_parser()
-    return parser.parse(
-        raw_output=raw_output,
-        template_name=template,
-        platform=device_type,
-        command=command,
-        include_raw=include_raw
-    )
 
 
 class TextFSMParser:

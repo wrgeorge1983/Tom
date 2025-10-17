@@ -1133,6 +1133,7 @@ dependencies = [
     { name = "saq", extra = ["redis", "web"] },
     { name = "textfsm" },
     { name = "tom-shared" },
+    { name = "ttp" },
     { name = "uvicorn" },
 ]
 
@@ -1160,6 +1161,7 @@ requires-dist = [
     { name = "saq", extras = ["redis", "web"], specifier = ">=0.25.2" },
     { name = "textfsm", specifier = ">=1.1.3" },
     { name = "tom-shared", editable = "../../shared" },
+    { name = "ttp", specifier = ">=0.9.5" },
     { name = "uvicorn", specifier = ">=0.33.0" },
 ]
 
@@ -1184,6 +1186,15 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pydantic", specifier = ">=2.11.7" }]
+
+[[package]]
+name = "ttp"
+version = "0.9.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/4f/b95e48d3b653e1b1494a3a5b15614db5a340826282c5389e38cb2248da39/ttp-0.9.5.tar.gz", hash = "sha256:234414f4d3039d2d1cde09993f89f8db1b34d447f76c6a402555cefac2e59c4e", size = 69141, upload-time = "2023-06-25T00:28:14.036Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/38/d475e7bde8d192ca5d64ccc0988f3d58f36211bd68c32b6c5883332a8abf/ttp-0.9.5-py2.py3-none-any.whl", hash = "sha256:2c9fcf560b3f696e9fdd3554dc8e4622cbb10cac1d4fca13a7cf608c4a7fd137", size = 85763, upload-time = "2023-06-25T00:28:11.949Z" },
+]
 
 [[package]]
 name = "typer"
