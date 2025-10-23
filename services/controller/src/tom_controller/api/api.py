@@ -30,6 +30,8 @@ from tom_controller.inventory.inventory import (
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
 from tom_controller.auth import get_jwt_validator, JWTValidationError, JWTValidator
+from tom_controller.parsing import parse_output
+from tom_controller.parsing.textfsm_parser import TextFSMParser
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +262,6 @@ async def job(
     
     # If parsing requested and job is complete with results
     if parse and job_response.status == "COMPLETE" and job_response.result:
-        from tom_controller.parsing.textfsm_parser import parse_output
         
         settings = request.app.state.settings
         
@@ -587,7 +588,6 @@ async def send_inventory_command(
             raw_output = response.result.get(command, "")
             
             # Parse the output using shared function
-            from tom_controller.parsing.textfsm_parser import parse_output
             
             parsed_result = parse_output(
                 raw_output=raw_output,
@@ -688,7 +688,6 @@ async def send_inventory_commands(
             raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")
         
         # Parse each command result
-        from tom_controller.parsing.textfsm_parser import parse_output
         
         parsed_results = {}
         if response.result and isinstance(response.result, dict):
@@ -1108,8 +1107,6 @@ if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
 @router.get("/templates/textfsm")
 async def list_textfsm_templates(request: Request):
     """List all available TextFSM templates."""
-    from tom_controller.parsing.textfsm_parser import TextFSMParser
-    from pathlib import Path
     
     settings = request.app.state.settings
     template_dir = Path(settings.textfsm_template_dir)
@@ -1131,7 +1128,6 @@ async def test_parse(
     
     This is a convenience endpoint for testing templates without executing commands.
     """
-    from tom_controller.parsing.textfsm_parser import parse_output
     
     if parser not in ["textfsm", "ttp"]:
         raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")

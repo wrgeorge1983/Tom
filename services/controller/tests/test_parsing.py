@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from tom_controller.parsing.textfsm_parser import parse_output, TextFSMParser
+from tom_controller.parsing import parse_output, TextFSMParser
 from tom_controller.parsing.ttp_parser import TTPParser
 
 
@@ -153,6 +153,61 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
         assert template_path is not None
         assert template_path.exists()
         assert template_path.name == "test_show_ip_int_brief.textfsm"
+    
+    def test_expand_optional_syntax_simple(self, test_template_dir):
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        
+        # Simple case: abc[[xyz]] becomes abc(x(y(z)?)?)?
+        result = parser._expand_optional_syntax("abc[[xyz]]")
+        assert result == "abc(x(y(z)?)?)?", f"Expected 'abc(x(y(z)?)?)?' but got '{result}'"
+    
+    def test_expand_optional_syntax_multiple_brackets(self, test_template_dir):
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        
+        # Multiple brackets: sh[[ow]] ip int[[erface]]
+        result = parser._expand_optional_syntax("sh[[ow]] ip int[[erface]]")
+        expected = "sh(o(w)?)? ip int(e(r(f(a(c(e)?)?)?)?)?)?"
+        assert result == expected, f"Expected '{expected}' but got '{result}'"
+    
+    def test_expand_optional_syntax_empty_brackets(self, test_template_dir):
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        
+        # Empty brackets are not matched by the regex (requires at least one char)
+        # This is acceptable since ntc-templates never uses empty brackets in practice
+        result = parser._expand_optional_syntax("abc[[]]def")
+        assert result == "abc[[]]def", f"Expected 'abc[[]]def' but got '{result}'"
+    
+    def test_expand_optional_syntax_single_char(self, test_template_dir):
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        
+        # Single character: a[[b]] becomes a(b)?
+        result = parser._expand_optional_syntax("a[[b]]")
+        assert result == "a(b)?", f"Expected 'a(b)?' but got '{result}'"
+    
+    def test_expand_optional_syntax_regex_matching(self, test_template_dir):
+        import re
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        
+        # Test that expanded regex actually matches correctly
+        expanded = parser._expand_optional_syntax("sh[[ow]] ip int[[erface]] br[[ief]]")
+        
+        # Should match various abbreviations
+        test_cases = [
+            ("sh ip int br", True),
+            ("sho ip int br", True),
+            ("show ip int br", True),
+            ("show ip interface brief", True),
+            ("sh ip interface brief", True),
+            ("show ip int brie", True),
+            ("s ip int br", False),  # 's' alone shouldn't match
+            ("shw ip int br", False),  # 'shw' shouldn't match
+        ]
+        
+        for test_str, should_match in test_cases:
+            match = re.match(expanded, test_str, re.IGNORECASE)
+            matched = match is not None
+            assert matched == should_match, \
+                f"Pattern '{expanded}' {'should' if should_match else 'should not'} match '{test_str}'"
 
     def test_custom_index_with_fallback(self, tmp_path):
         # Create a custom template

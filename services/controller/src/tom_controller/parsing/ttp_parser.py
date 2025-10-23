@@ -29,6 +29,10 @@ class TTPParser:
         include_raw: bool = False
     ) -> Dict[str, Any]:
         try:
+            # Initialize metadata tracking
+            template_source = None
+            matched_template = None
+            
             # Mode 1: Explicit template name
             if template_name:
                 template_path = self._find_template(template_name)
@@ -44,12 +48,16 @@ class TTPParser:
                 with open(template_path) as f:
                     template_content = f.read()
                 
+                matched_template = template_name
+                template_source = "explicit"
+                
                 parser = ttp(data=raw_output, template=template_content)
                 parser.parse()
                 result = parser.result(structure="flat_list")
             
             # Mode 2: Inline template string
             elif template_string:
+                template_source = "inline"
                 parser = ttp(data=raw_output, template=template_string)
                 parser.parse()
                 result = parser.result(structure="flat_list")
@@ -73,7 +81,9 @@ class TTPParser:
                 with open(template_path) as f:
                     template_content = f.read()
                 
-                logger.debug(f"Using template from index: {template_path.name}")
+                matched_template = template_path.name
+                template_source = "custom"
+                logger.info(f"Using TTP template from index: {matched_template} for {platform}/{command}")
                 parser = ttp(data=raw_output, template=template_content)
                 parser.parse()
                 result = parser.result(structure="flat_list")
@@ -89,6 +99,12 @@ class TTPParser:
             response = {"parsed": result}
             if include_raw:
                 response["raw"] = raw_output
+            
+            # Add metadata about template selection
+            if template_source:
+                response["_metadata"] = {"template_source": template_source}
+                if matched_template:
+                    response["_metadata"]["template_name"] = matched_template
                 
             return response
             

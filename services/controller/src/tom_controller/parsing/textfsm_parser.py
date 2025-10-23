@@ -1,69 +1,16 @@
 """TextFSM parser implementation."""
 
+import csv
 import logging
 import os
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import textfsm
 import ntc_templates
 
 logger = logging.getLogger(__name__)
-
-
-def parse_output(
-    raw_output: str,
-    settings,
-    device_type: Optional[str] = None,
-    command: Optional[str] = None,
-    template: Optional[str] = None,
-    include_raw: bool = False,
-    parser_type: str = "textfsm"
-) -> Dict[str, Any]:
-    """Parse network device output using the specified parser.
-    
-    This is the main entry point for parsing functionality.
-    Can be called from any endpoint that needs to parse output.
-    
-    Args:
-        raw_output: Raw text output from network device
-        settings: Settings object containing template directory configuration
-        device_type: Device platform for auto-discovery (e.g., "cisco_ios")
-        command: Command for auto-discovery (e.g., "show ip int brief")
-        template: Explicit template name (overrides auto-discovery)
-        include_raw: If True, include raw output in response
-        parser_type: Parser to use ("textfsm" or "ttp")
-        
-    Returns:
-        Dict containing parsed data and optionally raw output.
-        On error, returns error information with raw output.
-    """
-    if parser_type == "textfsm":
-        template_dir = Path(settings.textfsm_template_dir)
-        parser = TextFSMParser(custom_template_dir=template_dir)
-        return parser.parse(
-            raw_output=raw_output,
-            template_name=template,
-            platform=device_type,
-            command=command,
-            include_raw=include_raw
-        )
-    elif parser_type == "ttp":
-        from tom_controller.parsing.ttp_parser import TTPParser
-        template_dir = Path(settings.ttp_template_dir)
-        parser = TTPParser(custom_template_dir=template_dir)
-        return parser.parse(
-            raw_output=raw_output,
-            template_name=template,
-            platform=device_type,
-            command=command,
-            include_raw=include_raw
-        )
-    else:
-        return {
-            "error": f"Parser type '{parser_type}' not supported",
-            "raw": raw_output if include_raw else None
-        }
 
 
 class TextFSMParser:
@@ -108,7 +55,11 @@ class TextFSMParser:
             On error, returns error information.
         """
         try:
-            # Mode 1: Explicit template (highest priority)
+            # Initialize metadata tracking
+            template_source = None
+            matched_template = None
+            
+            # Mode 1: Explicit template name
             if template_name:
                 template_path = self._find_template(template_name)
             
@@ -129,29 +80,34 @@ class TextFSMParser:
                 headers = [header.lower() for header in fsm.header]
                 result = [dict(zip(headers, row)) for row in parsed_data]
                 
-            # Mode 2: Auto-discovery via ntc_templates
+            # Mode 2: Auto-discovery - find template ourselves
             elif platform and command:
-                from ntc_templates.parse import parse_output
-                
                 try:
-                    # Check if custom index exists, use it with fallback to ntc-templates
-                    if self.custom_template_dir and (self.custom_template_dir / "index").exists():
-                        logger.debug(f"Using custom template directory with fallback: {self.custom_template_dir}")
-                        result = parse_output(
-                            platform=platform,
-                            command=command,
-                            data=raw_output,
-                            template_dir=str(self.custom_template_dir),
-                            try_fallback=True
-                        )
-                    else:
-                        # No custom index, use ntc-templates only
-                        result = parse_output(
-                            platform=platform,
-                            command=command,
-                            data=raw_output
-                        )
-                    # parse_output returns list of dicts already
+                    # Look up the template from our indexes
+                    template_path, template_source, matched_template = self._discover_template(
+                        platform=platform,
+                        command=command
+                    )
+                    
+                    if not template_path:
+                        error_msg = f"No template found for platform={platform}, command={command}"
+                        logger.error(error_msg)
+                        return {
+                            "error": error_msg,
+                            "raw": raw_output if include_raw else None
+                        }
+                    
+                    logger.info(f"Using {template_source} template: {matched_template} for {platform}/{command}")
+                    
+                    # Parse with TextFSM directly
+                    with open(template_path) as f:
+                        fsm = textfsm.TextFSM(f)
+                        parsed_data = fsm.ParseText(raw_output)
+                    
+                    # Convert to list of dicts using header
+                    headers = [header.lower() for header in fsm.header]
+                    result = [dict(zip(headers, row)) for row in parsed_data]
+                    
                 except Exception as e:
                     error_msg = f"Auto-discovery failed for {platform}/{command}: {str(e)}"
                     logger.error(error_msg)
@@ -171,6 +127,12 @@ class TextFSMParser:
             response = {"parsed": result}
             if include_raw:
                 response["raw"] = raw_output
+            
+            # Add metadata about template selection (if available)
+            if template_source:
+                response["_metadata"] = {"template_source": template_source}
+                if matched_template:
+                    response["_metadata"]["template_name"] = matched_template
                 
             return response
             
@@ -231,3 +193,143 @@ class TextFSMParser:
             ])
         
         return templates
+    
+    def _discover_template(
+        self, 
+        platform: str, 
+        command: str,
+        hostname: str = ".*"
+    ) -> Tuple[Optional[Path], Optional[str], Optional[str]]:
+        """Discover which template to use for given platform/command.
+        
+        Checks custom index first, then ntc-templates index.
+        
+        Args:
+            platform: Device platform (e.g., 'cisco_ios')
+            command: Command to match (e.g., 'show version')
+            hostname: Device hostname for matching (default: '.*')
+            
+        Returns:
+            Tuple of (template_path, source, template_name)
+            - template_path: Full path to template file
+            - source: "custom" or "ntc-templates"
+            - template_name: Name of the template file
+            Returns (None, None, None) if no match found
+        """
+        # 1. Check custom index first
+        if self.custom_template_dir:
+            custom_index = self.custom_template_dir / "index"
+            if custom_index.exists():
+                match = self._lookup_in_index(
+                    index_file=custom_index,
+                    platform=platform,
+                    command=command,
+                    hostname=hostname
+                )
+                if match:
+                    template_path = self.custom_template_dir / match
+                    if template_path.exists():
+                        return (template_path, "custom", match)
+                    else:
+                        logger.warning(f"Custom template in index not found: {match}")
+        
+        # 2. Check ntc-templates index
+        ntc_index = self.ntc_templates_dir / "index"
+        if ntc_index.exists():
+            match = self._lookup_in_index(
+                index_file=ntc_index,
+                platform=platform,
+                command=command,
+                hostname=hostname
+            )
+            if match:
+                template_path = self.ntc_templates_dir / match
+                if template_path.exists():
+                    return (template_path, "ntc-templates", match)
+        
+        return (None, None, None)
+    
+    def _lookup_in_index(
+        self,
+        index_file: Path,
+        platform: str,
+        command: str,
+        hostname: str = ".*"
+    ) -> Optional[str]:
+        """Look up a template in a specific index file.
+        
+        Args:
+            index_file: Path to index file
+            platform: Device platform
+            command: Command to match
+            hostname: Device hostname for matching
+            
+        Returns:
+            Template name if found, None otherwise
+        """
+        try:
+            with open(index_file, 'r') as f:
+                # Filter out comments and empty lines
+                lines = [line for line in f if line.strip() and not line.strip().startswith('#')]
+                
+                reader = csv.DictReader(lines, skipinitialspace=True)
+                for row in reader:
+                    # Normalize keys
+                    entry = {k.lower().strip(): v.strip() for k, v in row.items() if k}
+                    
+                    # Check platform match (exact match)
+                    if entry.get('platform') != platform:
+                        continue
+                    
+                    # Check hostname regex match
+                    hostname_pattern = entry.get('hostname', '.*')
+                    try:
+                        if not re.match(hostname_pattern, hostname, re.IGNORECASE):
+                            continue
+                    except re.error as e:
+                        logger.warning(f"Invalid hostname regex in index: {hostname_pattern}")
+                        continue
+                    
+                    # Check command regex match
+                    # ntc-templates uses special [[]] syntax for optional parts
+                    command_pattern = entry.get('command', '')
+                    command_pattern = self._expand_optional_syntax(command_pattern)
+                    
+                    try:
+                        if re.match(command_pattern, command, re.IGNORECASE):
+                            return entry.get('template')
+                    except re.error as e:
+                        logger.warning(f"Invalid command regex in index: {command_pattern}")
+                        continue
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"Error reading index {index_file}: {e}")
+            return None
+    
+    def _expand_optional_syntax(self, pattern: str) -> str:
+        """Expand ntc-templates [[]] optional syntax to standard regex.
+        
+        abc[[xyz]] becomes abc(x(y(z)?)?)?
+        
+        Args:
+            pattern: Pattern with [[]] syntax
+            
+        Returns:
+            Standard regex pattern
+        """
+        def replace_bracket(match):
+            content = match.group(1)
+            if not content:
+                return ""
+            # Build nested optional groups from right to left
+            # xyz becomes (x(y(z)?)?)?
+            result = content[-1]
+            for char in reversed(content[:-1]):
+                result = f"{char}({result})?"
+            return f"({result})?"
+        
+        # Replace [[...]] with optional regex
+        expanded = re.sub(r'\[\[([^\]]+)\]\]', replace_bracket, pattern)
+        return expanded

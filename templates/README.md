@@ -52,6 +52,23 @@ GET /api/device/router1/send_command?command=show+version&parse=true
 ```
 Tom will automatically select the best template based on device platform and command.
 
+**Template Selection Visibility:**
+
+The API response includes metadata showing which template was used:
+
+```json
+{
+  "parsed": [ ... ],
+  "_metadata": {
+    "template_source": "custom",
+    "template_name": "custom_show_version.textfsm"
+  }
+}
+```
+
+- `template_source`: Either `"custom"` (from your index) or `"ntc-templates"` (built-in)
+- `template_name`: The specific template file used (when available)
+
 ### TTP Templates
 
 #### Option 1: Explicit Template Selection
