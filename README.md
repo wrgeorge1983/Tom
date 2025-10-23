@@ -99,6 +99,10 @@ sequenceDiagram
 - [API Endpoints](./docs/api-endpoints.md) - Complete API reference
 - [Roadmap](./ROADMAP.md) - Development roadmap and completed features
 
+### Output Parsing
+- [Parsing Guide](./docs/parsing.md) - Complete guide to TextFSM and TTP parsing
+- [Template README](./templates/README.md) - Quick reference for custom templates
+
 ### OAuth/JWT Authentication
 - [OAuth Implementation](./docs/oauth-implementation.md) - Complete JWT authentication documentation
 

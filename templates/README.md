@@ -52,6 +52,9 @@ GET /api/device/router1/send_command?command=show+version&parse=true
 ```
 Tom will automatically select the best template based on device platform and command.
 
+**Template Updates:**
+Changes to template files or indexes take effect immediately - no restart required.
+
 **Template Selection Visibility:**
 
 The API response includes metadata showing which template was used:

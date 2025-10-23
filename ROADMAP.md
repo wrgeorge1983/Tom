@@ -37,6 +37,12 @@
   - Domain allowlist (allowed_domains)
   - Regex pattern matching (allowed_user_regex)
   - Proper 403 vs 401 error codes
+- Output parsing integration
+  - TextFSM parser with 929 built-in ntc-templates
+  - TTP parser with inline template support
+  - Custom template indexes for auto-discovery
+  - Template selection metadata in responses
+  - Parsing API endpoints
 
 ## Future Work
 
@@ -52,8 +58,8 @@
 - Configuration-driven field mapping for custom schemas
 
 ### Parsing & Templating
-- TextFSM, TTP, maybe genie integration for output parsing
 - Jinja2 templating for command generation
+- Genie parser integration (maybe)
 
 ### Security
 - Enhanced RBAC from JWT claims (arbitrary claim matching)
