@@ -1,0 +1,20 @@
+# Custom TTP Template Index
+#
+# This file registers custom TTP templates for auto-discovery.
+# Format: Template, Hostname, Platform, Command
+#
+# - Template: Filename of template (in this directory)
+# - Hostname: Regex to match device hostname (use .* for all)
+# - Platform: Device platform (e.g., cisco_ios, arista_eos)
+# - Command: Regex to match command
+#
+# Unlike TextFSM, TTP has no built-in templates, so this index is the only
+# way to enable auto-discovery for TTP parsing.
+#
+# Example entries (uncomment to use):
+# custom_show_interfaces.ttp, .*, cisco_ios, show interfaces
+# datacenter_bgp.ttp, dc-.*, cisco_ios, show ip bgp.*
+# special_version.ttp, router-[0-9]+, cisco_ios, show version
+
+Template, Hostname, Platform, Command
+custom_show_interfaces.ttp, .*, cisco_ios, show interfaces

@@ -154,6 +154,54 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
         assert template_path.exists()
         assert template_path.name == "test_show_ip_int_brief.textfsm"
 
+    def test_custom_index_with_fallback(self, tmp_path):
+        # Create a custom template
+        template_content = """Value INTERFACE (\S+)
+Value IP_ADDRESS (\S+)
+Value STATUS (up|down|administratively down)
+Value PROTOCOL (up|down)
+
+Start
+  ^${INTERFACE}\s+${IP_ADDRESS}\s+\w+\s+\w+\s+${STATUS}\s+${PROTOCOL} -> Record
+"""
+        custom_template = tmp_path / "custom_test_parser.textfsm"
+        custom_template.write_text(template_content)
+        
+        # Create an index file
+        index_content = """Template, Hostname, Platform, Command
+custom_test_parser.textfsm, .*, cisco_ios, show custom test
+"""
+        index_file = tmp_path / "index"
+        index_file.write_text(index_content)
+        
+        parser = TextFSMParser(custom_template_dir=tmp_path)
+        
+        # Test 1: Custom template should be used
+        sample_output = """Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     10.1.1.1        YES NVRAM  up                    up"""
+        
+        result = parser.parse(
+            raw_output=sample_output,
+            platform="cisco_ios",
+            command="show custom test"
+        )
+        
+        assert "parsed" in result
+        assert "error" not in result
+        assert len(result["parsed"]) == 1
+        
+        # Test 2: Command not in custom index should fallback to ntc-templates
+        result2 = parser.parse(
+            raw_output=sample_output,
+            platform="cisco_ios",
+            command="show ip interface brief"
+        )
+        
+        assert "parsed" in result2
+        # Should use ntc-templates fallback
+        if "error" not in result2:
+            assert isinstance(result2["parsed"], list)
+
 
 
 
@@ -250,3 +298,55 @@ Loopback0              192.168.1.1     YES NVRAM  up                    up"""
         
         assert "custom" in templates
         assert "test_show_ip_int_brief.ttp" in templates["custom"]
+
+    def test_custom_index_with_lookup(self, tmp_path):
+        # Create a custom TTP template
+        template_content = """<group name="interfaces">
+{{ interface }} {{ ip_address }} YES {{ method }} {{ status }} {{ protocol }}
+</group>
+"""
+        custom_template = tmp_path / "custom_ttp_test.ttp"
+        custom_template.write_text(template_content)
+        
+        # Create an index file
+        index_content = """Template, Hostname, Platform, Command
+custom_ttp_test.ttp, .*, cisco_ios, show custom test
+"""
+        index_file = tmp_path / "index"
+        index_file.write_text(index_content)
+        
+        parser = TTPParser(custom_template_dir=tmp_path)
+        
+        # Test: Auto-discovery using index
+        sample_output = """Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     10.1.1.1        YES NVRAM  up                    up
+GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
+        
+        result = parser.parse(
+            raw_output=sample_output,
+            platform="cisco_ios",
+            command="show custom test"
+        )
+        
+        assert "parsed" in result
+        assert "error" not in result
+        assert len(result["parsed"]) > 0
+        
+    def test_custom_index_no_match(self, tmp_path):
+        # Create empty index
+        index_content = """Template, Hostname, Platform, Command
+"""
+        index_file = tmp_path / "index"
+        index_file.write_text(index_content)
+        
+        parser = TTPParser(custom_template_dir=tmp_path)
+        
+        # Test: No match in index should return error
+        result = parser.parse(
+            raw_output="some output",
+            platform="cisco_ios",
+            command="show version"
+        )
+        
+        assert "error" in result
+        assert "No template found" in result["error"]

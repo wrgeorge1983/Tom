@@ -56,6 +56,7 @@ def parse_output(
             raw_output=raw_output,
             template_name=template,
             platform=device_type,
+            command=command,
             include_raw=include_raw
         )
     else:
@@ -133,11 +134,23 @@ class TextFSMParser:
                 from ntc_templates.parse import parse_output
                 
                 try:
-                    result = parse_output(
-                        platform=platform,
-                        command=command,
-                        data=raw_output
-                    )
+                    # Check if custom index exists, use it with fallback to ntc-templates
+                    if self.custom_template_dir and (self.custom_template_dir / "index").exists():
+                        logger.debug(f"Using custom template directory with fallback: {self.custom_template_dir}")
+                        result = parse_output(
+                            platform=platform,
+                            command=command,
+                            data=raw_output,
+                            template_dir=str(self.custom_template_dir),
+                            try_fallback=True
+                        )
+                    else:
+                        # No custom index, use ntc-templates only
+                        result = parse_output(
+                            platform=platform,
+                            command=command,
+                            data=raw_output
+                        )
                     # parse_output returns list of dicts already
                 except Exception as e:
                     error_msg = f"Auto-discovery failed for {platform}/{command}: {str(e)}"

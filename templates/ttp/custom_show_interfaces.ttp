@@ -1,0 +1,6 @@
+<group name="interfaces">
+{{ interface }} is {{ admin_state }}, line protocol is {{ protocol_state }}
+  Hardware is {{ hardware }}
+  Internet address is {{ ip_address }}/{{ mask }}
+  MTU {{ mtu }} bytes, BW {{ bandwidth }} Kbit/sec
+</group>

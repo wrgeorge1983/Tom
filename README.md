@@ -64,6 +64,12 @@ system details (looking at you, Templating Libraries!)
 - **Per-Device Concurrency Control** - Prevent overwhelming devices
 - **Multi-Transport Support** - Netmiko and Scrapli adapters
 
+### Parsing & Templating
+- **TextFSM Parsing** - 929+ built-in templates via ntc-templates
+- **TTP Parsing** - Flexible template-based parsing
+- **Custom Template Index** - Register custom templates for auto-discovery
+- **Auto-Discovery** - Automatic template selection based on platform and command
+
 ## Architecture
 ### Simplified 
 ```mermaid
