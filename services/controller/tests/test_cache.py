@@ -3,7 +3,7 @@ import pytest_asyncio
 from fakeredis import aioredis as fake_aioredis
 from freezegun import freeze_time
 
-from tom_controller.cache.cache import CacheManager
+from shared.tom_shared.cache import CacheManager
 from tom_controller.config import Settings
 
 

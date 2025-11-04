@@ -143,11 +143,6 @@ class Settings(SharedSettings):
     textfsm_template_dir: str = "/app/templates/textfsm"
     ttp_template_dir: str = "/app/templates/ttp"
 
-    # cache
-    cache_enabled: bool = True
-    cache_default_ttl: int = 300
-    cache_max_ttl: int = 3600
-    cache_key_prefix: str = "tom_cache"
 
     @field_validator("api_keys")
     @classmethod

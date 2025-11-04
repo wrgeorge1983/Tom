@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal, Union, Optional
 
 from pydantic import BaseModel, Field
 
@@ -23,6 +23,9 @@ class NetmikoSendCommandModel(BaseModel):
     device_type: str
     commands: list[str]
     credential: CredentialSource = Field(discriminator="type")
+    use_cache: bool = True
+    cache_refresh: bool = False
+    cache_ttl: Optional[int] = None
 
 
 class ScrapliSendCommandModel(BaseModel):
@@ -31,3 +34,6 @@ class ScrapliSendCommandModel(BaseModel):
     device_type: str
     commands: list[str]
     credential: CredentialSource = Field(discriminator="type")
+    use_cache: bool = True
+    cache_refresh: bool = False
+    cache_ttl: Optional[int] = None

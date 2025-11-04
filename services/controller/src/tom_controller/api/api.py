@@ -15,13 +15,11 @@ import saq
 from tom_controller.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 
-from tom_controller.config import JWTProviderConfig
 from tom_controller.config import settings as app_settings
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
     TomAuthorizationException,
-    TomNotFoundException,
     TomValidationException,
 )
 from tom_controller.inventory.inventory import (
@@ -29,7 +27,7 @@ from tom_controller.inventory.inventory import (
     DeviceConfig,
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
-from tom_controller.auth import get_jwt_validator, JWTValidationError, JWTValidator
+from tom_controller.auth import JWTValidationError, JWTValidator
 from tom_controller.parsing import parse_output
 from tom_controller.parsing.textfsm_parser import TextFSMParser
 
@@ -318,10 +316,15 @@ async def send_netmiko_command(
     # Inline SSH Credentials
     username: Optional[str] = None,
     password: Optional[str] = None,
+    use_cache: bool = False,
+    cache_ttl: Optional[int] = None,
+    cache_refresh: bool = False,
 ) -> JobResponse:
-    assert (credential_id is not None) ^ (
-        username is not None and password is not None
-    ), "Must provide either credential_id or username and password, not both"
+    if credential_id is None:
+        if username is None and password is None:
+            raise TomAuthException(
+                "Must provide either credential_id or username and password"
+            )
 
     if credential_id:
         credential = StoredCredential(credential_id=credential_id)

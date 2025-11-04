@@ -6,11 +6,13 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from redis import asyncio as aioredis
 import saq
 from saq.web.starlette import saq_web
 
 from tom_controller import __version__
 from tom_controller import api
+from shared.tom_shared.cache import CacheManager
 from tom_controller.config import Settings, settings
 from tom_controller.inventory.inventory import YamlInventoryStore
 from tom_controller.inventory.solarwinds import ModifiedSwisClient, SwisInventoryStore
@@ -42,6 +44,12 @@ def create_app():
         logger = logging.getLogger(__name__)
 
         print(f"DEBUG: Log level set to: {logging.getLevelName(settings.log_level)}")
+
+        # Initialize redis cache
+        cm_redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)  # needs decode_responses=True
+        cache_manager = CacheManager(cm_redis_client, settings)
+        this_app.state.cache_manager = cache_manager
+
 
         # Initialize inventory store on startup
         this_app.state.settings = settings

@@ -6,6 +6,8 @@ import sys
 import redis.asyncio as redis
 import saq, saq.types
 
+from shared.tom_shared.cache import CacheManager
+
 from tom_worker.credentials.credentials import YamlCredentialStore
 from tom_worker.exceptions import GatingException, TransientException
 from tom_worker.jobs import foo, send_commands_netmiko, send_commands_scrapli
@@ -25,6 +27,8 @@ saq_logger = logging.getLogger("saq")
 saq_logger.setLevel(logging.DEBUG)
 
 queue = saq.Queue.from_url(settings.redis_url)
+
+
 
 
 async def main():
@@ -50,9 +54,13 @@ async def main():
 
     semaphore_redis_client = redis.from_url(settings.redis_url)
 
+    cache_redis = redis.from_url(settings.redis_url, decode_responses=True)  # needs decode_responses=True
+    cache_manager = CacheManager(cache_redis, settings)
+
     def worker_setup(ctx: saq.types.Context):
         ctx["credential_store"] = credential_store
         ctx["redis_client"] = semaphore_redis_client
+        ctx["cache_manager"] = cache_manager
 
     def should_retry(exception, attempts):
         if isinstance(exception, GatingException):
