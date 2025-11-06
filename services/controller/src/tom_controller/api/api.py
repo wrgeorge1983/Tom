@@ -11,6 +11,7 @@ from jose import jwt as jose_jwt
 from jose.exceptions import JWTError
 from pydantic import BaseModel
 import saq
+from saq import Status
 
 from tom_controller.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
@@ -221,6 +222,7 @@ async def enqueue_job(
     wait: bool = False,
     timeout: int = 10,
 ) -> JobResponse:
+    logger.info(f"Enqueuing job: {function_name}")
     job = await queue.enqueue(
         function_name,
         timeout=timeout,
@@ -229,8 +231,33 @@ async def enqueue_job(
         retry_delay=1.0,
         retry_backoff=True,
     )
+    logger.info(f"Enqueued job {job.id} with retries={job.retries}")
+    
     if wait:
         await job.refresh(until_complete=float(timeout))
+        # Log job completion status
+        if job.status == Status.COMPLETE:
+            logger.info(f"Job {job.id} completed successfully after {job.attempts} attempt(s)")
+        elif job.status == Status.FAILED:
+            # Extract useful error info
+            error_summary = None
+            if job.error:
+                # Look for our custom exception types in the error
+                if "AuthenticationException" in job.error:
+                    error_summary = "Authentication failed"
+                elif "GatingException" in job.error:
+                    error_summary = "Device busy"
+                else:
+                    # Get the last line of the traceback which usually has the actual error
+                    error_lines = job.error.strip().split('\n')
+                    if error_lines:
+                        error_summary = error_lines[-1][:200]  # Limit length
+            
+            logger.error(f"Job {job.id} FAILED after {job.attempts} attempt(s) - {error_summary or 'Unknown error'}")
+        elif job.status == Status.ABORTED:
+            logger.warning(f"Job {job.id} was aborted after {job.attempts} attempt(s)")
+        else:
+            logger.info(f"Job {job.id} status: {job.status} after {job.attempts} attempt(s)")
 
     job_response = JobResponse.from_job(job)
     return job_response
@@ -255,8 +282,28 @@ async def job(
 ) -> Optional[JobResponse | dict]:
     queue: saq.Queue = request.app.state.queue
     job_response = await JobResponse.from_job_id(job_id, queue)
+    
+    # Log job status check
     if job_response.status == "NEW":
+        logger.debug(f"Job {job_id} not found or NEW")
         return None
+    elif job_response.status == "COMPLETE":
+        logger.info(f"Job {job_id} status check: COMPLETE after {job_response.attempts} attempt(s)")
+    elif job_response.status == "FAILED":
+        # Extract error summary
+        error_summary = None
+        if job_response.error:
+            if "AuthenticationException" in job_response.error:
+                error_summary = "Authentication failed"
+            elif "GatingException" in job_response.error:
+                error_summary = "Device busy"
+            else:
+                error_lines = job_response.error.strip().split('\n')
+                if error_lines:
+                    error_summary = error_lines[-1][:200]
+        logger.error(f"Job {job_id} status check: FAILED after {job_response.attempts} attempt(s) - {error_summary or 'Unknown error'}")
+    else:
+        logger.info(f"Job {job_id} status check: {job_response.status}")
     
     # If parsing requested and job is complete with results
     if parse and job_response.status == "COMPLETE" and job_response.result:
@@ -545,6 +592,7 @@ async def send_inventory_command(
         False, description="Force refresh cached result. Only works with wait=True"
     ),
 ) -> JobResponse | str | dict:
+    logger.info(f"Device command request: {device_name} - {command[:50]}...")
     device_config = inventory_store.get_device_config(device_name)
 
     if username is not None and password is not None:
@@ -595,6 +643,12 @@ async def send_inventory_command(
         raise TomException(f"Unknown device type {type(device_config)}")
 
     if wait:
+        # Log the result status
+        if response.status == "FAILED":
+            logger.error(f"Device command FAILED for {device_name}: {response.error[:200] if response.error else 'Unknown error'}")
+        elif response.status == "COMPLETE":
+            logger.info(f"Device command completed for {device_name} after {response.attempts} attempt(s)")
+        
         # Handle parsing if requested
         if parse and not rawOutput:
             if parser not in ["textfsm", "ttp"]:

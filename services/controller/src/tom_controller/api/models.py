@@ -12,6 +12,8 @@ class JobResponse(BaseModel):
     result: Optional[str | dict] = None
     group: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None  # Store job args for parsing
+    attempts: int = 0
+    error: Optional[str] = None
 
     @classmethod
     def from_job(cls, job) -> "JobResponse":
@@ -37,6 +39,8 @@ class JobResponse(BaseModel):
             status=job.status.name,
             result=job.result,
             metadata=metadata,
+            attempts=getattr(job, 'attempts', 0),
+            error=getattr(job, 'error', None),
         )
 
     @classmethod

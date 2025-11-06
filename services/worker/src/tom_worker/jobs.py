@@ -3,7 +3,7 @@ import saq.types
 
 from tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
 from tom_worker.config import Settings
-from tom_worker.exceptions import GatingException
+from tom_worker.exceptions import GatingException, AuthenticationException, PermanentException
 from tom_worker.semaphore import DeviceSemaphore
 from shared.tom_shared.models import (
     NetmikoSendCommandModel, 
@@ -95,6 +95,13 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
                         await cache_manager.set(cache_key, value, ttl=cache_ttl)
 
                 results.update(result)
+        except (AuthenticationException, PermanentException) as e:
+            # Mark job as non-retryable by setting retries = attempts
+            # This prevents SAQ from retrying authentication failures
+            job = ctx["job"]
+            job.retries = job.attempts
+            logger.error(f"Non-retryable error for {device_id}: {e}")
+            raise
         finally:
             await semaphore.release_lease(job_id)
 
@@ -182,6 +189,13 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
                         await cache_manager.set(cache_key, value, ttl=cache_ttl)
 
                 results.update(result)
+        except (AuthenticationException, PermanentException) as e:
+            # Mark job as non-retryable by setting retries = attempts
+            # This prevents SAQ from retrying authentication failures
+            job = ctx["job"]
+            job.retries = job.attempts
+            logger.error(f"Non-retryable error for {device_id}: {e}")
+            raise
         finally:
             await semaphore.release_lease(job_id)
 

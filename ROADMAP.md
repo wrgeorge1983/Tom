@@ -56,8 +56,6 @@
 ## Future Work
 
 ### Reliability
-- Circuit breakers for unhealthy devices
-- Enhanced retry policies
 - Worker health monitoring
 - Expose Controller and Worker metrics (for e.g. Prometheus)
 
@@ -69,19 +67,21 @@
 - Jinja2 templating for command generation
 - Genie parser integration (maybe)
 
-### Security
-- Enhanced RBAC from JWT claims (arbitrary claim matching)
-- OAuth2 scope-based permissions
-- Token refresh flow
-- Frontend OAuth flow handler (for testing/demo)
-- Per-provider authorization overrides
-
 ### Plugin model
 - Plugin API
 - Migrate inventory and credential stores to plugins
 
 ### UI
-- Web UI
-- CLI
 - python client library
 - golang client library
+
+
+## Low Priority
+### Reliability
+- Circuit breakers for unhealthy devices
+- Enhanced retry policies
+
+### Security
+- Enhanced RBAC from JWT claims (arbitrary claim matching)
+- OAuth2 scope-based permissions
+- Token refresh flow

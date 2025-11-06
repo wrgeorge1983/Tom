@@ -10,10 +10,11 @@ from scrapli.driver.core import (
     AsyncIOSXRDriver,
     AsyncJunosDriver,
 )
+from scrapli.exceptions import ScrapliAuthenticationFailed
 
 from tom_shared.models import ScrapliSendCommandModel
 from tom_worker.credentials.credentials import SSHCredentials, CredentialStore
-from tom_worker.exceptions import TomException
+from tom_worker.exceptions import TomException, AuthenticationException
 
 
 valid_async_drivers = {
@@ -56,9 +57,14 @@ class ScrapliAsyncAdapter:
         return result
 
     async def connect(self):
-        if self.connection is None:
-            raise TomException("Connection not initialized")
-        await self.connection.open()
+        if self.connection is not None:
+            try:
+                await self.connection.open()
+            except ScrapliAuthenticationFailed as e:
+                # Wrap authentication exceptions so they won't be retried
+                raise AuthenticationException(
+                    f"Authentication failed for {self.host}:{self.port} - {str(e)}"
+                ) from e
 
     async def close(self):
         if self.connection.isalive():
