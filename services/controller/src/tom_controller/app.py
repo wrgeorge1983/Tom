@@ -12,6 +12,7 @@ from saq.web.starlette import saq_web
 
 from tom_controller import __version__
 from tom_controller import api
+from tom_controller.api import cache_api  # Import cache API endpoints
 from shared.tom_shared.cache import CacheManager
 from tom_controller.config import Settings, settings
 from tom_controller.inventory.inventory import YamlInventoryStore

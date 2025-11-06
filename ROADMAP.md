@@ -44,12 +44,20 @@
   - Template selection metadata in responses
   - Parsing API endpoints
 
+### v0.7.0
+- Redis-backed caching
+  - Cache device command outputs at worker level
+  - Partial cache support (mix of cached/fresh data)
+  - Cache management API endpoints
+  - Cache metadata in responses (age, status)
+  - Per-request cache control parameters
+  - CommandExecutionResult model for structured responses
+
 ## Future Work
 
 ### Reliability
 - Circuit breakers for unhealthy devices
 - Enhanced retry policies
-- Configurable caching by device and command
 - Worker health monitoring
 - Expose Controller and Worker metrics (for e.g. Prometheus)
 

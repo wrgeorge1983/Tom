@@ -70,6 +70,13 @@ system details (looking at you, Templating Libraries!)
 - **Custom Template Index** - Register custom templates for auto-discovery
 - **Auto-Discovery** - Automatic template selection based on platform and command
 
+### Caching
+- **Redis-Backed Cache** - Reduce load on device management planes
+- **Worker-Level Caching** - Cache checks before device execution
+- **Partial Cache Support** - Mix of cached and fresh data in single request
+- **Cache Management API** - Invalidate, clear, and monitor cache
+- **Per-Request Control** - Override cache behavior per API call
+
 ## Architecture
 ### Simplified 
 ```mermaid
