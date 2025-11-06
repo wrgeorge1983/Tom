@@ -3,6 +3,7 @@ import json
 
 import saq
 from pydantic import BaseModel
+from tom_shared.models import CommandExecutionResult
 
 
 class JobResponse(BaseModel):
@@ -42,3 +43,24 @@ class JobResponse(BaseModel):
     async def from_job_id(cls, job_id: str, queue: saq.Queue) -> "JobResponse":
         job = await queue.job(job_id)
         return cls.from_job(job)
+    
+    @property
+    def command_data(self) -> Optional[Dict[str, str]]:
+        """Get command outputs from result."""
+        if isinstance(self.result, dict) and "data" in self.result:
+            return self.result["data"]
+        return None
+    
+    @property
+    def cache_metadata(self) -> Optional[dict]:
+        """Get cache metadata if available."""
+        if isinstance(self.result, dict) and "meta" in self.result:
+            return self.result["meta"].get("cache")
+        return None
+    
+    def get_command_output(self, command: str) -> Optional[str]:
+        """Get output for a specific command."""
+        data = self.command_data
+        if data:
+            return data.get(command)
+        return None

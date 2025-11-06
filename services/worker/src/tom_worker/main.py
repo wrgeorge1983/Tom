@@ -61,6 +61,7 @@ async def main():
         ctx["credential_store"] = credential_store
         ctx["redis_client"] = semaphore_redis_client
         ctx["cache_manager"] = cache_manager
+        ctx["settings"] = settings
 
     def should_retry(exception, attempts):
         if isinstance(exception, GatingException):

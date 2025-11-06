@@ -1,15 +1,21 @@
+import logging
 import saq.types
 
 from tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
 from tom_worker.config import Settings
 from tom_worker.exceptions import GatingException
 from tom_worker.semaphore import DeviceSemaphore
-from shared.tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
+from shared.tom_shared.models import (
+    NetmikoSendCommandModel, 
+    ScrapliSendCommandModel,
+    CommandExecutionResult
+)
 from shared.tom_shared.cache import CacheManager
+
+logger = logging.getLogger(__name__)
 
 
 async def foo(*args, **kwargs):
-    print(f"{args=}, {kwargs=}")
     return {
         "foo": "bar",
         "baz": "qux",
@@ -17,7 +23,6 @@ async def foo(*args, **kwargs):
 
 
 async def send_commands_netmiko(ctx: saq.types.Context, json: str):
-    print(f"attempting send_command_netmiko: {ctx['job'].id=}")
     assert "credential_store" in ctx, "Missing credential store in context."
     settings: Settings = ctx["settings"]
     credential_store = ctx["credential_store"]
@@ -61,7 +66,7 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
                         "cache_status": "miss"
                     }
             except Exception as e:
-                print(f"Failed to get cache entry {cache_key}: {e}")
+                logger.warning(f"Failed to get cache entry {cache_key}: {e}")
                 needed_commands.append(command)
                 cache_metadata["commands"][command] = {
                     "cache_status": "error"
@@ -83,7 +88,7 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
 
         try:
             async with await NetmikoAdapter.from_model(model, credential_store) as adapter:
-                result = await adapter.send_commands(model.commands)
+                result = await adapter.send_commands(needed_commands)
                 if use_cache:
                     for command, value in result.items():
                         cache_key = cache_manager.generate_cache_key(model.host, command)
@@ -93,15 +98,17 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
         finally:
             await semaphore.release_lease(job_id)
 
-    ordered_results = [results[command] for command in model.commands]
-    return {
-        "results": ordered_results,
-        "_cache": cache_metadata
-    }
+    # Create structured result with metadata
+    execution_result = CommandExecutionResult(
+        data={command: results[command] for command in model.commands},
+        meta={"cache": cache_metadata}
+    )
+    
+    # Return as dict for SAQ serialization
+    return execution_result.model_dump()
 
 
 async def send_commands_scrapli(ctx: saq.types.Context, json: str):
-    print("running send_command_scrapli")
     assert "credential_store" in ctx, "Missing credential store in context."
     settings: Settings = ctx["settings"]
     credential_store = ctx["credential_store"]
@@ -144,7 +151,7 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
                         "cache_status": "miss"
                     }
             except Exception as e:
-                print(f"Failed to get cache entry {cache_key}: {e}")
+                logger.warning(f"Failed to get cache entry {cache_key}: {e}")
                 needed_commands.append(command)
                 cache_metadata["commands"][command] = {
                     "cache_status": "error"
@@ -178,8 +185,11 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
         finally:
             await semaphore.release_lease(job_id)
 
-    ordered_results = [results[command] for command in model.commands]  # ensure order is consistent with the job
-    return {
-        "results": ordered_results,
-        "_cache": cache_metadata
-    }
+    # Create structured result with metadata
+    execution_result = CommandExecutionResult(
+        data={command: results[command] for command in model.commands},
+        meta={"cache": cache_metadata}
+    )
+    
+    # Return as dict for SAQ serialization
+    return execution_result.model_dump()

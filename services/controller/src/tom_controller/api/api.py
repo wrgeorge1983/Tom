@@ -272,8 +272,9 @@ async def job(
         
         # Parse each command result
         parsed_results = {}
-        if isinstance(job_response.result, dict):
-            for command, raw_output in job_response.result.items():
+        command_data = job_response.command_data
+        if command_data:
+            for command, raw_output in command_data.items():
                 if isinstance(raw_output, str):
                     parsed_results[command] = parse_output(
                         raw_output=raw_output,
@@ -316,9 +317,6 @@ async def send_netmiko_command(
     # Inline SSH Credentials
     username: Optional[str] = None,
     password: Optional[str] = None,
-    use_cache: bool = False,
-    cache_ttl: Optional[int] = None,
-    cache_refresh: bool = False,
 ) -> JobResponse:
     if credential_id is None:
         if username is None and password is None:
@@ -537,6 +535,15 @@ async def send_inventory_command(
         description="Override password (requires username). Uses inventory "
         "credential if not provided.",
     ),
+    use_cache: bool = Query(
+        False, description="This job is eligible for caching. Only works with wait=True"
+    ),
+    cache_ttl: Optional[int] = Query(
+        None, description="Cache TTL in seconds. Only works with wait=True"
+    ),
+    cache_refresh: bool = Query(
+        False, description="Force refresh cached result. Only works with wait=True"
+    ),
 ) -> JobResponse | str | dict:
     device_config = inventory_store.get_device_config(device_name)
 
@@ -555,6 +562,9 @@ async def send_inventory_command(
             commands=commands,
             credential=credential,
             port=device_config.port,
+            use_cache=use_cache,
+            cache_refresh=cache_refresh,
+            cache_ttl=cache_ttl
         )
         try:
             response = await enqueue_job(
@@ -570,6 +580,9 @@ async def send_inventory_command(
             commands=commands,
             credential=credential,
             port=device_config.port,
+            use_cache=use_cache,
+            cache_refresh=cache_refresh,
+            cache_ttl=cache_ttl
         )
         try:
             response = await enqueue_job(
@@ -587,8 +600,7 @@ async def send_inventory_command(
             if parser not in ["textfsm", "ttp"]:
                 raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")
             
-            # Get the raw output from the job result
-            raw_output = response.result.get(command, "")
+            raw_output = response.get_command_output(command) or ""
             
             # Parse the output using shared function
             
@@ -605,8 +617,18 @@ async def send_inventory_command(
             return parsed_result
         
         elif rawOutput:
-            response = response.result.get(command)
-
+            output = response.get_command_output(command)
+            if output is None:
+                return ""  # Return empty string instead of None
+            return output
+    
+    # If there's cache metadata and we're returning the full response, include it
+    if isinstance(response, JobResponse) and response.cache_metadata:
+        # Add cache metadata to the response for visibility
+        response_dict = response.model_dump()
+        response_dict["_cache"] = response.cache_metadata
+        return response_dict
+    
     return response
 
 
