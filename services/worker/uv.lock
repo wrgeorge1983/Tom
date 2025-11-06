@@ -608,10 +608,16 @@ version = "0.2.0"
 source = { editable = "../../shared" }
 dependencies = [
     { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "redis" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.11.7" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.11.7" },
+    { name = "pydantic-settings", specifier = ">=2.10.1" },
+    { name = "redis", specifier = ">=5.0.0,<6.0.0" },
+]
 
 [[package]]
 name = "tom-worker"

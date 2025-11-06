@@ -5,12 +5,12 @@ from tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
 from tom_worker.config import Settings
 from tom_worker.exceptions import GatingException, AuthenticationException, PermanentException
 from tom_worker.semaphore import DeviceSemaphore
-from shared.tom_shared.models import (
+from tom_shared.models import (
     NetmikoSendCommandModel, 
     ScrapliSendCommandModel,
     CommandExecutionResult
 )
-from shared.tom_shared.cache import CacheManager
+from tom_shared.cache import CacheManager
 
 logger = logging.getLogger(__name__)
 

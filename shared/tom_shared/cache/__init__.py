@@ -1,3 +1,3 @@
-from cache.cache import CacheManager
+from tom_shared.cache.cache import CacheManager
 
 __all__ = ["CacheManager"]

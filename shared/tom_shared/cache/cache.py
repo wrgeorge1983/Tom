@@ -5,8 +5,8 @@ from typing import Any, Optional, TypedDict, Literal
 
 import redis.asyncio as aioredis
 
-from tom_controller.config import Settings
-from tom_controller.exceptions import TomCacheSerializationError
+from tom_shared.config import SharedSettings
+from tom_shared.exceptions import TomCacheSerializationError
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def bad_cache_result(status: CacheStatus) -> CacheResult:
 
 class CacheManager:
     """Manages Redis-backed caching for device command results."""
-    def __init__(self, redis_client: aioredis.Redis, settings: Settings):
+    def __init__(self, redis_client: aioredis.Redis, settings: SharedSettings):
         self.redis_client = redis_client
         self.settings = settings
 

@@ -6,7 +6,7 @@ import sys
 import redis.asyncio as redis
 import saq, saq.types
 
-from shared.tom_shared.cache import CacheManager
+from tom_shared.cache import CacheManager
 
 from tom_worker.credentials.credentials import YamlCredentialStore
 from tom_worker.exceptions import GatingException, TransientException

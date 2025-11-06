@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from shared.tom_shared.config import SharedSettings
+from tom_shared.config import SharedSettings
 
 
 class Settings(SharedSettings):
