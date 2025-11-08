@@ -45,7 +45,7 @@ async def main():
             logger.info("Using Vault credential store")
             from tom_worker.credentials.vault import VaultCredentialStore, VaultClient
 
-            vault_client = VaultClient.from_settings(settings)
+            vault_client = await VaultClient.from_settings(settings)
             await vault_client.validate_access()
             credential_store = VaultCredentialStore(vault_client)
 

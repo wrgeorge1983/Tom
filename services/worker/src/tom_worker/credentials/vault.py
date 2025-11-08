@@ -18,6 +18,25 @@ class VaultClient:
         self.addr = vault_addr.rstrip("/")
         self.token = token
         self.headers = {"X-Vault-Token": token}
+    
+    async def authenticate_with_approle(self, role_id: str, secret_id: str) -> str:
+        """Authenticate using AppRole and return a token."""
+        url = f"{self.addr}/v1/auth/approle/login"
+        payload = {
+            "role_id": role_id,
+            "secret_id": secret_id
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return data["auth"]["client_token"]
+        except httpx.HTTPStatusError as e:
+            raise TomAuthException(f"AppRole authentication failed: {e}") from e
+        except (KeyError, JSONDecodeError) as e:
+            raise TomAuthException(f"Invalid AppRole response from Vault: {e}") from e
 
     async def health_check(self) -> bool:
         """Validate Vault connectivity and authentication."""
@@ -66,8 +85,28 @@ class VaultClient:
             raise TomAuthException(f"Invalid data from Vault: {response}")
 
     @classmethod
-    def from_settings(cls, settings: Settings):
-        return cls(settings.vault_url, settings.vault_token)
+    async def from_settings(cls, settings: Settings):
+        """Create VaultClient from settings, auto-detecting authentication mode.
+        
+        If vault_role_id and vault_secret_id are provided, uses AppRole authentication.
+        Otherwise, falls back to direct token authentication (dev mode).
+        """
+        vault_addr = settings.vault_url
+        
+        if settings.vault_role_id and settings.vault_secret_id:
+            temp_client = cls(vault_addr, "")
+            token = await temp_client.authenticate_with_approle(
+                settings.vault_role_id, 
+                settings.vault_secret_id
+            )
+            return cls(vault_addr, token)
+        elif settings.vault_token:
+            return cls(vault_addr, settings.vault_token)
+        else:
+            raise TomAuthException(
+                "Vault authentication requires either (vault_token) for dev mode "
+                "or (vault_role_id + vault_secret_id) for AppRole authentication"
+            )
 
 
 class VaultCredentialStore(CredentialStore):
