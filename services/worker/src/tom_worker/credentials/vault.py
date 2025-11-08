@@ -14,10 +14,11 @@ class VaultCreds(TypedDict):
 
 
 class VaultClient:
-    def __init__(self, vault_addr: str, token: str):
+    def __init__(self, vault_addr: str, token: str, verify_ssl: bool = True):
         self.addr = vault_addr.rstrip("/")
         self.token = token
         self.headers = {"X-Vault-Token": token}
+        self.verify_ssl = verify_ssl
     
     async def authenticate_with_approle(self, role_id: str, secret_id: str) -> str:
         """Authenticate using AppRole and return a token."""
@@ -28,7 +29,7 @@ class VaultClient:
         }
         
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(verify=self.verify_ssl) as client:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
                 data = response.json()
@@ -43,7 +44,7 @@ class VaultClient:
         url = f"{self.addr}/v1/sys/health"
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(verify=self.verify_ssl) as client:
                 response = await client.get(url)
                 response.raise_for_status()
                 return True
@@ -56,7 +57,7 @@ class VaultClient:
         url = f"{self.addr}/v1/auth/token/lookup-self"
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(verify=self.verify_ssl) as client:
                 response = await client.get(url, headers=self.headers)
                 response.raise_for_status()
                 return True
@@ -68,7 +69,7 @@ class VaultClient:
     async def read_secret(self, path: str) -> VaultCreds:
         url = f"{self.addr}/v1/secret/data/{path}"
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=self.verify_ssl) as client:
             response = await client.get(url, headers=self.headers)
 
         try:
@@ -92,16 +93,17 @@ class VaultClient:
         Otherwise, falls back to direct token authentication (dev mode).
         """
         vault_addr = settings.vault_url
+        verify_ssl = settings.vault_verify_ssl
         
         if settings.vault_role_id and settings.vault_secret_id:
-            temp_client = cls(vault_addr, "")
+            temp_client = cls(vault_addr, "", verify_ssl)
             token = await temp_client.authenticate_with_approle(
                 settings.vault_role_id, 
                 settings.vault_secret_id
             )
-            return cls(vault_addr, token)
+            return cls(vault_addr, token, verify_ssl)
         elif settings.vault_token:
-            return cls(vault_addr, settings.vault_token)
+            return cls(vault_addr, settings.vault_token, verify_ssl)
         else:
             raise TomAuthException(
                 "Vault authentication requires either (vault_token) for dev mode "

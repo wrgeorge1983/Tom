@@ -37,6 +37,7 @@ class Settings(SharedSettings):
     )
     vault_role_id: str = ""  # AppRole role_id for production deployments
     vault_secret_id: str = ""  # AppRole secret_id for production deployments
+    vault_verify_ssl: bool = False  # Set to True to enable SSL verification
 
     credential_store: Literal["yaml", "vault"] = "yaml"
 
