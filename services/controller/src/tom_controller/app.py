@@ -201,6 +201,11 @@ def create_app():
         api.oauth_router, prefix="/api"
     )  # OAuth endpoints don't require auth
 
+    @app.get("/health")
+    async def health():
+        """Health check endpoint for load balancers and monitoring."""
+        return {"status": "ok"}
+
     # Exception handlers
     @app.exception_handler(TomAuthException)
     async def auth_exception_handler(request: Request, exc: TomAuthException):
