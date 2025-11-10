@@ -69,6 +69,14 @@ class SolarWindsFilter:
         return cls(vendor_pattern=r"(cisco|juniper)", description_pattern=r"(asr|mx)")
 
     @classmethod
+    def ospf_crawler_filter(cls) -> "SolarWindsFilter":
+        """Filter for devices used by ospf_crawler: Cisco ASR, Cisco 29xx, Juniper MX104."""
+        return cls(
+            vendor_pattern=r"(?i)(cisco|juniper)",
+            description_pattern=r"(?i)(asr|29\d{2}|mx104)",
+        )
+
+    @classmethod
     def arista_exclusion_filter(cls) -> "SolarWindsFilter":
         """Filter to exclude specific Arista models."""
         return cls(

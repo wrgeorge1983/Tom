@@ -60,6 +60,8 @@
 - Expose Controller and Worker metrics (for e.g. Prometheus)
 
 ### Inventory
+- Inventory filtering improvements: support inline, per-request filters (regex for `Caption`, `Vendor`, `Description`) and/or accept filter definitions via query/body to avoid embedding filters in code.
+- Add CRUD-managed filter library (API + persistence) so operators can create, list, update, and delete named filters without code changes.
 - Additional inventory source adapters (NetBox, Nautobot, etc.)
 - Configuration-driven field mapping for custom schemas
 
