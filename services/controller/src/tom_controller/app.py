@@ -6,17 +6,21 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from redis import asyncio as aioredis
 import saq
 from saq.web.starlette import saq_web
 
 from tom_controller import __version__
 from tom_controller import api
+from tom_controller.api import cache_api  # Import cache API endpoints
+from tom_shared.cache import CacheManager
 from tom_controller.config import Settings, settings
 from tom_controller.inventory.inventory import YamlInventoryStore
 from tom_controller.inventory.solarwinds import ModifiedSwisClient, SwisInventoryStore
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
+    TomAuthorizationException,
     TomNotFoundException,
     TomValidationException,
 )
@@ -42,8 +46,57 @@ def create_app():
 
         print(f"DEBUG: Log level set to: {logging.getLevelName(settings.log_level)}")
 
+        # Initialize redis cache
+        cm_redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)  # needs decode_responses=True
+        cache_manager = CacheManager(cm_redis_client, settings)
+        this_app.state.cache_manager = cache_manager
+
+
         # Initialize inventory store on startup
         this_app.state.settings = settings
+
+        # Validate auth configuration
+        logger.info(f"Auth mode: {settings.auth_mode}")
+        logger.info(f"API keys configured: {len(settings.api_keys)}")
+        logger.info(f"JWT providers configured: {len(settings.jwt_providers)}")
+        
+        if settings.auth_mode == "api_key":
+            if not settings.api_keys:
+                logger.error("="*80)
+                logger.error("⚠️  SECURITY WARNING: auth_mode='api_key' but no api_keys configured!")
+                logger.error("    The API is effectively unprotected.")
+                logger.error("    Set auth_mode='none' to acknowledge, or configure api_keys.")
+                logger.error("="*80)
+                raise ValueError("auth_mode='api_key' requires api_keys to be configured")
+        
+        elif settings.auth_mode == "jwt":
+            enabled_providers = [p for p in settings.jwt_providers if p.enabled]
+            if not enabled_providers:
+                logger.error("="*80)
+                logger.error("⚠️  SECURITY WARNING: auth_mode='jwt' but no enabled JWT providers configured!")
+                logger.error("    The API is effectively unprotected.")
+                logger.error("    Set auth_mode='none' to acknowledge, or configure jwt_providers.")
+                logger.error("="*80)
+                raise ValueError("auth_mode='jwt' requires at least one enabled JWT provider")
+        
+        elif settings.auth_mode == "hybrid":
+            has_api_keys = bool(settings.api_keys)
+            enabled_providers = [p for p in settings.jwt_providers if p.enabled]
+            has_jwt = bool(enabled_providers)
+            
+            if not has_api_keys and not has_jwt:
+                logger.error("="*80)
+                logger.error("⚠️  SECURITY WARNING: auth_mode='hybrid' but neither api_keys nor JWT providers configured!")
+                logger.error("    The API is effectively unprotected.")
+                logger.error("    Set auth_mode='none' to acknowledge, or configure api_keys and/or jwt_providers.")
+                logger.error("="*80)
+                raise ValueError("auth_mode='hybrid' requires api_keys and/or JWT providers to be configured")
+        
+        elif settings.auth_mode == "none":
+            logger.warning("="*80)
+            logger.warning("⚠️  SECURITY NOTICE: auth_mode='none' - API has NO authentication")
+            logger.warning("    All endpoints are publicly accessible.")
+            logger.warning("="*80)
 
         logger.info(
             f"Initializing inventory store with type: {settings.inventory_type}"
@@ -69,19 +122,14 @@ def create_app():
             for provider_config in settings.jwt_providers:
                 if not provider_config.enabled:
                     continue
-                    
+                
+                validator = None
                 try:
                     logger.info(f"Initializing JWT provider: {provider_config.name}")
                     config_dict = provider_config.model_dump()
                     validator = get_jwt_validator(config_dict)
-                except Exception as e:
-                    logger.error(f"Failed to initialize {provider_config.name}: {e}")
-                try:
+                    
                     await validator._ensure_discovery()
-                    # Trigger discovery if configured
-                    # if provider_config.discovery_url or not provider_config.issuer:
-                    #     await validator._ensure_discovery()
-                    #     logger.info(f"  Issuer: {validator.issuer}")
 
                     if not validator.issuer:
                         raise TomException(f"Issuer not configured for provider {provider_config.name}")
@@ -89,16 +137,15 @@ def create_app():
                     if not validator.jwks_uri:
                         raise TomException(f"JWKS URI not configured for provider {provider_config.name}")
 
-                    # Pre-fetch JWKS to warm cache
                     await validator.fetch_jwks()
                     logger.info(f"  JWKS cached from: {validator.jwks_uri}")
 
                     this_app.state.jwt_providers.append(validator)
                 except Exception as e:
                     logger.warning(f"Failed to initialize {provider_config.name}: {e}")
-
                 finally:
-                    await validator.close()
+                    if validator:
+                        await validator.close()
 
         # Print OAuth test endpoint URL if enabled
         if settings.oauth_test_enabled:
@@ -154,12 +201,24 @@ def create_app():
         api.oauth_router, prefix="/api"
     )  # OAuth endpoints don't require auth
 
+    @app.get("/health")
+    async def health():
+        """Health check endpoint for load balancers and monitoring."""
+        return {"status": "ok"}
+
     # Exception handlers
     @app.exception_handler(TomAuthException)
     async def auth_exception_handler(request: Request, exc: TomAuthException):
         logging.warning(f"Authentication failed: {exc}")
         return JSONResponse(
             status_code=401, content={"error": "Unauthorized", "detail": str(exc)}
+        )
+
+    @app.exception_handler(TomAuthorizationException)
+    async def authz_exception_handler(request: Request, exc: TomAuthorizationException):
+        logging.warning(f"Authorization denied: {exc}")
+        return JSONResponse(
+            status_code=403, content={"error": "Forbidden", "detail": str(exc)}
         )
 
     @app.exception_handler(TomNotFoundException)

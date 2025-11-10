@@ -11,11 +11,18 @@ project_root: "../../../.."
 redis_host: "localhost"  # would be 'redis' when running in docker compose
 redis_port: 6379
 
+# Cache Configuration
+cache_enabled: true
+cache_default_ttl: 300  # 5 minutes
+cache_max_ttl: 3600  # 1 hour
+cache_key_prefix: "tom_cache"
+
 # Authentication
 allow_inline_credentials: true  # good to keep this False when there are better options
 auth_mode: "api_key"
 api_key_headers: ["X-API-Key", "api-key"]
 api_keys: ["abc123:admin", "asldfjaldkf:admin"]
+oauth_test_enabled: false  # Enable OAuth test endpoints (should be false in production)
 
 # Inventory Configuration
 inventory_type: "yaml"  # or "swis"

@@ -1,0 +1,3 @@
+<group name="interfaces">
+{{ interface | re(".+") }} {{ ip_address | re(".+") }} YES {{ method | re(".+") }} {{ status | re(".+") }} {{ protocol | re(".+") }}
+</group>

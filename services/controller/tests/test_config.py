@@ -16,9 +16,9 @@ pytestDefaultValues = {
 }
 
 pytestEnvValues = {
-    "TOM_CORE_TEST_VAR_STR": "pytestEnvVarHost",
-    "TOM_CORE_TEST_VAR_INT": "138",
-    "TOM_CORE_TEST_VAR_LIST_STR": json.dumps(["a", "b", "c"]),
+    "TOM_TEST_VAR_STR": "pytestEnvVarHost",
+    "TOM_TEST_VAR_INT": "138",
+    "TOM_TEST_VAR_LIST_STR": json.dumps(["a", "b", "c"]),
 }
 
 pytestYamlDefaultValues = {
@@ -86,10 +86,10 @@ def test_default_settings(test_settings_class):
 def test_env_var_settings(test_settings_class):
     with mock.patch.dict(os.environ, pytestEnvValues):
         settings = test_settings_class()
-        assert settings.test_var_str == pytestEnvValues["TOM_CORE_TEST_VAR_STR"]
-        assert settings.test_var_int == int(pytestEnvValues["TOM_CORE_TEST_VAR_INT"])
+        assert settings.test_var_str == pytestEnvValues["TOM_TEST_VAR_STR"]
+        assert settings.test_var_int == int(pytestEnvValues["TOM_TEST_VAR_INT"])
         assert settings.test_var_list_str == json.loads(
-            pytestEnvValues["TOM_CORE_TEST_VAR_LIST_STR"]
+            pytestEnvValues["TOM_TEST_VAR_LIST_STR"]
         )
 
 
@@ -104,14 +104,14 @@ def test_settings_with_env_and_yaml_file(test_settings_file_with_env_vars):
     with mock.patch.dict(os.environ, pytestEnvValues):
         settings = test_settings_file_with_env_vars()
         assert settings.test_var_int == int(
-            pytestEnvValues["TOM_CORE_TEST_VAR_INT"]
+            pytestEnvValues["TOM_TEST_VAR_INT"]
         )  # ENV
         assert settings.test_var_list_str == json.loads(
-            pytestEnvValues["TOM_CORE_TEST_VAR_LIST_STR"]
+            pytestEnvValues["TOM_TEST_VAR_LIST_STR"]
         )  # ENV
         assert (
             settings.test_var_str2 == pytestYamlDefaultValues["test_var_str2"]
         )  # YAML
         assert (
-            settings.test_var_str == pytestEnvValues["TOM_CORE_TEST_VAR_STR"]
+            settings.test_var_str == pytestEnvValues["TOM_TEST_VAR_STR"]
         )  # YAML overridden by env

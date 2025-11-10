@@ -12,7 +12,9 @@ COPY shared/ /app/shared/
 
 COPY services/worker/uv.lock .
 COPY services/worker/pyproject.toml .
-RUN    uv sync --locked --no-install-project --no-editable --no-dev
+
+RUN uv sync --locked --no-install-project --no-editable --no-dev && \
+    find .venv -type d -name "ntc_templates" -exec sh -c 'cd {} && rm -rf templates && mkdir templates && touch templates/__init__.py' \; 2>/dev/null || true
 
 # Copy the rest of the project
 COPY --chown=app:app services/worker/ /app/services/worker

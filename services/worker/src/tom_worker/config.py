@@ -35,6 +35,9 @@ class Settings(SharedSettings):
     vault_token: str = (
         ""  # e.g. s.csdfssdfs3823j   (or 'myroot' if you are IN DEV ONLY)
     )
+    vault_role_id: str = ""  # AppRole role_id for production deployments
+    vault_secret_id: str = ""  # AppRole secret_id for production deployments
+    vault_verify_ssl: bool = False  # Set to True to enable SSL verification
 
     credential_store: Literal["yaml", "vault"] = "yaml"
 

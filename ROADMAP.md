@@ -24,10 +24,10 @@
 
 ### v0.6.0
 - JWT authentication support
-  - Base JWT validator with JWKS support
-  - Duo Security validator (✅ tested and working)
-  - Google OAuth validator (✅ tested and working)
-  - Microsoft Entra ID validator (✅ fully supported)
+  - Base JWT validator with JWKS and OIDC discovery
+  - Duo Security validator (tested and working)
+  - Google OAuth validator (tested and working)
+  - Microsoft Entra ID validator (fully supported)
   - Hybrid authentication mode (JWT + API keys)
   - YAML-based provider configuration
   - Bearer token validation in API
@@ -36,39 +36,54 @@
   - Exact user allowlist (allowed_users)
   - Domain allowlist (allowed_domains)
   - Regex pattern matching (allowed_user_regex)
+  - Proper 403 vs 401 error codes
+- Output parsing integration
+  - TextFSM parser with 929 built-in ntc-templates
+  - TTP parser with inline template support
+  - Custom template indexes for auto-discovery
+  - Template selection metadata in responses
+  - Parsing API endpoints
+
+### v0.7.0
+- Redis-backed caching
+  - Cache device command outputs at worker level
+  - Partial cache support (mix of cached/fresh data)
+  - Cache management API endpoints
+  - Cache metadata in responses (age, status)
+  - Per-request cache control parameters
+  - CommandExecutionResult model for structured responses
 
 ## Future Work
 
 ### Reliability
-- Circuit breakers for unhealthy devices
-- Enhanced retry policies
-- Configurable caching by device and command
 - Worker health monitoring
 - Expose Controller and Worker metrics (for e.g. Prometheus)
 
 ### Inventory
+- Inventory filtering improvements: support inline, per-request filters (regex for `Caption`, `Vendor`, `Description`) and/or accept filter definitions via query/body to avoid embedding filters in code.
+- Add CRUD-managed filter library (API + persistence) so operators can create, list, update, and delete named filters without code changes.
 - Additional inventory source adapters (NetBox, Nautobot, etc.)
 - Configuration-driven field mapping for custom schemas
 
 ### Parsing & Templating
-- TextFSM, TTP, maybe genie integration for output parsing
 - Jinja2 templating for command generation
-
-### Security
-- ~~JWT/OAuth2 authentication support~~ ✅ v0.6.0
-- ~~Email-based authorization~~ ✅ v0.6.0
-- Enhanced RBAC from JWT claims (arbitrary claim matching)
-- OAuth2 scope-based permissions
-- Token refresh flow
-- Frontend OAuth flow handler (for testing/demo)
-- Per-provider authorization overrides
+- Genie parser integration (maybe)
 
 ### Plugin model
 - Plugin API
 - Migrate inventory and credential stores to plugins
 
 ### UI
-- Web UI
-- CLI
 - python client library
 - golang client library
+
+
+## Low Priority
+### Reliability
+- Circuit breakers for unhealthy devices
+- Enhanced retry policies
+
+### Security
+- Enhanced RBAC from JWT claims (arbitrary claim matching)
+- OAuth2 scope-based permissions
+- Token refresh flow

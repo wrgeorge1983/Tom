@@ -62,6 +62,12 @@ class SharedSettings(BaseSettings):
     redis_tls_certfile: Optional[str] = None
     redis_tls_keyfile: Optional[str] = None
 
+    # cache
+    cache_enabled: bool = True
+    cache_default_ttl: int = 300
+    cache_max_ttl: int = 3600
+    cache_key_prefix: str = "tom_cache"
+
     @computed_field
     @property
     def redis_url(self) -> str:

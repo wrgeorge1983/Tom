@@ -1,16 +1,17 @@
 import asyncio
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 
 from netmiko import ConnectHandler
+from netmiko.exceptions import NetmikoAuthenticationException
 
 from tom_shared.models import NetmikoSendCommandModel
 from tom_worker.credentials.credentials import (
     SSHCredentials,
     CredentialStore,
 )
-from tom_worker.exceptions import TomException
+from tom_worker.exceptions import TomException, AuthenticationException
 
 
 class NetmikoAdapter:
@@ -21,19 +22,25 @@ class NetmikoAdapter:
         self.port = port
         self.device_type = device_type
         self.credential = credential
-        self.connection: Optional[ConnectHandler] = None
+        self.connection: Optional[Any] = None
 
     def _connect(self):
         if self.credential is None:
             raise TomException("SSH Credentials missing!")
 
-        self.connection = ConnectHandler(
-            host=self.host,
-            username=self.credential.username,
-            password=self.credential.password,
-            device_type=self.device_type,
-            port=self.port,
-        )
+        try:
+            self.connection = ConnectHandler(
+                host=self.host,
+                username=self.credential.username,
+                password=self.credential.password,
+                device_type=self.device_type,
+                port=self.port,
+            )
+        except NetmikoAuthenticationException as e:
+            # Wrap authentication exceptions so they won't be retried
+            raise AuthenticationException(
+                f"Authentication failed for {self.host}:{self.port} - {str(e)}"
+            ) from e
 
     async def connect(self):
         return await asyncio.to_thread(self._connect)

@@ -14,7 +14,7 @@ Authentication modes (configure via `tom_config.yaml` or env):
 - `jwt`: Bearer JWT via OAuth/OIDC providers
 - `hybrid`: Accept either API key or JWT
 
-When using `jwt`/`hybrid`, simple allow policy applies (if configured): precedence `allowed_users` → `allowed_domains` → `allowed_user_regex`; any match grants access. See docs/oauth-implementation.md.
+When using `jwt`/`hybrid`, authorization policy applies (if configured): precedence `allowed_users` → `allowed_domains` → `allowed_user_regex`. Any match grants access. See [OAuth Implementation](oauth-implementation.md) for details.
 
 ## Endpoints
 
@@ -57,10 +57,36 @@ GET /api/device/{device_name}/send_command
 - `wait` (bool, optional): Wait for job completion (default: false)
 - `rawOutput` (bool, optional): Return raw output (requires wait=true)
 - `timeout` (int, optional): Timeout in seconds (default: 10)
+- `cache` (bool, optional): Enable caching for this request (default: true)
+- `cache_ttl` (int, optional): Override default TTL in seconds (capped at max_ttl)
+- `cache_refresh` (bool, optional): Force refresh, bypassing cache (default: false)
 - Optional credential override:
   - `username` + `password` (string): Override inventory credentials
 
 **Returns:** `JobResponse` or raw string (if rawOutput=true)
+
+**Response with Cache Metadata (when cache enabled):**
+```json
+{
+  "job_id": "...",
+  "status": "COMPLETE",
+  "result": {
+    "data": {"show version": "..."},
+    "meta": {
+      "cache": {
+        "cache_status": "hit",
+        "commands": {
+          "show version": {
+            "cache_status": "hit",
+            "cached_at": "2024-01-01T10:00:00Z",
+            "age_seconds": 120.5
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 ### Job Management
 
@@ -150,6 +176,81 @@ GET /api/inventory/filters
 }
 ```
 
+### Cache Management
+
+#### Invalidate Device Cache
+```
+DELETE /api/cache/{device_name}
+```
+
+**Parameters:**
+- `device_name` (string): Device name to invalidate cache for
+
+**Returns:**
+```json
+{
+  "device": "router1",
+  "deleted_count": 15,
+  "message": "Invalidated 15 cache entries for router1"
+}
+```
+
+#### Clear All Cache
+```
+DELETE /api/cache
+```
+
+**Returns:**
+```json
+{
+  "deleted_count": 127,
+  "message": "Cleared 127 cache entries"
+}
+```
+
+#### List Cache Keys
+```
+GET /api/cache
+```
+
+**Parameters:**
+- `device_name` (string, optional): Filter keys by device name
+
+**Returns:**
+```json
+{
+  "device_filter": "router1",
+  "count": 3,
+  "keys": [
+    "router1:show version",
+    "router1:show ip int brief",
+    "router1:show interfaces"
+  ]
+}
+```
+
+#### Get Cache Statistics
+```
+GET /api/cache/stats
+```
+
+**Returns:**
+```json
+{
+  "enabled": true,
+  "total_entries": 127,
+  "devices_cached": 15,
+  "entries_per_device": {
+    "router1": 25,
+    "router2": 18,
+    "switch1": 42
+  },
+  "default_ttl": 300,
+  "max_ttl": 3600,
+  "key_prefix": "tom_cache"
+}
+```
+
 ## Data Types
 
 ### JobResponse
@@ -179,11 +280,18 @@ GET /api/inventory/filters
 
 ## Configuration
 
-Key environment variables:
-- `TOM_CORE_INVENTORY_TYPE`: "yaml" or "swis" (default: "yaml")
-- `TOM_CORE_SWAPI_HOST`: SolarWinds hostname (for swis inventory)
-- `TOM_CORE_SWAPI_USERNAME`: SolarWinds username
-- `TOM_CORE_SWAPI_PASSWORD`: SolarWinds password
-- `TOM_CORE_SWAPI_DEFAULT_CRED_NAME`: Default credential name (default: "default")
-- `TOM_CORE_AUTH_MODE`: "none" or "api_key" (default: "none")
-- `TOM_CORE_API_KEYS`: List of valid API keys (when using api_key auth)
+Configuration is managed via `tom_config.yaml` or environment variables with `TOM_` prefix.
+
+Key settings:
+- `inventory_type`: "yaml" or "swis" (default: "yaml")
+- `swapi_host`, `swapi_username`, `swapi_password`: SolarWinds connection (for swis inventory)
+- `auth_mode`: "none", "api_key", "jwt", or "hybrid" (default: "none")
+- `api_keys`: List of "key:user" pairs (when using api_key auth)
+- `jwt_providers`: List of OAuth/OIDC provider configurations (when using jwt auth)
+- `allowed_users`, `allowed_domains`, `allowed_user_regex`: Authorization settings (when using jwt auth)
+- `cache_enabled`: Enable/disable caching (default: true)
+- `cache_default_ttl`: Default cache TTL in seconds (default: 300)
+- `cache_max_ttl`: Maximum allowed TTL in seconds (default: 3600)
+- `cache_key_prefix`: Redis key prefix for cache entries (default: "tom_cache")
+
+See `tom_config.jwt.example.yaml` for complete configuration examples.

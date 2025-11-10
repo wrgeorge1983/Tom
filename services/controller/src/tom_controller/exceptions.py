@@ -8,7 +8,13 @@ class TomException(Exception):
 
 
 class TomAuthException(TomException):
-    """Authentication/authorization errors."""
+    """Authentication errors (401)."""
+
+    pass
+
+
+class TomAuthorizationException(TomException):
+    """Authorization errors (403) - authenticated but not permitted."""
 
     pass
 
@@ -52,4 +58,29 @@ class JWTInvalidClaimsError(JWTValidationError):
 class JWKSFetchError(TomAuthException):
     """Raised when fetching JWKS fails."""
 
+    pass
+
+
+class TomCacheException(TomException):
+    """Cache errors."""
+    pass
+
+
+class TomCacheSerializationError(TomCacheException):
+    """Raised when serializing data to cache fails."""
+    pass
+
+
+class TomCacheBackendError(TomCacheException):
+    """Raised when cache backend fails."""
+    pass
+
+
+class TomCacheInvalidKeyError(TomCacheException):
+    """Raised when cache key is invalid."""
+    pass
+
+
+class TomCacheDecodingError(TomCacheException):
+    """Raised when decoding data from cache fails."""
     pass

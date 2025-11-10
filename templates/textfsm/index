@@ -1,0 +1,21 @@
+# Custom TextFSM Template Index
+#
+# This file registers custom templates for auto-discovery.
+# Format: Template, Hostname, Platform, Command
+#
+# - Template: Filename of template (in this directory)
+# - Hostname: Regex to match device hostname (use .* for all)
+# - Platform: Device platform (e.g., cisco_ios, arista_eos)
+# - Command: Regex to match command
+#
+# Templates in this index are checked BEFORE ntc-templates (929 built-in templates).
+# If no match is found here, ntc-templates will be used automatically.
+#
+# Example entries (uncomment to use):
+# custom_show_version.textfsm, .*, cisco_ios, show version
+# datacenter_bgp.textfsm, dc-.*, cisco_ios, show ip bgp.*
+# special_interfaces.textfsm, router-[0-9]+, cisco_ios, show ip int.*
+
+Template, Hostname, Platform, Command
+custom_show_version.textfsm, .*, cisco_ios, show version
+my_parser.textfsm, .*, cisco_ios, show ip int brief

@@ -51,9 +51,10 @@ system details (looking at you, Templating Libraries!)
 ### Authentication & Security
 - **API Key Authentication** - Simple key-based auth for service accounts
 - **JWT/OAuth2 Support** (v0.6.0) - Validate JWTs from OAuth providers:
-  - **Duo Security** ✅ (tested - ID tokens and access tokens work)
-  - **Google OAuth** ✅ (tested - ID tokens work, access tokens are opaque)
-  - **Microsoft Entra ID** ✅ (fully supported)
+  - **Duo Security** - Tested with ID tokens and access tokens
+  - **Google OAuth** - Tested with ID tokens (access tokens are opaque)
+  - **Microsoft Entra ID** - Fully supported
+- **Email-Based Authorization** - Control access by user, domain, or regex pattern
 - **Hybrid Auth Mode** - Use both API keys and JWTs simultaneously
 - **HashiCorp Vault Integration** - Secure credential storage
 
@@ -62,6 +63,19 @@ system details (looking at you, Templating Libraries!)
 - **Queue-Based Processing** - Async job execution with Redis/SAQ
 - **Per-Device Concurrency Control** - Prevent overwhelming devices
 - **Multi-Transport Support** - Netmiko and Scrapli adapters
+
+### Parsing & Templating
+- **TextFSM Parsing** - 929+ built-in templates via ntc-templates
+- **TTP Parsing** - Flexible template-based parsing
+- **Custom Template Index** - Register custom templates for auto-discovery
+- **Auto-Discovery** - Automatic template selection based on platform and command
+
+### Caching
+- **Redis-Backed Cache** - Reduce load on device management planes
+- **Worker-Level Caching** - Cache checks before device execution
+- **Partial Cache Support** - Mix of cached and fresh data in single request
+- **Cache Management API** - Invalidate, clear, and monitor cache
+- **Per-Request Control** - Override cache behavior per API call
 
 ## Architecture
 ### Simplified 
@@ -91,6 +105,10 @@ sequenceDiagram
 ### API & Architecture
 - [API Endpoints](./docs/api-endpoints.md) - Complete API reference
 - [Roadmap](./ROADMAP.md) - Development roadmap and completed features
+
+### Output Parsing
+- [Parsing Guide](./docs/parsing.md) - Complete guide to TextFSM and TTP parsing
+- [Template README](./templates/README.md) - Quick reference for custom templates
 
 ### OAuth/JWT Authentication
 - [OAuth Implementation](./docs/oauth-implementation.md) - Complete JWT authentication documentation

@@ -11,23 +11,26 @@ from jose import jwt as jose_jwt
 from jose.exceptions import JWTError
 from pydantic import BaseModel
 import saq
+from saq import Status
 
 from tom_controller.api.models import JobResponse
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 
-from tom_controller.config import JWTProviderConfig
 from tom_controller.config import settings as app_settings
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
-    TomNotFoundException,
+    TomAuthorizationException,
+    TomValidationException,
 )
 from tom_controller.inventory.inventory import (
     InventoryStore,
     DeviceConfig,
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
-from tom_controller.auth import get_jwt_validator, JWTValidationError, JWTValidator
+from tom_controller.auth import JWTValidationError, JWTValidator
+from tom_controller.parsing import parse_output
+from tom_controller.parsing.textfsm_parser import TextFSMParser
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +132,7 @@ async def _jwt_auth(token: str, providers: list[JWTValidator]) -> AuthResponse:
                     )
 
                 if not regex_ok:
-                    raise TomAuthException(f"Access denied: {canonical_user=} not permitted by policy")
+                    raise TomAuthorizationException(f"Access denied: {canonical_user=} not permitted by policy")
 
     if app_settings.permit_logging_user_details:
         logging.info(f"JWT successfully validated by {oauth_provider.name} for user {user}")
@@ -219,6 +222,7 @@ async def enqueue_job(
     wait: bool = False,
     timeout: int = 10,
 ) -> JobResponse:
+    logger.info(f"Enqueuing job: {function_name}")
     job = await queue.enqueue(
         function_name,
         timeout=timeout,
@@ -227,8 +231,33 @@ async def enqueue_job(
         retry_delay=1.0,
         retry_backoff=True,
     )
+    logger.info(f"Enqueued job {job.id} with retries={job.retries}")
+    
     if wait:
         await job.refresh(until_complete=float(timeout))
+        # Log job completion status
+        if job.status == Status.COMPLETE:
+            logger.info(f"Job {job.id} completed successfully after {job.attempts} attempt(s)")
+        elif job.status == Status.FAILED:
+            # Extract useful error info
+            error_summary = None
+            if job.error:
+                # Look for our custom exception types in the error
+                if "AuthenticationException" in job.error:
+                    error_summary = "Authentication failed"
+                elif "GatingException" in job.error:
+                    error_summary = "Device busy"
+                else:
+                    # Get the last line of the traceback which usually has the actual error
+                    error_lines = job.error.strip().split('\n')
+                    if error_lines:
+                        error_summary = error_lines[-1][:200]  # Limit length
+            
+            logger.error(f"Job {job.id} FAILED after {job.attempts} attempt(s) - {error_summary or 'Unknown error'}")
+        elif job.status == Status.ABORTED:
+            logger.warning(f"Job {job.id} was aborted after {job.attempts} attempt(s)")
+        else:
+            logger.info(f"Job {job.id} status: {job.status} after {job.attempts} attempt(s)")
 
     job_response = JobResponse.from_job(job)
     return job_response
@@ -243,12 +272,83 @@ async def root():
 
 
 @router.get("/job/{job_id}")
-async def job(request: Request, job_id: str) -> Optional[JobResponse]:
+async def job(
+    request: Request, 
+    job_id: str,
+    parse: bool = Query(False, description="Parse output using TextFSM"),
+    parser: str = Query("textfsm", description="Parser to use"),
+    template: Optional[str] = Query(None, description="Template name for parsing"),
+    include_raw: bool = Query(False, description="Include raw output with parsed"),
+) -> Optional[JobResponse | dict]:
     queue: saq.Queue = request.app.state.queue
-    job = await JobResponse.from_job_id(job_id, queue)
-    if job.status == "NEW":
+    job_response = await JobResponse.from_job_id(job_id, queue)
+    
+    # Log job status check
+    if job_response.status == "NEW":
+        logger.debug(f"Job {job_id} not found or NEW")
         return None
-    return job
+    elif job_response.status == "COMPLETE":
+        logger.info(f"Job {job_id} status check: COMPLETE after {job_response.attempts} attempt(s)")
+    elif job_response.status == "FAILED":
+        # Extract error summary
+        error_summary = None
+        if job_response.error:
+            if "AuthenticationException" in job_response.error:
+                error_summary = "Authentication failed"
+            elif "GatingException" in job_response.error:
+                error_summary = "Device busy"
+            else:
+                error_lines = job_response.error.strip().split('\n')
+                if error_lines:
+                    error_summary = error_lines[-1][:200]
+        logger.error(f"Job {job_id} status check: FAILED after {job_response.attempts} attempt(s) - {error_summary or 'Unknown error'}")
+    else:
+        logger.info(f"Job {job_id} status check: {job_response.status}")
+    
+    # If parsing requested and job is complete with results
+    if parse and job_response.status == "COMPLETE" and job_response.result:
+        
+        settings = request.app.state.settings
+        
+        # Extract device_type and commands from metadata
+        device_type = None
+        commands = None
+        if job_response.metadata:
+            device_type = job_response.metadata.get("device_type")
+            commands = job_response.metadata.get("commands", [])
+        
+        # Parse each command result
+        parsed_results = {}
+        command_data = job_response.command_data
+        if command_data:
+            for command, raw_output in command_data.items():
+                if isinstance(raw_output, str):
+                    parsed_results[command] = parse_output(
+                        raw_output=raw_output,
+                        settings=settings,
+                        device_type=device_type,
+                        command=command,
+                        template=template,
+                        include_raw=include_raw,
+                        parser_type=parser
+                    )
+                else:
+                    parsed_results[command] = raw_output
+        else:
+            # Single result, not a dict
+            parsed_results = parse_output(
+                raw_output=str(job_response.result),
+                settings=settings,
+                device_type=device_type,
+                command=commands[0] if commands else None,
+                template=template,
+                include_raw=include_raw,
+                parser_type=parser
+            )
+        
+        return parsed_results
+    
+    return job_response
 
 
 @router.get("/raw/send_netmiko_command")
@@ -265,9 +365,11 @@ async def send_netmiko_command(
     username: Optional[str] = None,
     password: Optional[str] = None,
 ) -> JobResponse:
-    assert (credential_id is not None) ^ (
-        username is not None and password is not None
-    ), "Must provide either credential_id or username and password, not both"
+    if credential_id is None:
+        if username is None and password is None:
+            raise TomAuthException(
+                "Must provide either credential_id or username and password"
+            )
 
     if credential_id:
         credential = StoredCredential(credential_id=credential_id)
@@ -456,6 +558,18 @@ async def send_inventory_command(
     rawOutput: bool = Query(
         False, description="Return raw output directly. Only works with wait=True"
     ),
+    parse: bool = Query(
+        False, description="Parse output using specified parser. Only works with wait=True"
+    ),
+    parser: str = Query(
+        "textfsm", description="Parser to use ('textfsm' or 'ttp')"
+    ),
+    template: Optional[str] = Query(
+        None, description="Template name (e.g., 'cisco_ios_show_ip_int_brief.textfsm')"
+    ),
+    include_raw: bool = Query(
+        False, description="Include raw output along with parsed (when parse=True)"
+    ),
     timeout: int = 10,
     # Optional Inline SSH Credentials
     username: Optional[str] = Query(
@@ -468,7 +582,17 @@ async def send_inventory_command(
         description="Override password (requires username). Uses inventory "
         "credential if not provided.",
     ),
-) -> JobResponse | str:
+    use_cache: bool = Query(
+        False, description="This job is eligible for caching. Only works with wait=True"
+    ),
+    cache_ttl: Optional[int] = Query(
+        None, description="Cache TTL in seconds. Only works with wait=True"
+    ),
+    cache_refresh: bool = Query(
+        False, description="Force refresh cached result. Only works with wait=True"
+    ),
+) -> JobResponse | str | dict:
+    logger.info(f"Device command request: {device_name} - {command[:50]}...")
     device_config = inventory_store.get_device_config(device_name)
 
     if username is not None and password is not None:
@@ -486,6 +610,9 @@ async def send_inventory_command(
             commands=commands,
             credential=credential,
             port=device_config.port,
+            use_cache=use_cache,
+            cache_refresh=cache_refresh,
+            cache_ttl=cache_ttl
         )
         try:
             response = await enqueue_job(
@@ -501,6 +628,9 @@ async def send_inventory_command(
             commands=commands,
             credential=credential,
             port=device_config.port,
+            use_cache=use_cache,
+            cache_refresh=cache_refresh,
+            cache_ttl=cache_ttl
         )
         try:
             response = await enqueue_job(
@@ -513,9 +643,46 @@ async def send_inventory_command(
         raise TomException(f"Unknown device type {type(device_config)}")
 
     if wait:
-        if rawOutput:
-            response = response.result.get(command)
-
+        # Log the result status
+        if response.status == "FAILED":
+            logger.error(f"Device command FAILED for {device_name}: {response.error[:200] if response.error else 'Unknown error'}")
+        elif response.status == "COMPLETE":
+            logger.info(f"Device command completed for {device_name} after {response.attempts} attempt(s)")
+        
+        # Handle parsing if requested
+        if parse and not rawOutput:
+            if parser not in ["textfsm", "ttp"]:
+                raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")
+            
+            raw_output = response.get_command_output(command) or ""
+            
+            # Parse the output using shared function
+            
+            parsed_result = parse_output(
+                raw_output=raw_output,
+                settings=request.app.state.settings,
+                device_type=device_config.adapter_driver,
+                command=command,
+                template=template,
+                include_raw=include_raw,
+                parser_type=parser
+            )
+            
+            return parsed_result
+        
+        elif rawOutput:
+            output = response.get_command_output(command)
+            if output is None:
+                return ""  # Return empty string instead of None
+            return output
+    
+    # If there's cache metadata and we're returning the full response, include it
+    if isinstance(response, JobResponse) and response.cache_metadata:
+        # Add cache metadata to the response for visibility
+        response_dict = response.model_dump()
+        response_dict["_cache"] = response.cache_metadata
+        return response_dict
+    
     return response
 
 
@@ -526,6 +693,18 @@ async def send_inventory_commands(
     commands: list[str],
     inventory_store: InventoryStore = Depends(get_inventory_store),
     wait: bool = False,
+    parse: bool = Query(
+        False, description="Parse output using specified parser. Has no effect when wait=false. For async jobs, use /api/job/{job_id}?parse=true"
+    ),
+    parser: str = Query(
+        "textfsm", description="Parser to use ('textfsm' or 'ttp')"
+    ),
+    template: Optional[str] = Query(
+        None, description="Template name for all commands (e.g., 'cisco_ios_show_ip_int_brief.textfsm')"
+    ),
+    include_raw: bool = Query(
+        False, description="Include raw output along with parsed (when parse=True)"
+    ),
     username: Optional[str] = Query(
         None,
         description="Override username (requires password). Uses inventory "
@@ -536,7 +715,7 @@ async def send_inventory_commands(
         description="Override password (requires username). Uses inventory "
         "credential if not provided.",
     ),
-) -> JobResponse:
+) -> JobResponse | dict:
     device_config = inventory_store.get_device_config(device_name)
     if username is not None and password is not None:
         credential = InlineSSHCredential(username=username, password=password)
@@ -573,6 +752,39 @@ async def send_inventory_commands(
     else:
         raise TomException(f"Unknown device type {type(device_config)}")
 
+    # Validate parsing requirements
+    if parse and not wait:
+        raise TomValidationException("Parsing requires wait=true. For async parsing, use GET /api/job/{job_id}?parse=true")
+    
+    # Warn if parse requested without wait
+    if parse and not wait:
+        import logging
+        logging.warning("parse=true has no effect when wait=false. For async parsing, use GET /api/job/{job_id}?parse=true")
+    
+    # Handle parsing if requested
+    if wait and parse:
+        if parser not in ["textfsm", "ttp"]:
+            raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")
+        
+        # Parse each command result
+        
+        parsed_results = {}
+        if response.result and isinstance(response.result, dict):
+            for command, raw_output in response.result.items():
+                if isinstance(raw_output, str):
+                    parsed_results[command] = parse_output(
+                        raw_output=raw_output,
+                        settings=request.app.state.settings,
+                        device_type=device_config.adapter_driver,
+                        command=command,
+                        template=template,  # Same template for all commands
+                        include_raw=include_raw,
+                        parser_type=parser
+                    )
+                else:
+                    parsed_results[command] = raw_output
+            return parsed_results
+    
     return response
 
 
@@ -969,3 +1181,44 @@ if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
             "provider": provider,
             "user": user if valid else None,
         }
+
+
+@router.get("/templates/textfsm")
+async def list_textfsm_templates(request: Request):
+    """List all available TextFSM templates."""
+    
+    settings = request.app.state.settings
+    template_dir = Path(settings.textfsm_template_dir)
+    parser = TextFSMParser(custom_template_dir=template_dir)
+    return parser.list_templates()
+
+
+@router.post("/parse/test")
+async def test_parse(
+    request: Request,
+    raw_output: str,
+    parser: str = Query("textfsm", description="Parser to use ('textfsm' or 'ttp')"),
+    template: Optional[str] = Query(None, description="Template name (e.g., 'my_template.textfsm')"),
+    device_type: Optional[str] = Query(None, description="Device type for auto-discovery (e.g., 'cisco_ios')"),
+    command: Optional[str] = Query(None, description="Command for auto-discovery (e.g., 'show ip int brief')"),
+    include_raw: bool = Query(False, description="Include raw output in response"),
+):
+    """Test parsing endpoint - parse raw text with a specified template.
+    
+    This is a convenience endpoint for testing templates without executing commands.
+    """
+    
+    if parser not in ["textfsm", "ttp"]:
+        raise TomValidationException(f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'")
+    
+    settings = request.app.state.settings
+    
+    return parse_output(
+        raw_output=raw_output,
+        settings=settings,
+        device_type=device_type,
+        command=command,
+        template=template,
+        include_raw=include_raw,
+        parser_type=parser
+    )

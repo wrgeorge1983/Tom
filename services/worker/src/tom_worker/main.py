@@ -6,6 +6,8 @@ import sys
 import redis.asyncio as redis
 import saq, saq.types
 
+from tom_shared.cache import CacheManager
+
 from tom_worker.credentials.credentials import YamlCredentialStore
 from tom_worker.exceptions import GatingException, TransientException
 from tom_worker.jobs import foo, send_commands_netmiko, send_commands_scrapli
@@ -27,6 +29,8 @@ saq_logger.setLevel(logging.DEBUG)
 queue = saq.Queue.from_url(settings.redis_url)
 
 
+
+
 async def main():
     logger.info("Starting worker main function")
     loop = asyncio.get_running_loop()
@@ -41,7 +45,7 @@ async def main():
             logger.info("Using Vault credential store")
             from tom_worker.credentials.vault import VaultCredentialStore, VaultClient
 
-            vault_client = VaultClient.from_settings(settings)
+            vault_client = await VaultClient.from_settings(settings)
             await vault_client.validate_access()
             credential_store = VaultCredentialStore(vault_client)
 
@@ -50,9 +54,14 @@ async def main():
 
     semaphore_redis_client = redis.from_url(settings.redis_url)
 
+    cache_redis = redis.from_url(settings.redis_url, decode_responses=True)  # needs decode_responses=True
+    cache_manager = CacheManager(cache_redis, settings)
+
     def worker_setup(ctx: saq.types.Context):
         ctx["credential_store"] = credential_store
         ctx["redis_client"] = semaphore_redis_client
+        ctx["cache_manager"] = cache_manager
+        ctx["settings"] = settings
 
     def should_retry(exception, attempts):
         if isinstance(exception, GatingException):
