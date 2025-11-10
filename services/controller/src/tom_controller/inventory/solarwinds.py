@@ -103,6 +103,7 @@ class FilterRegistry:
             "routers": "Common router types (Cisco ASR, Juniper MX)",
             "arista_exclusion": "Arista devices excluding specific models",
             "iosxe": "Cisco IOS-XE devices (excludes Nexus and ASA)",
+            "ospf_crawler_filter": "Filter for devices used by ospf_crawler",
         }
 
     @staticmethod
@@ -113,6 +114,7 @@ class FilterRegistry:
             "routers": SolarWindsFilter.router_filter,
             "arista_exclusion": SolarWindsFilter.arista_exclusion_filter,
             "iosxe": SolarWindsFilter.iosxe_filter,
+            "ospf_crawler_filter": SolarWindsFilter.ospf_crawler_filter,
         }
 
         if filter_name not in filters:
