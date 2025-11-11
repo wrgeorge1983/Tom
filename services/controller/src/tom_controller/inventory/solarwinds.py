@@ -291,3 +291,16 @@ class SwisInventoryStore(InventoryStore):
             log.info("Nodes not loaded, loading from SolarWinds...")
             self.nodes = self._load_nodes()
         return self.nodes
+
+    def get_filterable_fields(self) -> dict[str, str]:
+        """Return available fields from SolarWinds for filtering."""
+        return {
+            "NodeID": "SolarWinds node ID",
+            "IPAddress": "Device IP address",
+            "Uri": "SolarWinds URI",
+            "Caption": "Device hostname",
+            "Description": "Device description/OS info",
+            "Status": "Node status code",
+            "Vendor": "Device vendor",
+            "DetailsUrl": "SolarWinds details URL"
+        }

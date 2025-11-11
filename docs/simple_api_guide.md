@@ -53,26 +53,51 @@ This document explains the main Tom controller HTTP API flows: starting sync/asy
 ## Inventory
 - Get device config: `GET /api/inventory/{device_name}` -> returns `DeviceConfig` (host, adapter, adapter_driver, credential_id, port, etc.)
 - Export inventory: `GET /api/inventory/export` (DeviceConfig map) and `GET /api/inventory/export/raw` (raw nodes)
-  - Optional `?filter_name=<filter>` to restrict results (see "Inventory filtering" below)
-- List filters: `GET /api/inventory/filters`
+  - Supports filtering (see "Inventory filtering" below)
+- List available fields: `GET /api/inventory/fields` - returns filterable fields for current inventory source
+- List named filters: `GET /api/inventory/filters` - returns available predefined filter names
 
 ### Inventory filtering
-- Purpose: restrict exported inventory results to a subset of nodes using predefined, named filters.
-- How it works: filters are implemented as regex-based matchers evaluated against SolarWinds node fields: `Caption` (hostname), `Vendor`, and `Description` (often contains platform/OS). A node must match all configured patterns in a filter to be included.
-- Supported filter names (returned by `GET /api/inventory/filters`):
-  - `switches` — Common switch types (Dell, Arista, Cisco). Matches `Vendor` and `Description` patterns for common switch models.
-  - `routers` — Common router types (Cisco ASR, Juniper MX).
-  - `arista_exclusion` — Matches Arista devices but excludes specific models (used to filter out certain Arista switches).
-  - `iosxe` — Cisco IOS‑XE devices (excludes Nexus, ASA, ISE, ONS).
-- Usage: pass `filter_name` as a query parameter to the export endpoints:
-  - `GET /api/inventory/export?filter_name=switches`
-  - `GET /api/inventory/export/raw?filter_name=iosxe`
-- Notes:
-  - Filters are case‑insensitive regular expressions applied to each node field; they are combined with logical AND (all configured patterns must match).
-  - If an unknown `filter_name` is supplied the controller will raise an error (available filters can be listed via `GET /api/inventory/filters`).
-  - The `FilterRegistry` lives in `services/controller/src/tom_controller/inventory/solarwinds.py` and defines both the available filter names and the underlying regexes used.
-- Example: export device configs for routers only:
-  - `curl -H "X-API-Key: MYKEY" "http://tom:8020/api/inventory/export?filter_name=routers"`
+Tom supports two filtering modes for inventory export endpoints:
+
+#### 1. Named Filters (Predefined)
+Use the `filter_name` query parameter with predefined filter names:
+- `switches` — Common switch types (Dell, Arista, Cisco)
+- `routers` — Common router types (Cisco ASR, Juniper MX)
+- `arista_exclusion` — Arista devices excluding specific models
+- `iosxe` — Cisco IOS‑XE devices (excludes Nexus, ASA, ISE, ONS)
+- `ospf_crawler_filter` — Devices used by ospf_crawler (Cisco ASR, 29xx, Juniper MX104)
+
+**Examples:**
+```bash
+curl -H "X-API-Key: MYKEY" "http://tom:8020/api/inventory/export?filter_name=switches"
+curl -H "X-API-Key: MYKEY" "http://tom:8020/api/inventory/export/raw?filter_name=routers"
+```
+
+#### 2. Inline Filters (Flexible)
+Use query parameters matching field names with regex patterns. Available fields vary by inventory source:
+
+**SolarWinds fields:** `NodeID`, `IPAddress`, `Uri`, `Caption`, `Description`, `Status`, `Vendor`, `DetailsUrl`
+**YAML fields:** `Caption`, `host`, `adapter`, `adapter_driver`, `credential_id`, `port`
+
+**Examples:**
+```bash
+# Filter by vendor and description
+curl "http://tom:8020/api/inventory/export?Vendor=cisco&Description=asr.*"
+
+# Filter by hostname pattern
+curl "http://tom:8020/api/inventory/export?Caption=^router.*"
+
+# Multiple field filters (all must match)
+curl "http://tom:8020/api/inventory/export?Vendor=arista&Description=DCS-7.*&Caption=.*-sw01"
+```
+
+**Notes:**
+- If `filter_name` is provided, it takes precedence over inline filters
+- All filter patterns are case-insensitive regex patterns
+- Multiple field filters use logical AND (all must match)
+- Use `GET /api/inventory/fields` to discover available fields for your inventory source
+- Invalid regex patterns will return an error
 
 ## Templates & parsing
 - List TextFSM templates: `GET /api/templates/textfsm`

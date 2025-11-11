@@ -441,30 +441,50 @@ async def send_scrapli_command(
 
 @router.get("/inventory/export")
 async def export_inventory(
+    request: Request,
     inventory_store: InventoryStore = Depends(get_inventory_store),
     filter_name: Optional[str] = Query(
         None,
-        description="Optional filter name (switches, routers, iosxe, arista_exclusion)",
+        description="Optional named filter (switches, routers, iosxe, arista_exclusion, ospf_crawler_filter)",
     ),
 ) -> dict[str, DeviceConfig]:
-    """Export all nodes from inventory in DeviceConfig format."""
+    """Export all nodes from inventory in DeviceConfig format.
+    
+    Supports two filtering modes:
+    1. Named filters: ?filter_name=switches
+    2. Inline filters: ?Caption=router.*&Vendor=cisco
+    
+    If filter_name is provided, it takes precedence over inline filters.
+    Use GET /api/inventory/fields to see available filterable fields.
+    Use GET /api/inventory/filters to see available named filters.
+    """
     import logging
 
     log = logging.getLogger(__name__)
-    log.info(f"Exporting inventory nodes with filter: {filter_name}")
 
     try:
         nodes = await inventory_store.alist_all_nodes()
 
-        # Apply filter if specified
+        # Apply named filter if specified
         if filter_name:
             from tom_controller.inventory.solarwinds import FilterRegistry
 
             filter_obj = FilterRegistry.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
-            log.info(f"Filtered to {len(nodes)} nodes using {filter_name} filter")
+            log.info(f"Filtered to {len(nodes)} nodes using named filter '{filter_name}'")
         else:
-            log.info(f"Exported {len(nodes)} nodes (no filter)")
+            # Get all query params as inline filter patterns
+            filter_params = dict(request.query_params)
+            
+            # Apply inline filters if any field patterns provided
+            if filter_params:
+                from tom_controller.inventory.inventory import InventoryFilter
+                
+                filter_obj = InventoryFilter(filter_params)
+                nodes = [node for node in nodes if filter_obj.matches(node)]
+                log.info(f"Filtered to {len(nodes)} nodes using inline filters: {filter_params}")
+            else:
+                log.info(f"Exported {len(nodes)} nodes (no filter)")
 
         # Convert to DeviceConfig format
         device_configs = {}
@@ -490,30 +510,50 @@ async def export_inventory(
 
 @router.get("/inventory/export/raw")
 async def export_raw_inventory(
+    request: Request,
     inventory_store: InventoryStore = Depends(get_inventory_store),
     filter_name: Optional[str] = Query(
         None,
-        description="Optional filter name (switches, routers, iosxe, arista_exclusion)",
+        description="Optional named filter (switches, routers, iosxe, arista_exclusion, ospf_crawler_filter)",
     ),
 ) -> list[dict]:
-    """Export raw nodes from inventory (SolarWinds format for SWIS, YAML format for YAML)."""
+    """Export raw nodes from inventory (SolarWinds format for SWIS, YAML format for YAML).
+    
+    Supports two filtering modes:
+    1. Named filters: ?filter_name=switches
+    2. Inline filters: ?Vendor=cisco&Description=asr.*
+    
+    If filter_name is provided, it takes precedence over inline filters.
+    Use GET /api/inventory/fields to see available filterable fields.
+    Use GET /api/inventory/filters to see available named filters.
+    """
     import logging
 
     log = logging.getLogger(__name__)
-    log.info(f"Exporting raw inventory nodes with filter: {filter_name}")
 
     try:
         nodes = await inventory_store.alist_all_nodes()
 
-        # Apply filter if specified
+        # Apply named filter if specified
         if filter_name:
             from tom_controller.inventory.solarwinds import FilterRegistry
 
             filter_obj = FilterRegistry.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
-            log.info(f"Filtered to {len(nodes)} raw nodes using {filter_name} filter")
+            log.info(f"Filtered to {len(nodes)} raw nodes using named filter '{filter_name}'")
         else:
-            log.info(f"Exported {len(nodes)} raw nodes (no filter)")
+            # Get all query params as inline filter patterns
+            filter_params = dict(request.query_params)
+            
+            # Apply inline filters if any field patterns provided
+            if filter_params:
+                from tom_controller.inventory.inventory import InventoryFilter
+                
+                filter_obj = InventoryFilter(filter_params)
+                nodes = [node for node in nodes if filter_obj.matches(node)]
+                log.info(f"Filtered to {len(nodes)} raw nodes using inline filters: {filter_params}")
+            else:
+                log.info(f"Exported {len(nodes)} raw nodes (no filter)")
 
         return nodes
     except Exception as e:
@@ -521,9 +561,17 @@ async def export_raw_inventory(
         raise
 
 
+@router.get("/inventory/fields")
+async def get_inventory_fields(
+    inventory_store: InventoryStore = Depends(get_inventory_store)
+) -> dict[str, str]:
+    """Get available filterable fields for the current inventory source."""
+    return inventory_store.get_filterable_fields()
+
+
 @router.get("/inventory/filters")
 async def list_filters() -> dict[str, str]:
-    """List available inventory filters."""
+    """List available named inventory filters."""
     from tom_controller.inventory.solarwinds import FilterRegistry
 
     return FilterRegistry.get_available_filters()
@@ -755,11 +803,6 @@ async def send_inventory_commands(
     # Validate parsing requirements
     if parse and not wait:
         raise TomValidationException("Parsing requires wait=true. For async parsing, use GET /api/job/{job_id}?parse=true")
-    
-    # Warn if parse requested without wait
-    if parse and not wait:
-        import logging
-        logging.warning("parse=true has no effect when wait=false. For async parsing, use GET /api/job/{job_id}?parse=true")
     
     # Handle parsing if requested
     if wait and parse:

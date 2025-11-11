@@ -4,6 +4,7 @@ import saq.types
 from tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
 from tom_worker.config import Settings
 from tom_worker.exceptions import GatingException, AuthenticationException, PermanentException
+from tom_worker.retry_handler import RetryHandler
 from tom_worker.semaphore import DeviceSemaphore
 from tom_shared.models import (
     NetmikoSendCommandModel, 
@@ -83,10 +84,16 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
 
     if needed_commands:
         semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
-        if not await semaphore.acquire_lease(job_id):
-            raise GatingException(f"{device_id} busy. Lease not acquired.")
+        lease_acquired = await semaphore.acquire_lease(job_id)
+        
+        # Handle device busy with smart retry configuration
+        RetryHandler.handle_device_busy(ctx, device_id, lease_acquired)
 
         try:
+            # Optional: Restore original retry settings now that we have the lease
+            # This ensures other errors (network, auth) get normal retry behavior
+            RetryHandler.restore_original_settings(ctx)
+            
             async with await NetmikoAdapter.from_model(model, credential_store) as adapter:
                 result = await adapter.send_commands(needed_commands)
                 if use_cache:
@@ -175,10 +182,16 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
 
     if needed_commands:
         semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
-        if not await semaphore.acquire_lease(job_id):
-            raise GatingException(f"{device_id} busy. Lease not acquired.")
+        lease_acquired = await semaphore.acquire_lease(job_id)
+        
+        # Handle device busy with smart retry configuration
+        RetryHandler.handle_device_busy(ctx, device_id, lease_acquired)
 
         try:
+            # Optional: Restore original retry settings now that we have the lease
+            # This ensures other errors (network, auth) get normal retry behavior
+            RetryHandler.restore_original_settings(ctx)
+            
             async with await ScrapliAsyncAdapter.from_model(
                     model, credential_store
             ) as adapter:

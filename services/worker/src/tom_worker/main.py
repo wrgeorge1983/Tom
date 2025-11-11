@@ -75,6 +75,7 @@ async def main():
         functions=[foo, send_commands_netmiko, send_commands_scrapli],
         startup=worker_setup,
     )
+
     logger.info("Worker instance created")
 
     def signal_handler(sig, frame):
