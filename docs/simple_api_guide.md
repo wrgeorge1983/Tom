@@ -37,8 +37,63 @@ This document explains the main Tom controller HTTP API flows: starting sync/asy
 
 ### Multiple commands
 - Endpoint: `POST /api/device/{device_name}/send_commands`
-- Body: JSON array of commands, e.g. `["show ip int brief","show version"]`.
-- Query params same as single-command endpoint. Note: `parse` requires `wait=true` for immediate parsing.
+- Body: JSON object with command configuration
+- Two modes:
+  1. **Simple mode**: Array of command strings with global settings
+  2. **Advanced mode**: Per-command configuration with individual parse settings
+  
+#### Simple mode
+Body with array of commands and global defaults:
+```json
+{
+  "commands": ["show ip int brief", "show version"],
+  "wait": true,
+  "parse": true,
+  "parser": "textfsm"
+}
+```
+
+#### Advanced mode (per-command control)
+Body with individual command specifications:
+```json
+{
+  "commands": [
+    {
+      "command": "show version",
+      "parse": true,
+      "template": "custom_version.textfsm"
+    },
+    {
+      "command": "show ip int brief",
+      "parse": true
+    },
+    {
+      "command": "show running-config",
+      "parse": false
+    }
+  ],
+  "wait": true
+}
+```
+
+#### Request body fields
+- `commands`: Array of strings or CommandSpec objects
+- `wait` (bool): Wait for job completion
+- `timeout` (int): Timeout in seconds when wait=true
+- `parse` (bool): Default parse setting for commands
+- `parser` ("textfsm" or "ttp"): Default parser
+- `include_raw` (bool): Default include raw with parsed
+- `use_cache` (bool): Use cache for results
+- `cache_refresh` (bool): Force cache refresh
+- `cache_ttl` (int): Cache TTL in seconds
+- `username`/`password`: Optional credential override
+
+#### CommandSpec fields (for advanced mode)
+- `command` (string): The command to execute
+- `parse` (bool): Whether to parse this command
+- `parser` ("textfsm" or "ttp"): Parser for this command
+- `template` (string): Template file for this command
+- `include_raw` (bool): Include raw with parsed for this command
 
 ### Raw/Direct host endpoints
 - `GET /api/raw/send_netmiko_command`
@@ -115,6 +170,7 @@ curl "http://tom:8020/api/inventory/export?Vendor=arista&Description=DCS-7.*&Cap
 - Parsers supported: `textfsm` (default) and `ttp`.
 - Use `template=<template_filename>` to pick a template (e.g., `cisco_ios_show_ip_int_brief.textfsm`).
 - `include_raw=true` returns raw text alongside parsed output.
+- For multiple commands: Can specify different parsers/templates per command (see "Multiple commands" section above).
 
 ## Convenience / debug endpoints
 - `GET /api/auth/debug` — shows resolved auth method and token claims (requires auth)
@@ -134,8 +190,30 @@ curl "http://tom:8020/api/inventory/export?Vendor=arista&Description=DCS-7.*&Cap
 - Force cache refresh and set TTL:
   - `.../send_command?command=...&wait=true&use_cache=true&cache_refresh=true&cache_ttl=300`
 
-- Multiple commands (sync):
-  - `curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" -d '["show ip int brief","show version"]' "http://tom:8020/api/device/router1/send_commands?wait=true&parse=true"`
+- Multiple commands (simple mode):
+  ```bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": ["show ip int brief", "show version"],
+      "wait": true,
+      "parse": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"
+  ```
+
+- Multiple commands (per-command parsing):
+  ```bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": [
+        {"command": "show version", "parse": true, "template": "custom_version.textfsm"},
+        {"command": "show ip int brief", "parse": true},
+        {"command": "show running-config", "parse": false}
+      ],
+      "wait": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"
+  ```
 
 ## Notes / assumptions
 - Inventory devices usually provide stored `credential_id` entries that Tom uses automatically; per-request overrides are available with `username`+`password`.
