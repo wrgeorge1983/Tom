@@ -29,7 +29,11 @@ services:
     build:
       context: .
       dockerfile: services/worker/Dockerfile
-    image: tom_worker
+    depends_on:
+      - redis
+      - vault
+    deploy:
+      replicas: 3  # Number of worker instances
     logging:
       driver: "json-file"
       options:
@@ -70,9 +74,47 @@ services:
       - IPC_LOCK
     command: ["vault", "server", "-dev"]  # remove -dev for prod
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tom-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - controller
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tom-grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yml
+      - ./monitoring/grafana-dashboard-providers.yml:/etc/grafana/provisioning/dashboards/providers.yml
+      - ./monitoring/tom-dashboard.json:/etc/grafana/provisioning/dashboards/tom-dashboard.json
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # Change in production
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=redis-datasource
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   vault-data:
     driver: local
   vault-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
     driver: local
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, TypedDict, Literal, Dict, Any
 
-from fastapi import APIRouter, Depends, Request, Query, HTTPException
+from fastapi import APIRouter, Depends, Request, Query, HTTPException, Response
 import httpx
 from jose import jwt as jose_jwt
 from jose.exceptions import JWTError
@@ -14,6 +14,8 @@ import saq
 from saq import Status
 
 from tom_controller.api.models import JobResponse, SendCommandsRequest, CommandSpec
+from tom_controller.monitoring import MetricsExporter
+from tom_controller.api import monitoring_api
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 
 from tom_controller.config import settings as app_settings
@@ -867,6 +869,23 @@ async def send_inventory_commands(
             return result
     
     return response
+
+
+@router.get("/metrics")
+async def metrics(request: Request) -> Response:
+    """Prometheus metrics endpoint.
+    
+    This endpoint is scraped by Prometheus to collect metrics.
+    Metrics are collected fresh from Redis on each scrape (stateless).
+    """
+    # Get Redis client from app state
+    redis_client = request.app.state.redis_client
+    
+    # Create exporter and generate metrics
+    exporter = MetricsExporter(redis_client)
+    metrics_output = await exporter.generate_metrics()
+    
+    return Response(content=metrics_output, media_type="text/plain")
 
 
 @router.get("/auth/debug")
