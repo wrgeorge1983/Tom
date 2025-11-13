@@ -200,7 +200,7 @@ See [API documentation](./api-endpoints.md) for details.
 
 ## Grafana Dashboard
 
-Tom includes a pre-configured Grafana dashboard (`monitoring/tom-dashboard.json`) with panels for:
+Tom includes an example pre-configured Grafana dashboard (`monitoring/tom-dashboard.json`) with panels for:
 
 - Job success/failure rates over time
 - Active workers count

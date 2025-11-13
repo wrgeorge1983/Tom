@@ -10,7 +10,13 @@ import redis.asyncio as aioredis
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+# Auth dependency will be added at router registration in app.py
+# to avoid circular imports
+# These endpoints expose sensitive operational data (failed commands, error traces, etc.)
+router = APIRouter(
+    prefix="/monitoring",
+    tags=["monitoring"]
+)
 
 
 async def get_redis_client(request: Request) -> aioredis.Redis:

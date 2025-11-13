@@ -267,6 +267,9 @@ async def enqueue_job(
 
 router = AuthRouter()
 
+# Unauthenticated router for Prometheus metrics
+metrics_router = APIRouter()
+
 
 @router.get("/")
 async def root():
@@ -871,12 +874,16 @@ async def send_inventory_commands(
     return response
 
 
-@router.get("/metrics")
+@metrics_router.get("/metrics")
 async def metrics(request: Request) -> Response:
-    """Prometheus metrics endpoint.
+    """Prometheus metrics endpoint (unauthenticated for Prometheus scraping).
     
     This endpoint is scraped by Prometheus to collect metrics.
     Metrics are collected fresh from Redis on each scrape (stateless).
+    
+    Note: This endpoint is intentionally unauthenticated to allow Prometheus
+    to scrape metrics without authentication. Metrics contain only aggregated
+    statistics with no sensitive details.
     """
     # Get Redis client from app state
     redis_client = request.app.state.redis_client

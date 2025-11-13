@@ -205,8 +205,14 @@ def create_app():
         api.oauth_router, prefix="/api"
     )  # OAuth endpoints don't require auth
     
-    # Include monitoring API endpoints
+    # Include unauthenticated metrics endpoint for Prometheus
+    app.include_router(api.metrics_router, prefix="/api")
+    
+    # Include monitoring API endpoints with auth dependency
+    # (authenticated - contains sensitive operational data)
     from tom_controller.api import monitoring_api
+    from fastapi import Depends
+    monitoring_api.router.dependencies.append(Depends(api.do_auth))
     app.include_router(monitoring_api.router, prefix="/api")
 
     @app.get("/health")
