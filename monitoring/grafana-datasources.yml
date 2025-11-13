@@ -7,11 +7,3 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: false
-    
-  - name: Redis
-    type: redis-datasource
-    access: proxy
-    url: redis://redis:6379
-    editable: false
-    jsonData:
-      client: standalone

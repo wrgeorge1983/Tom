@@ -2,16 +2,6 @@ global:
   scrape_interval: 30s
   evaluation_interval: 30s
 
-# Alert manager configuration (optional)
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ['alertmanager:9093']
-
-# Load rules once and periodically evaluate them
-rule_files:
-  - "alerts.yml"
-
 scrape_configs:
   # Tom Controller metrics
   - job_name: 'tom-controller'
