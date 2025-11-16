@@ -85,7 +85,30 @@ async def main():
     async def before_job_process(ctx: saq.types.Context):
         """Record job start time for duration tracking."""
         import time
+        import json
+        
+        job = ctx.get("job")
+        worker_id = ctx.get("worker_id", "unknown")
+        
         ctx["job_start_time"] = time.time()
+        
+        # Extract job info for logging
+        device = "unknown"
+        commands = []
+        if job and job.kwargs and "json" in job.kwargs:
+            try:
+                data = json.loads(job.kwargs["json"])
+                device = data.get("host", "unknown")
+                commands = data.get("commands", [])
+            except Exception:
+                pass
+        
+        logger.info(
+            f"Worker {worker_id}: Starting job {job.id if job else 'unknown'} "
+            f"[{job.function if job else 'unknown'}] for device {device} "
+            f"(attempt {job.attempts if job else '?'}, "
+            f"commands: {len(commands)})"
+        )
 
     async def after_job_process(ctx: saq.types.Context):
         """Record job stats after processing."""
@@ -127,6 +150,28 @@ async def main():
         if "job_start_time" in ctx:
             duration = time.time() - ctx["job_start_time"]
         
+        # Log job completion
+        if status == "success":
+            logger.info(
+                f"Worker {worker_id}: Completed job {job.id} "
+                f"for device {device} in {duration:.2f}s "
+                f"(attempt {job.attempts})"
+            )
+        else:
+            # Extract error summary for logging
+            error_summary = "Unknown error"
+            if error:
+                # Get last line of error which usually has the actual exception
+                error_lines = error.strip().split('\n')
+                if error_lines:
+                    error_summary = error_lines[-1][:200]
+            
+            logger.error(
+                f"Worker {worker_id}: FAILED job {job.id} "
+                f"for device {device} after {duration:.2f}s "
+                f"(attempt {job.attempts}): {error_summary}"
+            )
+        
         # Record stats
         await record_job_stats(
             monitoring_redis,
@@ -140,13 +185,6 @@ async def main():
             command=command,
             attempts=job.attempts
         )
-
-    def should_retry(exception, attempts):
-        if isinstance(exception, GatingException):
-            return attempts < 10
-        if isinstance(exception, TransientException):
-            return attempts < 3
-        return False
 
     worker = saq.Worker(
         queue,

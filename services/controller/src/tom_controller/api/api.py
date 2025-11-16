@@ -223,13 +223,15 @@ async def enqueue_job(
     args: BaseModel,
     wait: bool = False,
     timeout: int = 10,
+    retries: int = 3,
+    max_queue_wait: int = 300,
 ) -> JobResponse:
     logger.info(f"Enqueuing job: {function_name}")
     job = await queue.enqueue(
         function_name,
         timeout=timeout,
         json=args.model_dump_json(),
-        retries=5,
+        retries=retries,
         retry_delay=1.0,
         retry_backoff=True,
     )
@@ -813,13 +815,14 @@ async def send_inventory_commands(
         "use_cache": body.use_cache,
         "cache_refresh": body.cache_refresh,
         "cache_ttl": body.cache_ttl,
+        "max_queue_wait": body.max_queue_wait,
     }
     
     if device_config.adapter == "netmiko":
         args = NetmikoSendCommandModel(**kwargs)
         try:
             response = await enqueue_job(
-                queue, "send_commands_netmiko", args, wait=body.wait, timeout=body.timeout
+                queue, "send_commands_netmiko", args, wait=body.wait, timeout=body.timeout, retries=body.retries, max_queue_wait=body.max_queue_wait
             )
         except Exception as e:
             raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
@@ -828,7 +831,7 @@ async def send_inventory_commands(
         args = ScrapliSendCommandModel(**kwargs)
         try:
             response = await enqueue_job(
-                queue, "send_commands_scrapli", args, wait=body.wait, timeout=body.timeout
+                queue, "send_commands_scrapli", args, wait=body.wait, timeout=body.timeout, retries=body.retries, max_queue_wait=body.max_queue_wait
             )
         except Exception as e:
             raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e

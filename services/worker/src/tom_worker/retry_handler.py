@@ -1,6 +1,7 @@
 """Retry handling utilities for different exception types."""
 
 import logging
+import time
 from typing import Any, Dict
 
 from tom_worker.exceptions import GatingException, PermanentException
@@ -11,143 +12,148 @@ logger = logging.getLogger(__name__)
 class RetryHandler:
     """Manages retry behavior for different exception types."""
     
-    # Default retry intervals for different scenarios (in seconds)
+    # Default retry interval for gating (in seconds)
     GATING_RETRY_INTERVAL = 2.0  # Check every 2s for busy devices
-    TRANSIENT_RETRY_INTERVAL = 1.0  # Default for transient errors
-    
-    @staticmethod
-    def configure_for_gating(ctx: Dict[str, Any]) -> None:
-        """Configure retry behavior for device gating (busy) scenarios.
-        
-        Modifies the job's retry parameters to use fixed intervals instead
-        of exponential backoff, which is more appropriate for waiting on
-        busy resources.
-        
-        Args:
-            ctx: SAQ job context containing the job
-        """
-        job = ctx.get("job")
-        if not job:
-            logger.error("No job found in context")
-            return
-        
-        # Only configure once per job
-        if "gating_retry_configured" in ctx:
-            return
-            
-        # Store original retry settings if not already stored
-        if "original_retry_settings" not in ctx:
-            ctx["original_retry_settings"] = {
-                "retries": job.retries,
-                "retry_delay": job.retry_delay,
-                "retry_backoff": job.retry_backoff,
-            }
-            
-        # Calculate how many retries we can do within original tolerance
-        # Original tolerance = retries * retry_delay (with backoff, it's more complex)
-        original_settings = ctx["original_retry_settings"]
-        
-        if original_settings["retry_backoff"]:
-            # With exponential backoff, calculate approximate max wait time
-            # Sum of geometric series: delay * (2^n - 1) where n is number of retries
-            max_wait_time = original_settings["retry_delay"] * (2**original_settings["retries"] - 1)
-        else:
-            # Without backoff, it's simple multiplication
-            max_wait_time = original_settings["retry_delay"] * original_settings["retries"]
-            
-        # Calculate how many fixed-interval retries we can fit
-        max_gating_retries = int(max_wait_time / RetryHandler.GATING_RETRY_INTERVAL)
-        
-        # Configure job for fixed-interval retries
-        job.retries = max(max_gating_retries, job.attempts + 1)  # At least one more try
-        job.retry_delay = RetryHandler.GATING_RETRY_INTERVAL
-        job.retry_backoff = False
-        
-        ctx["gating_retry_configured"] = True
-        ctx["max_gating_retries"] = max_gating_retries
-        
-        logger.info(
-            f"Configured job {job.id} for gating retries: "
-            f"{max_gating_retries} attempts at {RetryHandler.GATING_RETRY_INTERVAL}s intervals "
-            f"(based on original tolerance of ~{max_wait_time:.1f}s)"
-        )
     
     @staticmethod
     def handle_device_busy(
         ctx: Dict[str, Any],
         device_id: str,
-        semaphore_acquired: bool
+        semaphore_acquired: bool,
+        max_queue_wait: int
     ) -> None:
-        """Handle device busy scenario with appropriate retry configuration.
+        """Handle device busy scenario with time-based retry budget.
+        
+        Tracks cumulative time spent waiting for semaphore acquisition across
+        all retry attempts. Fails permanently when max_queue_wait is exceeded.
         
         Args:
             ctx: SAQ job context
             device_id: Device identifier
             semaphore_acquired: Whether the semaphore was acquired
+            max_queue_wait: Maximum total seconds to wait for semaphore across all attempts
             
         Raises:
-            GatingException: If device is busy but retries remain
-            PermanentException: If retry tolerance exceeded
+            GatingException: If device semaphore not acquired but time budget remains
+            PermanentException: If time budget exceeded
         """
         if semaphore_acquired:
             return
-            
-        # Configure retry behavior for gating
-        RetryHandler.configure_for_gating(ctx)
         
         job = ctx["job"]
-        max_retries = ctx.get("max_gating_retries", job.retries)
+        job_id = job.id
         
-        # Check if we've exceeded our retry tolerance
-        if job.attempts >= max_retries:
-            elapsed_time = job.attempts * RetryHandler.GATING_RETRY_INTERVAL
-            logger.error(
-                f"Device {device_id} busy timeout after {job.attempts} attempts "
-                f"(~{elapsed_time:.1f}s elapsed)"
+        # Use job-specific keys in context to avoid conflicts between concurrent jobs
+        gating_start_key = f"gating_start_time_{job_id}"
+        gating_count_key = f"gating_attempt_count_{job_id}"
+        original_settings_key = f"original_retry_settings_{job_id}"
+        
+        # Initialize cumulative wait tracking on first gating attempt
+        if gating_start_key not in ctx:
+            ctx[gating_start_key] = time.time()
+            ctx[gating_count_key] = 0
+            
+            # Store original retry settings to restore after semaphore acquisition
+            ctx[original_settings_key] = {
+                "retries": job.retries,
+                "retry_delay": job.retry_delay,
+                "retry_backoff": job.retry_backoff,
+            }
+            
+            # Configure job for fixed-interval gating retries
+            # Set a high retry count - we'll bail based on time, not attempts
+            job.retries = 999999  # Effectively unlimited
+            job.retry_delay = RetryHandler.GATING_RETRY_INTERVAL
+            job.retry_backoff = False
+            
+            logger.info(
+                f"Job {job_id}: Device {device_id} semaphore not available. "
+                f"Will retry for up to {max_queue_wait}s"
             )
+        
+        # Calculate elapsed time since first gating attempt
+        elapsed_time = time.time() - ctx[gating_start_key]
+        ctx[gating_count_key] += 1
+        
+        # Check if we've exceeded our time budget
+        if elapsed_time >= max_queue_wait:
+            logger.error(
+                f"Job {job_id}: Device {device_id} semaphore acquisition timeout after "
+                f"{ctx[gating_count_key]} attempts over {elapsed_time:.1f}s "
+                f"(max_queue_wait={max_queue_wait}s)"
+            )
+            # Clean up context for this job
+            ctx.pop(gating_start_key, None)
+            ctx.pop(gating_count_key, None)
+            ctx.pop(original_settings_key, None)
+            
             raise PermanentException(
-                f"Device {device_id} remained busy after {job.attempts} attempts "
-                f"over ~{elapsed_time:.1f} seconds"
+                f"Unable to acquire semaphore for {device_id} after "
+                f"{elapsed_time:.1f}s (max_queue_wait={max_queue_wait}s)"
             )
         
         # Log progress periodically
-        if job.attempts == 0:
-            logger.info(f"Device {device_id} is busy, will retry with fixed intervals")
-        elif job.attempts % 10 == 0:
-            elapsed_time = job.attempts * RetryHandler.GATING_RETRY_INTERVAL
+        if ctx[gating_count_key] == 1:
             logger.info(
-                f"Device {device_id} still busy after {job.attempts} attempts "
-                f"(~{elapsed_time:.1f}s elapsed)"
+                f"Job {job_id}: Device {device_id} semaphore not available, "
+                f"will retry every {RetryHandler.GATING_RETRY_INTERVAL}s"
+            )
+        elif ctx[gating_count_key] % 10 == 0:
+            remaining_time = max_queue_wait - elapsed_time
+            logger.info(
+                f"Job {job_id}: Device {device_id} still waiting for semaphore after "
+                f"{ctx[gating_count_key]} attempts ({elapsed_time:.1f}s elapsed, "
+                f"{remaining_time:.1f}s remaining)"
             )
         else:
             logger.debug(
-                f"Device {device_id} busy, attempt {job.attempts + 1}/{max_retries}"
+                f"Job {job_id}: Device {device_id} semaphore busy, "
+                f"attempt {ctx[gating_count_key]} ({elapsed_time:.1f}s elapsed)"
             )
         
-        raise GatingException(f"{device_id} busy. Lease not acquired.")
+        raise GatingException(f"Semaphore not available for {device_id}")
     
     @staticmethod
     def restore_original_settings(ctx: Dict[str, Any]) -> None:
-        """Restore original retry settings if they were modified.
+        """Restore original retry settings after acquiring semaphore.
         
-        This can be called after successfully acquiring a resource
-        to restore normal retry behavior for subsequent errors.
+        This ensures that transient failures (network errors, etc.) after
+        semaphore acquisition use the user's configured retry settings,
+        not the gating retry settings.
         
         Args:
             ctx: SAQ job context
         """
-        if "original_retry_settings" not in ctx:
+        job = ctx["job"]
+        job_id = job.id
+        
+        # Use job-specific keys
+        gating_start_key = f"gating_start_time_{job_id}"
+        gating_count_key = f"gating_attempt_count_{job_id}"
+        original_settings_key = f"original_retry_settings_{job_id}"
+        
+        if original_settings_key not in ctx:
             return
             
-        job = ctx["job"]
-        original = ctx["original_retry_settings"]
+        original = ctx[original_settings_key]
         
         job.retries = original["retries"]
         job.retry_delay = original["retry_delay"]
         job.retry_backoff = original["retry_backoff"]
         
-        # Clean up context flags
-        ctx.pop("gating_retry_configured", None)
-        ctx.pop("max_gating_retries", None)
+        # Log gating statistics
+        if gating_start_key in ctx:
+            total_gating_time = time.time() - ctx[gating_start_key]
+            attempt_count = ctx.get(gating_count_key, 0)
+            logger.info(
+                f"Job {job_id}: Semaphore acquired after {attempt_count} attempts "
+                f"({total_gating_time:.1f}s). Restored retry settings: "
+                f"retries={job.retries}, delay={job.retry_delay}s, backoff={job.retry_backoff}"
+            )
         
-        logger.debug(f"Restored original retry settings for job {job.id}")
+        # Clean up gating context for this job
+        ctx.pop(gating_start_key, None)
+        ctx.pop(gating_count_key, None)
+        ctx.pop(original_settings_key, None)
+        
+        logger.debug(f"Restored original retry settings for job {job_id}")

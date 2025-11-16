@@ -26,6 +26,7 @@ class NetmikoSendCommandModel(BaseModel):
     use_cache: bool = True
     cache_refresh: bool = False
     cache_ttl: Optional[int] = None
+    max_queue_wait: int = 300
 
 
 class ScrapliSendCommandModel(BaseModel):
@@ -37,6 +38,7 @@ class ScrapliSendCommandModel(BaseModel):
     use_cache: bool = True
     cache_refresh: bool = False
     cache_ttl: Optional[int] = None
+    max_queue_wait: int = 300
 
 
 class CacheMetadata(BaseModel):
