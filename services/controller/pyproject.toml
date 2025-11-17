@@ -1,6 +1,6 @@
 [project]
 name = "tom-controller"
-version = "0.9.0"
+version = "0.12.0"
 description = "Tom Smykowski Network Automation Broker - Controller Service"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -10,6 +10,7 @@ dependencies = [
     "httpx>=0.28.1",
     "ntc-templates>=8.1.0",
     "orionsdk>=0.4.0",
+    "prometheus-client>=0.23.1",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
     "python-jose>=3.5.0",

@@ -103,6 +103,7 @@ class FilterRegistry:
             "routers": "Common router types (Cisco ASR, Juniper MX)",
             "arista_exclusion": "Arista devices excluding specific models",
             "iosxe": "Cisco IOS-XE devices (excludes Nexus and ASA)",
+            "ospf_crawler_filter": "Filter for devices used by ospf_crawler",
         }
 
     @staticmethod
@@ -113,6 +114,7 @@ class FilterRegistry:
             "routers": SolarWindsFilter.router_filter,
             "arista_exclusion": SolarWindsFilter.arista_exclusion_filter,
             "iosxe": SolarWindsFilter.iosxe_filter,
+            "ospf_crawler_filter": SolarWindsFilter.ospf_crawler_filter,
         }
 
         if filter_name not in filters:
@@ -289,3 +291,16 @@ class SwisInventoryStore(InventoryStore):
             log.info("Nodes not loaded, loading from SolarWinds...")
             self.nodes = self._load_nodes()
         return self.nodes
+
+    def get_filterable_fields(self) -> dict[str, str]:
+        """Return available fields from SolarWinds for filtering."""
+        return {
+            "NodeID": "SolarWinds node ID",
+            "IPAddress": "Device IP address",
+            "Uri": "SolarWinds URI",
+            "Caption": "Device hostname",
+            "Description": "Device description/OS info",
+            "Status": "Node status code",
+            "Vendor": "Device vendor",
+            "DetailsUrl": "SolarWinds details URL"
+        }

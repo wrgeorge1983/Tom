@@ -1,0 +1,5 @@
+# Ignore all JWT fixture files (contain real tokens with personal identifiers)
+*.yaml
+
+# Keep README
+!README.md

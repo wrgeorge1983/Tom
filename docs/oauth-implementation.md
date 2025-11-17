@@ -16,16 +16,14 @@
 - Example configuration file
 - PKCE-based CLI authentication (Python reference implementation)
 
-### Future Enhancements:
-- Frontend OAuth flow handler for testing
-- Enhanced RBAC from JWT claims (arbitrary claim matching)
-- Token refresh flow
-- Metrics and monitoring
-- Go client library with PKCE support
+### Supported OAuth Providers:
+- **Duo Security**
+- **Google OAuth**
+- **Microsoft Entra ID (Azure AD)**
 
 ## Overview
 
-Tom Smykowski will support JWT (JSON Web Token) validation for API authentication, enabling integration with various OAuth2/OIDC providers. As an API service, Tom only validates JWTs - it does not handle the OAuth flow itself.
+Tom Smykowski supports JWT (JSON Web Token) validation for API authentication, enabling integration with various OAuth2/OIDC providers. As an API service, Tom only validates JWTs - it does not handle the OAuth flow itself.
 
 ## Architecture
 
@@ -54,13 +52,11 @@ sequenceDiagram
 2. **Multiple Providers**: Support multiple IdPs simultaneously
 3. **Email-Based Authorization**: A valid JWT must pass authorization check (allowed_users → allowed_domains → allowed_user_regex). If all are empty, any valid JWT is authorized.
 4. **Configuration-Driven**: Provider settings in YAML config files
-5. **Explicit Code Paths**: Balance between DRY and obvious behavior
+5. **OIDC Discovery**: Automatic configuration using standard OIDC discovery protocol
 
 ## Configuration
 
 ### OIDC Discovery Support
-
-Tom uses `discovery_url` for automatic provider configuration.
 
 Tom automatically discovers OAuth endpoints using the standard OIDC discovery protocol.
 
@@ -94,26 +90,19 @@ jwt_providers:
 
   - name: google
     enabled: false
-    issuer: "https://accounts.google.com"
     client_id: "your-client.apps.googleusercontent.com"
-    # Google's JWKS URI is derived from well-known endpoint
-
-  - name: github
-    enabled: false
-    app_id: "123456"
-    # GitHub App private key for verification
-    private_key_path: "/path/to/github-app.pem"
+    discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
 
   - name: entra
     enabled: false
     tenant_id: "your-tenant-id"
     client_id: "your-client-id"
-    issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+    discovery_url: "https://login.microsoftonline.com/your-tenant-id/v2.0/.well-known/openid-configuration"
 ```
 
 ### Environment Variables
 
-Simple settings remain as environment variables:
+Simple settings can be configured as environment variables:
 - `TOM_AUTH_MODE=jwt`
 - `TOM_JWT_REQUIRE_HTTPS=true`
 - `TOM_JWT_LEEWAY_SECONDS=30`
@@ -155,143 +144,75 @@ allowed_user_regex:
   - '^[a-z]+\.admin@example\.com$'
 ```
 
-### Implementation
+### Implementation Files
 
-- Config: `services/controller/src/tom_controller/config.py` lines 133-135
-- Logic: `services/controller/src/tom_controller/api/api.py` lines 96-136
-- Error message: "Access denied: user not permitted by policy"
+Authorization is implemented in:
+- **Config**: `services/controller/src/tom_controller/config.py`
+- **Logic**: `services/controller/src/tom_controller/api/api.py` (jwt_auth function)
 
 ## Implementation Details
 
-### File Structure (As Implemented)
+### File Structure
 
 ```
 services/controller/src/tom_controller/
 ├── auth/
 │   ├── __init__.py           # Module exports
 │   ├── jwt_validator.py      # Base JWT validation logic
+│   ├── oidc_discovery.py     # OIDC discovery implementation
 │   └── providers.py          # Provider-specific validators
-├── config.py                  # Updated with JWT settings
-├── exceptions.py              # Contains all exceptions including JWT
+├── config.py                  # JWT settings and provider config
+├── exceptions.py              # JWT exceptions
 └── api/
-    └── api.py                 # Updated auth flow with jwt_auth()
+    └── api.py                 # Authentication flow with jwt_auth()
 
 Additional files:
 ├── tom_config.jwt.example.yaml  # Example JWT configuration
-└── test_jwt_auth.py             # Test script for JWT validation
+└── tests/test_jwt_auth.py       # Test script for JWT validation
 ```
 
 ### Base JWT Validator
 
-```python
-# auth/jwt_validator.py
-class JWTValidator:
-    """Base class for JWT validation with common logic"""
+The `JWTValidator` class in `auth/jwt_validator.py` provides common JWT validation logic:
 
-    def __init__(self, config: JWTProviderConfig):
-        self.config = config
-        self._jwks_client = None
-
-    async def validate_token(self, token: str) -> dict:
-        """Validate JWT and return claims"""
-        # Decode header to get kid
-        # Fetch public key from JWKS
-        # Verify signature
-        # Validate standard claims (exp, iat, iss, aud)
-        # Return claims dict
-        pass
-
-    async def get_signing_key(self, token: str):
-        """Get the public key for token verification"""
-        pass
-```
+- Decodes JWT header to get key ID (kid)
+- Fetches public key from JWKS endpoint
+- Verifies JWT signature
+- Validates standard claims (exp, iat, iss, aud)
+- Returns validated claims dictionary
 
 ### Provider-Specific Validators
 
-```python
-# auth/providers.py
-class DuoJWTValidator(JWTValidator):
-    """Duo-specific JWT validation"""
+Each provider has a specific validator class in `auth/providers.py`:
 
-    async def validate_token(self, token: str) -> dict:
-        # Duo-specific validation if needed
-        claims = await super().validate_token(token)
-        # Additional Duo-specific checks
-        return claims
+#### DuoJWTValidator
+- Duo-specific JWT validation
+- Works with both ID tokens and access tokens
+- User identifier: `preferred_username` or `email` or `sub`
 
-class GoogleJWTValidator(JWTValidator):
-    """Google-specific JWT validation"""
-    # Inherits most behavior, overrides only where needed
+#### GoogleJWTValidator  
+- Google-specific JWT validation
+- Only ID tokens work (access tokens are opaque)
+- Validates email claim presence
+- Optionally checks email_verified flag
+- User identifier: `email` or `sub`
 
-class GitHubJWTValidator(JWTValidator):
-    """GitHub App JWT validation"""
+#### EntraJWTValidator
+- Microsoft Entra ID (Azure AD) JWT validation
+- Validates tenant ID if configured
+- User identifier: `preferred_username` or `upn` or `email` or `sub`
 
-    def __init__(self, config: JWTProviderConfig):
-        super().__init__(config)
-        # Load GitHub App private key
-        self.private_key = self._load_private_key()
+### Authentication Flow
 
-    async def validate_token(self, token: str) -> dict:
-        # GitHub uses app-specific signing
-        pass
+The `jwt_auth()` function in `api/api.py` handles JWT validation:
 
-class EntraJWTValidator(JWTValidator):
-    """Microsoft Entra ID (Azure AD) JWT validation"""
-    # Standard OIDC flow, minimal overrides needed
-```
+1. Extract Bearer token from Authorization header
+2. Try each enabled provider in sequence
+3. Validate token using provider-specific validator
+4. Check authorization rules (allowed_users, allowed_domains, allowed_user_regex)
+5. Return authentication response with user info and claims
 
-### Updated Authentication Flow
-
-```python
-# api/api.py
-async def do_auth(request: Request) -> AuthResponse:
-    settings = request.app.state.settings
-
-    if settings.auth_mode == "none":
-        return {"method": "none", "user": None}
-
-    # Check for API key first (in hybrid mode)
-    if settings.auth_mode in ["api_key", "hybrid"]:
-        try:
-            return api_key_auth(request)
-        except TomAuthException:
-            if settings.auth_mode == "api_key":
-                raise
-            # Continue to JWT check in hybrid mode
-
-    # Check for JWT
-    if settings.auth_mode in ["jwt", "hybrid"]:
-        return await jwt_auth(request)
-
-    raise TomException(f"Unknown auth mode {settings.auth_mode}")
-
-async def jwt_auth(request: Request) -> AuthResponse:
-    """Validate JWT from Authorization header"""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise TomAuthException("Missing or invalid Bearer token")
-
-    token = auth_header[7:]  # Remove "Bearer " prefix
-
-    # Try each enabled provider
-    for provider_config in request.app.state.settings.jwt_providers:
-        if not provider_config.enabled:
-            continue
-
-        validator = get_jwt_validator(provider_config)
-        try:
-            claims = await validator.validate_token(token)
-            return {
-                "method": "jwt",
-                "user": claims.get("email") or claims.get("sub"),
-                "provider": provider_config.name,
-                "claims": claims
-            }
-        except JWTValidationError:
-            continue  # Try next provider
-
-    raise TomAuthException("Invalid JWT token")
-```
+In **hybrid** mode, API key authentication is tried first, then JWT if API key fails.
 
 ## Provider Integration Details
 
@@ -301,55 +222,58 @@ async def jwt_auth(request: Request) -> AuthResponse:
 - **JWKS endpoint**: `https://{tenant}.duosecurity.com/oauth/v1/keys`
 - **Required claims**: sub, aud, exp, iat
 - **User identifier**: email or username in token
+- **OIDC discovery**: Supported
 
-### Google
+### Google OAuth
 
 - **Standard OIDC provider**
-- **JWKS endpoint**: Derived from well-known configuration
-- **Well-known**: `https://accounts.google.com/.well-known/openid-configuration`
+- **Well-known endpoint**: `https://accounts.google.com/.well-known/openid-configuration`
 - **User identifier**: email claim
-
-### GitHub
-
-- **GitHub Apps authentication**
-- **Uses app-specific private key for verification**
-- **No JWKS endpoint - uses configured private key**
-- **User identifier**: GitHub username
+- **Note**: Only ID tokens work. Access tokens are opaque and cannot be validated.
+- **OIDC discovery**: Supported
 
 ### Microsoft Entra ID (Azure AD)
 
 - **Standard OIDC provider**
-- **JWKS endpoint**: `https://login.microsoftonline.com/{tenant}/discovery/v2.0/keys`
-- **Multi-tenant support possible**
-- **User identifier**: email or UPN
-
-## Testing Strategy
-
-### Unit Tests
-- Mock JWT tokens for each provider
-- Test signature validation
-- Test claim validation
-- Test expiration handling
-
-### Integration Tests
-- Test with real provider test accounts
-- Validate full authentication flow
-- Test token refresh scenarios
-
-### Test Frontend
-- Minimal web UI for OAuth flow demonstration
-- Support all configured providers
-- Display JWT claims after successful auth
+- **Well-known endpoint**: `https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration`
+- **Multi-tenant**: Supported with tenant validation
+- **User identifier**: email or UPN (User Principal Name)
+- **OIDC discovery**: Supported
 
 ## Security Considerations
 
-1. **HTTPS Only**: Enforce HTTPS in production for JWT transmission
-2. **Token Expiration**: Strict validation of exp claim
-3. **Clock Skew**: Allow configurable leeway for time-based claims
-4. **Audience Validation**: Ensure tokens are intended for Tom API
-5. **Signature Verification**: Always verify JWT signatures
-6. **JWKS Caching**: Cache public keys with appropriate TTL
-7. **Rate Limiting**: Consider rate limits on auth attempts
+### HTTPS Enforcement
+
+Tom enforces HTTPS for JWT token transmission by default. Keep this enabled in production:
+
+```yaml
+jwt_settings:
+  require_https: true  # Default: true - keep enabled for production
+```
+
+This setting prevents JWT tokens from being transmitted over unencrypted connections. Only disable this for local development/testing.
+
+### External Security Measures
+
+Consider these additional security measures at the infrastructure level:
+
+- **Rate Limiting**: Use a reverse proxy (nginx, traefik) or API gateway to rate-limit, monitor, and control authentication attempts
+- **TLS Configuration**: Ensure your reverse proxy/load balancer uses modern TLS versions (1.2+) and strong cipher suites
+- **Network Isolation**: Run Tom in a private network, exposing only through authenticated reverse proxies
+
+## Testing
+### OAuth Test Endpoint
+
+Tom includes a test HTML page for OAuth flow testing at:
+```
+http://localhost:8000/static/oauth-test.html
+```
+
+This provides a simple interface for testing the OAuth flow with configured providers.
+It must be enabled by setting `oauth_test_enabled=true` in `tom_config.yaml` or environment variable.
+## PKCE CLI Authentication
+
+Tom includes a reference implementation for PKCE (Proof Key for Code Exchange) authentication in CLI tools. See the example configuration and client library for details on implementing PKCE flow in your applications.
 
 ## Future Enhancements
 
@@ -358,73 +282,4 @@ async def jwt_auth(request: Request) -> AuthResponse:
 3. **Scopes**: OAuth scope-based permissions
 4. **Token Refresh**: Handle refresh token flow
 5. **Revocation**: Check token revocation lists
-6. **Metrics**: Auth success/failure metrics
-7. **403 vs 401**: Return 403 Forbidden for authorization failures (currently returns 401)
-
-## Dependencies (Installed)
-
-Added via `uv add`:
-- `python-jose`: JWT encoding/decoding
-- `cryptography`: For key handling and RSA operations
-- `httpx`: Async HTTP client for JWKS fetching (was already present)
-
-## How to Use
-
-1. **Configure JWT providers** in `tom_config.yaml`:
-   - Copy `tom_config.jwt.example.yaml` as starting point
-   - Set `auth_mode: jwt` or `auth_mode: hybrid`
-   - Configure your providers with client IDs, issuers, etc.
-
-2. **Start the controller** with JWT config:
-   ```bash
-   export TOM_CONFIG_FILE=tom_config.yaml
-   uv run uvicorn tom_controller.main:app
-   ```
-
-3. **Use tomclient to interact with Tom**:
-   ```bash
-   # Authenticate with your OAuth provider
-   tomclient auth login
-   
-   # Make API calls
-   tomclient jobs list
-   tomclient jobs get <job-id>
-   ```
-
-4. **Test with the test script**:
-   ```bash
-   cd services/controller
-   uv run python test_jwt_auth.py
-   ```
-
-## Client Implementation
-
-### Using tomclient (Recommended)
-
-The `tomclient` CLI tool provides a complete OAuth PKCE flow implementation and is the recommended way to interact with Tom:
-
-```bash
-# Authenticate with your OAuth provider
-tomclient auth login
-
-# Make API calls (automatically includes JWT token)
-tomclient inventory 
-
-# Record JWT for testing
-tomclient auth record
-```
-
-See the `tomclient` repository for installation and usage.
-
-### Custom Client Implementation
-
-Clients must implement the OAuth PKCE flow to obtain JWT tokens from your chosen provider (Duo, Google, etc.), then pass the token to Tom via the `Authorization: Bearer` header. Tom only validates tokens - it does not issue them.
-
-## References
-
-- [Duo OAuth Documentation](https://duo.com/docs/oauth)
-- [Google Identity Platform](https://developers.google.com/identity)
-- [GitHub Apps Authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app)
-- [Microsoft Identity Platform](https://docs.microsoft.com/en/azure/active-identity/develop/)
-- [JWT.io](https://jwt.io/)
-- [OpenID Connect Spec](https://openid.net/connect/)
+6. **Additional Providers**: Support for more OAuth providers as needed

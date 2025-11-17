@@ -50,6 +50,10 @@ def create_app():
         cm_redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)  # needs decode_responses=True
         cache_manager = CacheManager(cm_redis_client, settings)
         this_app.state.cache_manager = cache_manager
+        
+        # Also store a redis client for monitoring (no decode_responses for binary data)
+        monitoring_redis_client = aioredis.from_url(settings.redis_url)
+        this_app.state.redis_client = monitoring_redis_client
 
 
         # Initialize inventory store on startup
@@ -200,6 +204,16 @@ def create_app():
     app.include_router(
         api.oauth_router, prefix="/api"
     )  # OAuth endpoints don't require auth
+    
+    # Include unauthenticated metrics endpoint for Prometheus
+    app.include_router(api.metrics_router, prefix="/api")
+    
+    # Include monitoring API endpoints with auth dependency
+    # (authenticated - contains sensitive operational data)
+    from tom_controller.api import monitoring_api
+    from fastapi import Depends
+    monitoring_api.router.dependencies.append(Depends(api.do_auth))
+    app.include_router(monitoring_api.router, prefix="/api")
 
     @app.get("/health")
     async def health():

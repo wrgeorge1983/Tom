@@ -38,6 +38,16 @@ All of these are solvable, but there's rarely a reason to solve them differently
 each project.  Also, they can be cumbersome and fragile with unpleasant dependence on
 system details (looking at you, Templating Libraries!)
 
+## Project Status
+**Beta** - Tom is currently feature-somewhat-complete as it were. All the major features are in place and functional, 
+but where we expect to support several variations for a given feature, mostly only one is implemented. The project 
+is stable and usable in production, but the API may evolve based on real-world feedback.
+
+- **Authentication (frontend)**: OAuth2 and API Key are both fully supported
+- **Device credential management**: HashiCorp Vault integration is fully supported; AWS Secrets Manager support is planned
+- **Inventory**: YAML and SolarWinds SWIS are both fully supported; NetBox and Nautobot support are coming
+- **Plugins**: Planned, likely in order to accomplish the above two items, but we'll see!
+- **Parsing**: TextFSM and TTP are both fully supported
 
 ## Goals
 
@@ -49,11 +59,12 @@ system details (looking at you, Templating Libraries!)
 ## Features
 
 ### Authentication & Security
-- **API Key Authentication** - Simple key-based auth for service accounts
-- **JWT/OAuth2 Support** (v0.6.0) - Validate JWTs from OAuth providers:
+- **API Key Authentication** - Simple key-based auth for service accounts/automated workflows
+- **JWT/OAuth2 Support** (v0.6.0) - Validate JWTs from OAuth providers for interactive use:
   - **Duo Security** - Tested with ID tokens and access tokens
   - **Google OAuth** - Tested with ID tokens (access tokens are opaque)
   - **Microsoft Entra ID** - Fully supported
+  - reference implementation for a CLI utility: [tomclient](https://github.com/wrgeorge1983/tomclient)
 - **Email-Based Authorization** - Control access by user, domain, or regex pattern
 - **Hybrid Auth Mode** - Use both API keys and JWTs simultaneously
 - **HashiCorp Vault Integration** - Secure credential storage
@@ -105,6 +116,9 @@ sequenceDiagram
 ### API & Architecture
 - [API Endpoints](./docs/api-endpoints.md) - Complete API reference
 - [Roadmap](./ROADMAP.md) - Development roadmap and completed features
+
+### Monitoring
+- [Metrics Documentation](./docs/metrics.md) - Prometheus metrics reference and monitoring guide
 
 ### Output Parsing
 - [Parsing Guide](./docs/parsing.md) - Complete guide to TextFSM and TTP parsing

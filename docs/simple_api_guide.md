@@ -37,8 +37,63 @@ This document explains the main Tom controller HTTP API flows: starting sync/asy
 
 ### Multiple commands
 - Endpoint: `POST /api/device/{device_name}/send_commands`
-- Body: JSON array of commands, e.g. `["show ip int brief","show version"]`.
-- Query params same as single-command endpoint. Note: `parse` requires `wait=true` for immediate parsing.
+- Body: JSON object with command configuration
+- Two modes:
+  1. **Simple mode**: Array of command strings with global settings
+  2. **Advanced mode**: Per-command configuration with individual parse settings
+  
+#### Simple mode
+Body with array of commands and global defaults:
+```json
+{
+  "commands": ["show ip int brief", "show version"],
+  "wait": true,
+  "parse": true,
+  "parser": "textfsm"
+}
+```
+
+#### Advanced mode (per-command control)
+Body with individual command specifications:
+```json
+{
+  "commands": [
+    {
+      "command": "show version",
+      "parse": true,
+      "template": "custom_version.textfsm"
+    },
+    {
+      "command": "show ip int brief",
+      "parse": true
+    },
+    {
+      "command": "show running-config",
+      "parse": false
+    }
+  ],
+  "wait": true
+}
+```
+
+#### Request body fields
+- `commands`: Array of strings or CommandSpec objects
+- `wait` (bool): Wait for job completion
+- `timeout` (int): Timeout in seconds when wait=true
+- `parse` (bool): Default parse setting for commands
+- `parser` ("textfsm" or "ttp"): Default parser
+- `include_raw` (bool): Default include raw with parsed
+- `use_cache` (bool): Use cache for results
+- `cache_refresh` (bool): Force cache refresh
+- `cache_ttl` (int): Cache TTL in seconds
+- `username`/`password`: Optional credential override
+
+#### CommandSpec fields (for advanced mode)
+- `command` (string): The command to execute
+- `parse` (bool): Whether to parse this command
+- `parser` ("textfsm" or "ttp"): Parser for this command
+- `template` (string): Template file for this command
+- `include_raw` (bool): Include raw with parsed for this command
 
 ### Raw/Direct host endpoints
 - `GET /api/raw/send_netmiko_command`
@@ -53,26 +108,51 @@ This document explains the main Tom controller HTTP API flows: starting sync/asy
 ## Inventory
 - Get device config: `GET /api/inventory/{device_name}` -> returns `DeviceConfig` (host, adapter, adapter_driver, credential_id, port, etc.)
 - Export inventory: `GET /api/inventory/export` (DeviceConfig map) and `GET /api/inventory/export/raw` (raw nodes)
-  - Optional `?filter_name=<filter>` to restrict results (see "Inventory filtering" below)
-- List filters: `GET /api/inventory/filters`
+  - Supports filtering (see "Inventory filtering" below)
+- List available fields: `GET /api/inventory/fields` - returns filterable fields for current inventory source
+- List named filters: `GET /api/inventory/filters` - returns available predefined filter names
 
 ### Inventory filtering
-- Purpose: restrict exported inventory results to a subset of nodes using predefined, named filters.
-- How it works: filters are implemented as regex-based matchers evaluated against SolarWinds node fields: `Caption` (hostname), `Vendor`, and `Description` (often contains platform/OS). A node must match all configured patterns in a filter to be included.
-- Supported filter names (returned by `GET /api/inventory/filters`):
-  - `switches` — Common switch types (Dell, Arista, Cisco). Matches `Vendor` and `Description` patterns for common switch models.
-  - `routers` — Common router types (Cisco ASR, Juniper MX).
-  - `arista_exclusion` — Matches Arista devices but excludes specific models (used to filter out certain Arista switches).
-  - `iosxe` — Cisco IOS‑XE devices (excludes Nexus, ASA, ISE, ONS).
-- Usage: pass `filter_name` as a query parameter to the export endpoints:
-  - `GET /api/inventory/export?filter_name=switches`
-  - `GET /api/inventory/export/raw?filter_name=iosxe`
-- Notes:
-  - Filters are case‑insensitive regular expressions applied to each node field; they are combined with logical AND (all configured patterns must match).
-  - If an unknown `filter_name` is supplied the controller will raise an error (available filters can be listed via `GET /api/inventory/filters`).
-  - The `FilterRegistry` lives in `services/controller/src/tom_controller/inventory/solarwinds.py` and defines both the available filter names and the underlying regexes used.
-- Example: export device configs for routers only:
-  - `curl -H "X-API-Key: MYKEY" "http://tom:8020/api/inventory/export?filter_name=routers"`
+Tom supports two filtering modes for inventory export endpoints:
+
+#### 1. Named Filters (Predefined)
+Use the `filter_name` query parameter with predefined filter names:
+- `switches` — Common switch types (Dell, Arista, Cisco)
+- `routers` — Common router types (Cisco ASR, Juniper MX)
+- `arista_exclusion` — Arista devices excluding specific models
+- `iosxe` — Cisco IOS‑XE devices (excludes Nexus, ASA, ISE, ONS)
+- `ospf_crawler_filter` — Devices used by ospf_crawler (Cisco ASR, 29xx, Juniper MX104)
+
+**Examples:**
+```bash
+curl -H "X-API-Key: MYKEY" "http://tom:8020/api/inventory/export?filter_name=switches"
+curl -H "X-API-Key: MYKEY" "http://tom:8020/api/inventory/export/raw?filter_name=routers"
+```
+
+#### 2. Inline Filters (Flexible)
+Use query parameters matching field names with regex patterns. Available fields vary by inventory source:
+
+**SolarWinds fields:** `NodeID`, `IPAddress`, `Uri`, `Caption`, `Description`, `Status`, `Vendor`, `DetailsUrl`
+**YAML fields:** `Caption`, `host`, `adapter`, `adapter_driver`, `credential_id`, `port`
+
+**Examples:**
+```bash
+# Filter by vendor and description
+curl "http://tom:8020/api/inventory/export?Vendor=cisco&Description=asr.*"
+
+# Filter by hostname pattern
+curl "http://tom:8020/api/inventory/export?Caption=^router.*"
+
+# Multiple field filters (all must match)
+curl "http://tom:8020/api/inventory/export?Vendor=arista&Description=DCS-7.*&Caption=.*-sw01"
+```
+
+**Notes:**
+- If `filter_name` is provided, it takes precedence over inline filters
+- All filter patterns are case-insensitive regex patterns
+- Multiple field filters use logical AND (all must match)
+- Use `GET /api/inventory/fields` to discover available fields for your inventory source
+- Invalid regex patterns will return an error
 
 ## Templates & parsing
 - List TextFSM templates: `GET /api/templates/textfsm`
@@ -90,6 +170,7 @@ This document explains the main Tom controller HTTP API flows: starting sync/asy
 - Parsers supported: `textfsm` (default) and `ttp`.
 - Use `template=<template_filename>` to pick a template (e.g., `cisco_ios_show_ip_int_brief.textfsm`).
 - `include_raw=true` returns raw text alongside parsed output.
+- For multiple commands: Can specify different parsers/templates per command (see "Multiple commands" section above).
 
 ## Convenience / debug endpoints
 - `GET /api/auth/debug` — shows resolved auth method and token claims (requires auth)
@@ -109,8 +190,30 @@ This document explains the main Tom controller HTTP API flows: starting sync/asy
 - Force cache refresh and set TTL:
   - `.../send_command?command=...&wait=true&use_cache=true&cache_refresh=true&cache_ttl=300`
 
-- Multiple commands (sync):
-  - `curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" -d '["show ip int brief","show version"]' "http://tom:8020/api/device/router1/send_commands?wait=true&parse=true"`
+- Multiple commands (simple mode):
+  ```bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": ["show ip int brief", "show version"],
+      "wait": true,
+      "parse": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"
+  ```
+
+- Multiple commands (per-command parsing):
+  ```bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": [
+        {"command": "show version", "parse": true, "template": "custom_version.textfsm"},
+        {"command": "show ip int brief", "parse": true},
+        {"command": "show running-config", "parse": false}
+      ],
+      "wait": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"
+  ```
 
 ## Notes / assumptions
 - Inventory devices usually provide stored `credential_id` entries that Tom uses automatically; per-request overrides are available with `username`+`password`.

@@ -4,6 +4,7 @@ import saq.types
 from tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
 from tom_worker.config import Settings
 from tom_worker.exceptions import GatingException, AuthenticationException, PermanentException
+from tom_worker.retry_handler import RetryHandler
 from tom_worker.semaphore import DeviceSemaphore
 from tom_shared.models import (
     NetmikoSendCommandModel, 
@@ -83,10 +84,21 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
 
     if needed_commands:
         semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
-        if not await semaphore.acquire_lease(job_id):
-            raise GatingException(f"{device_id} busy. Lease not acquired.")
+        lease_acquired = await semaphore.acquire_lease(job_id)
+        
+        # Handle device busy with time-based retry budget
+        RetryHandler.handle_device_busy(ctx, device_id, lease_acquired, model.max_queue_wait)
 
         try:
+            # Restore original retry settings now that we have the lease
+            # This ensures other errors (network, auth) get normal retry behavior
+            RetryHandler.restore_original_settings(ctx)
+            
+            logger.info(
+                f"Job {job_id}: Executing {len(needed_commands)} command(s) on {device_id} "
+                f"[netmiko/{model.device_type}]"
+            )
+            
             async with await NetmikoAdapter.from_model(model, credential_store) as adapter:
                 result = await adapter.send_commands(needed_commands)
                 if use_cache:
@@ -95,6 +107,10 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
                         await cache_manager.set(cache_key, value, ttl=cache_ttl)
 
                 results.update(result)
+                
+            logger.debug(
+                f"Job {job_id}: Successfully executed {len(needed_commands)} command(s) on {device_id}"
+            )
         except (AuthenticationException, PermanentException) as e:
             # Mark job as non-retryable by setting retries = attempts
             # This prevents SAQ from retrying authentication failures
@@ -175,10 +191,21 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
 
     if needed_commands:
         semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
-        if not await semaphore.acquire_lease(job_id):
-            raise GatingException(f"{device_id} busy. Lease not acquired.")
+        lease_acquired = await semaphore.acquire_lease(job_id)
+        
+        # Handle device busy with time-based retry budget
+        RetryHandler.handle_device_busy(ctx, device_id, lease_acquired, model.max_queue_wait)
 
         try:
+            # Restore original retry settings now that we have the lease
+            # This ensures other errors (network, auth) get normal retry behavior
+            RetryHandler.restore_original_settings(ctx)
+            
+            logger.info(
+                f"Job {job_id}: Executing {len(needed_commands)} command(s) on {device_id} "
+                f"[scrapli/{model.device_type}]"
+            )
+            
             async with await ScrapliAsyncAdapter.from_model(
                     model, credential_store
             ) as adapter:
@@ -189,6 +216,10 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
                         await cache_manager.set(cache_key, value, ttl=cache_ttl)
 
                 results.update(result)
+                
+            logger.debug(
+                f"Job {job_id}: Successfully executed {len(needed_commands)} command(s) on {device_id}"
+            )
         except (AuthenticationException, PermanentException) as e:
             # Mark job as non-retryable by setting retries = attempts
             # This prevents SAQ from retrying authentication failures

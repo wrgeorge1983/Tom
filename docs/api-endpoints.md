@@ -46,7 +46,7 @@ GET /api/raw/send_scrapli_command
 
 **Returns:** `JobResponse` object
 
-#### Inventory-based Command
+#### Inventory-based Single Command
 ```
 GET /api/device/{device_name}/send_command
 ```
@@ -60,10 +60,111 @@ GET /api/device/{device_name}/send_command
 - `cache` (bool, optional): Enable caching for this request (default: true)
 - `cache_ttl` (int, optional): Override default TTL in seconds (capped at max_ttl)
 - `cache_refresh` (bool, optional): Force refresh, bypassing cache (default: false)
+- `parse` (bool, optional): Parse output using TextFSM/TTP
+- `parser` (string, optional): Parser to use ("textfsm" or "ttp", default: "textfsm")
+- `template` (string, optional): Explicit template name for parsing
+- `include_raw` (bool, optional): Include raw output with parsed result
 - Optional credential override:
   - `username` + `password` (string): Override inventory credentials
 
-**Returns:** `JobResponse` or raw string (if rawOutput=true)
+**Returns:** `JobResponse` or raw string (if rawOutput=true) or parsed result (if parse=true)
+
+### Inventory-based Multiple Commands
+```
+POST /api/device/{device_name}/send_commands
+```
+
+Send multiple commands with optional per-command parsing configuration.
+
+**Request Body:**
+```json
+{
+  "commands": ["command1", "command2"],  // Simple mode
+  // OR
+  "commands": [                           // Advanced mode
+    {
+      "command": "show version",
+      "parse": true,
+      "template": "custom_version.textfsm",
+      "parser": "textfsm",
+      "include_raw": false
+    },
+    {
+      "command": "show ip int brief",
+      "parse": true
+      // Uses defaults from request body
+    }
+  ],
+  "wait": false,                // Wait for completion
+  "timeout": 10,                // Timeout in seconds
+  "parse": false,               // Default parse setting for commands
+  "parser": "textfsm",          // Default parser (textfsm or ttp)
+  "include_raw": false,         // Default include_raw setting
+  "use_cache": true,            // Use cache
+  "cache_refresh": false,       // Force cache refresh
+  "cache_ttl": 300,             // Cache TTL in seconds
+  "username": "optional",       // Override credentials
+  "password": "optional"
+}
+```
+
+**Examples:**
+
+Simple mode (all commands use same settings):
+```json
+{
+  "commands": ["show version", "show ip interface brief"],
+  "wait": true,
+  "parse": true,
+  "parser": "textfsm"
+}
+```
+
+Advanced mode (per-command control):
+```json
+{
+  "commands": [
+    {
+      "command": "show version",
+      "parse": true,
+      "template": "custom_version.textfsm"
+    },
+    {
+      "command": "show ip interface brief", 
+      "parse": true
+      // Auto-discovers template
+    },
+    {
+      "command": "show running-config",
+      "parse": false
+      // Returns raw output only
+    }
+  ],
+  "wait": true
+}
+```
+
+Mixed mode (defaults with overrides):
+```json
+{
+  "commands": [
+    "show version",  // Uses defaults below
+    {
+      "command": "show interfaces",
+      "parser": "ttp",  // Override to use TTP
+      "template": "custom_interfaces.ttp"
+    }
+  ],
+  "wait": true,
+  "parse": true,      // Default: parse all commands
+  "parser": "textfsm" // Default: use TextFSM
+}
+```
+
+**Returns:** 
+- If `wait=false`: `JobResponse` with job ID for async processing
+- If `wait=true` and parsing enabled: Dictionary with parsed results per command
+- If `wait=true` and parsing disabled: Dictionary with raw outputs per command
 
 **Response with Cache Metadata (when cache enabled):**
 ```json

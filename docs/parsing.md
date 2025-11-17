@@ -13,6 +13,7 @@ Tom Controller includes integrated output parsing to transform raw network devic
 - Custom template support with index-based registration
 - Template source visibility (custom vs built-in)
 - Explicit template selection when needed
+- **Per-command parsing control** for multi-command requests (v0.7.1+)
 
 ## Basic Usage
 
@@ -52,6 +53,40 @@ Default is TextFSM. Use TTP by specifying `parser=ttp`:
 ```bash
 curl "http://localhost:8000/api/device/router1/send_command?command=show+interfaces&parse=true&parser=ttp&wait=true"
 ```
+
+### Per-Command Parsing (Multiple Commands)
+
+When sending multiple commands, you can control parsing individually:
+
+```bash
+curl -X POST "http://localhost:8000/api/device/router1/send_commands" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "commands": [
+      {
+        "command": "show version",
+        "parse": true,
+        "template": "custom_version.textfsm"
+      },
+      {
+        "command": "show ip bgp summary",
+        "parse": true,
+        "parser": "ttp"
+      },
+      {
+        "command": "show running-config",
+        "parse": false
+      }
+    ],
+    "wait": true
+  }'
+```
+
+This allows you to:
+- Use different parsers for different commands
+- Specify templates per command
+- Skip parsing for specific commands (e.g., large configs)
+- Mix TextFSM and TTP in the same request
 
 ## Custom Templates
 
@@ -146,7 +181,7 @@ All parsed responses include `_metadata` showing template selection:
 
 ## API Endpoints
 
-### Parse Command Output
+### Parse Single Command Output
 
 ```
 GET /api/device/{device}/send_command
@@ -157,13 +192,44 @@ GET /api/device/{device}/send_command
   &wait=true
 ```
 
+### Parse Multiple Commands with Per-Command Control
+
+```
+POST /api/device/{device}/send_commands
+```
+
+Request body with per-command parsing configuration:
+```json
+{
+  "commands": [
+    {
+      "command": "show version",
+      "parse": true,
+      "parser": "textfsm",
+      "template": "custom_version.textfsm"
+    },
+    {
+      "command": "show interfaces",
+      "parse": true,
+      "parser": "ttp",
+      "template": "interfaces.ttp"
+    },
+    {
+      "command": "show running-config",
+      "parse": false  // Don't parse, return raw
+    }
+  ],
+  "wait": true
+}
+```
+
 ### Parse Job Results
 
 ```
 GET /api/job/{job_id}
   ?parse=true
   &parser=textfsm
-  &template=my_template    # optional
+  &template=my_template    # Note: Same template applied to all commands
 ```
 
 ### List Available Templates
