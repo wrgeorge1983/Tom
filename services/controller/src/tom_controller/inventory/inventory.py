@@ -49,37 +49,6 @@ class DeviceConfig(BaseModel):
     credential_id: str
 
 
-# these models are just for documentation purposes, they are not used in the code
-class SchemaNetmikoDevice(DeviceConfig):
-    adapter: Literal["netmiko"] = "netmiko"
-    adapter_driver: Literal[
-        "cisco_ios", "cisco_nxos", "arista_eos", "juniper_junos", "etc..."
-    ]
-    adapter_options: dict[str, Any] = {}
-
-
-class SchemaScrapliDevice(DeviceConfig):
-    adapter: Literal["scrapli"] = "scrapli"
-    adapter_driver: Literal[
-        "cisco_iosxe", "cisco_nxos", "cisco_iosxr", "arista_eos", "etc...."
-    ]
-    adapter_options: dict[str, Any] = {}
-
-
-SchemaDeviceConfig = Annotated[
-    SchemaNetmikoDevice | SchemaScrapliDevice, Field(discriminator="adapter")
-]
-
-
-# Wrapper model for schema generation
-class InventorySchema(RootModel[dict[str, SchemaDeviceConfig]]):
-    """Schema for inventory.yml - devices at root level"""
-
-    root: dict[str, SchemaDeviceConfig] = Field(
-        ..., description="Device configurations keyed by device name"
-    )
-
-
 class InventoryStore:
     def get_device_config(self, device_name: str) -> DeviceConfig:
         raise NotImplementedError
