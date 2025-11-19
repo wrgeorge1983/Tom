@@ -62,16 +62,21 @@
 ### Inventory
 - Inventory filtering improvements: support inline, per-request filters (regex for `Caption`, `Vendor`, `Description`) and/or accept filter definitions via query/body to avoid embedding filters in code.
 - Add CRUD-managed filter library (API + persistence) so operators can create, list, update, and delete named filters without code changes.
-- Additional inventory source adapters (NetBox, Nautobot, etc.)
+- Nautobot inventory source
+- NetBox inventory source
 - Configuration-driven field mapping for custom schemas
 
 ### Parsing & Templating
 - Jinja2 templating for command generation
 - Genie parser integration (maybe)
 
-### Plugin model
-- Plugin API
-- Migrate inventory and credential stores to plugins
+### Plugin Support
+- Plugin API and architecture
+- Plugin system for inventory sources
+- Plugin system for credential stores
+- Plugin system for device adapters
+- Plugin discovery and registration
+- Plugin configuration management
 
 ### UI
 - python client library

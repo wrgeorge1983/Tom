@@ -474,9 +474,7 @@ async def export_inventory(
 
         # Apply named filter if specified
         if filter_name:
-            from tom_controller.inventory.solarwinds import FilterRegistry
-
-            filter_obj = FilterRegistry.get_filter(filter_name)
+            filter_obj = inventory_store.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
             log.info(f"Filtered to {len(nodes)} nodes using named filter '{filter_name}'")
         else:
@@ -543,9 +541,7 @@ async def export_raw_inventory(
 
         # Apply named filter if specified
         if filter_name:
-            from tom_controller.inventory.solarwinds import FilterRegistry
-
-            filter_obj = FilterRegistry.get_filter(filter_name)
+            filter_obj = inventory_store.get_filter(filter_name)
             nodes = [node for node in nodes if filter_obj.matches(node)]
             log.info(f"Filtered to {len(nodes)} raw nodes using named filter '{filter_name}'")
         else:
@@ -577,11 +573,11 @@ async def get_inventory_fields(
 
 
 @router.get("/inventory/filters")
-async def list_filters() -> dict[str, str]:
-    """List available named inventory filters."""
-    from tom_controller.inventory.solarwinds import FilterRegistry
-
-    return FilterRegistry.get_available_filters()
+async def list_filters(
+    inventory_store: InventoryStore = Depends(get_inventory_store)
+) -> dict[str, str]:
+    """List available named inventory filters for the current inventory source."""
+    return inventory_store.get_available_filters()
 
 
 @router.get("/inventory/{device_name}")

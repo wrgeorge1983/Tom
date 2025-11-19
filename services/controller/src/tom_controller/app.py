@@ -15,7 +15,7 @@ from tom_controller import api
 from tom_controller.api import cache_api  # Import cache API endpoints
 from tom_shared.cache import CacheManager
 from tom_controller.config import Settings, settings
-from tom_controller.inventory.inventory import YamlInventoryStore
+from tom_controller.inventory.yaml import YamlInventoryStore
 from tom_controller.inventory.solarwinds import ModifiedSwisClient, SwisInventoryStore
 from tom_controller.exceptions import (
     TomException,

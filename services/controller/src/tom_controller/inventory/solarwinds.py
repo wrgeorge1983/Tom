@@ -7,14 +7,18 @@ from urllib3 import disable_warnings
 from orionsdk import SolarWinds
 
 from tom_controller.exceptions import TomNotFoundException
-from tom_controller.inventory.inventory import InventoryStore, log, DeviceConfig
+from tom_controller.inventory.inventory import InventoryStore, InventoryFilter, log, DeviceConfig
 
 disable_warnings()
 log = logging.getLogger(__name__)
 
 
-class SolarWindsFilter:
-    """Utility class for filtering SolarWinds nodes based on regex patterns."""
+class SolarWindsFilter(InventoryFilter):
+    """Utility class for filtering SolarWinds nodes based on regex patterns.
+    
+    This is a convenience wrapper around InventoryFilter that provides named parameters
+    for the common SolarWinds fields: Caption, Vendor, and Description.
+    """
 
     def __init__(
         self,
@@ -23,37 +27,21 @@ class SolarWindsFilter:
         description_pattern: Optional[str] = None,
     ):
         """
-        Initialize filter with regex patterns.
+        Initialize filter with regex patterns for SolarWinds-specific fields.
 
         :param caption_pattern: Regex pattern to match against node Caption (hostname)
         :param vendor_pattern: Regex pattern to match against node Vendor
         :param description_pattern: Regex pattern to match against node Description (OS/platform)
         """
-        self.caption_regex = (
-            re.compile(caption_pattern, re.IGNORECASE) if caption_pattern else None
-        )
-        self.vendor_regex = (
-            re.compile(vendor_pattern, re.IGNORECASE) if vendor_pattern else None
-        )
-        self.description_regex = (
-            re.compile(description_pattern, re.IGNORECASE)
-            if description_pattern
-            else None
-        )
-
-    def matches(self, node: Dict) -> bool:
-        """Check if a node matches all configured filter patterns."""
-        if self.caption_regex and not self.caption_regex.search(
-            node.get("Caption", "")
-        ):
-            return False
-        if self.vendor_regex and not self.vendor_regex.search(node.get("Vendor", "")):
-            return False
-        if self.description_regex and not self.description_regex.search(
-            node.get("Description", "")
-        ):
-            return False
-        return True
+        field_patterns = {}
+        if caption_pattern:
+            field_patterns["Caption"] = caption_pattern
+        if vendor_pattern:
+            field_patterns["Vendor"] = vendor_pattern
+        if description_pattern:
+            field_patterns["Description"] = description_pattern
+        
+        super().__init__(field_patterns)
 
     @classmethod
     def switch_filter(cls) -> "SolarWindsFilter":
@@ -192,20 +180,6 @@ class ModifiedSwisClient(SolarWinds):
         results = self.swis.query(query)
         return results
 
-    def test(self):
-        query = """
-            SELECT TOP 1 NodeID
-            FROM Orion.Nodes
-        """
-        log.info(f"Querying SWAPI...")
-        import requests
-
-        try:
-            results = self.swis.query(query).get("results", [])
-        except (AttributeError, requests.RequestException):
-            return False
-        return bool(results)  # empty results here also counts as failure
-
 
 class SwisInventoryStore(InventoryStore):
     def __init__(self, swis_client, settings):
@@ -271,8 +245,6 @@ class SwisInventoryStore(InventoryStore):
         log.info(f"Searching through {len(self.nodes)} nodes for {device_name}")
 
         # Create filter to find device by caption (hostname)
-        from tom_controller.inventory.solarwinds import SolarWindsFilter
-
         device_filter = SolarWindsFilter(caption_pattern=f"^{re.escape(device_name)}$")
 
         for node in self.nodes:
@@ -304,3 +276,11 @@ class SwisInventoryStore(InventoryStore):
             "Vendor": "Device vendor",
             "DetailsUrl": "SolarWinds details URL"
         }
+
+    def get_available_filters(self) -> dict[str, str]:
+        """Return available named filters for SolarWinds inventory."""
+        return FilterRegistry.get_available_filters()
+
+    def get_filter(self, filter_name: str) -> SolarWindsFilter:
+        """Get a named SolarWinds filter by name."""
+        return FilterRegistry.get_filter(filter_name)
