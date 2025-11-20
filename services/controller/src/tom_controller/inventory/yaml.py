@@ -2,6 +2,7 @@ from typing import Optional
 
 import yaml
 
+from tom_controller.config import Settings
 from tom_controller.exceptions import TomNotFoundException
 from tom_controller.inventory.inventory import InventoryStore, DeviceConfig
 
@@ -9,7 +10,9 @@ from tom_controller.inventory.inventory import InventoryStore, DeviceConfig
 class YamlInventoryStore(InventoryStore):
     data: Optional[dict] = None
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, settings: Settings):
+        self.settings = settings
+        self.priority = settings.get_inventory_plugin_priority("yaml")
         self.filename = filename
         with open(filename, "r") as f:
             self.data = yaml.safe_load(f)

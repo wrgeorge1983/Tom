@@ -6,6 +6,7 @@ from urllib3 import disable_warnings
 
 from orionsdk import SolarWinds
 
+from tom_controller.config import Settings
 from tom_controller.exceptions import TomNotFoundException
 from tom_controller.inventory.inventory import InventoryStore, InventoryFilter, log, DeviceConfig
 
@@ -182,10 +183,11 @@ class ModifiedSwisClient(SolarWinds):
 
 
 class SwisInventoryStore(InventoryStore):
-    def __init__(self, swis_client, settings):
+    def __init__(self, swis_client, settings: Settings):
         self.swis_client = swis_client
         self.settings = settings
         self.nodes = None
+        self.priority = settings.get_inventory_plugin_priority("solarwinds")
 
     def _load_nodes(self) -> list[dict]:
         """Load all nodes from SolarWinds on startup."""

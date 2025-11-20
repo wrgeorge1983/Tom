@@ -12,6 +12,7 @@ from saq.web.starlette import saq_web
 
 from tom_controller import __version__
 from tom_controller import api
+from tom_controller.Plugins import PluginManager
 from tom_controller.api import cache_api  # Import cache API endpoints
 from tom_shared.cache import CacheManager
 from tom_controller.config import Settings, settings
@@ -43,6 +44,13 @@ def create_app():
             force=True,  # Override existing logging config
         )
         logger = logging.getLogger(__name__)
+
+        plugin_manager = PluginManager()
+        plugin_manager.discover_plugins(settings)
+        for plugin in plugin_manager.inventory_plugin_names:
+            plugin_manager.initialize_inventory_plugin(plugin, settings)
+
+        this_app.state.plugin_manager = plugin_manager
 
         print(f"DEBUG: Log level set to: {logging.getLevelName(settings.log_level)}")
 

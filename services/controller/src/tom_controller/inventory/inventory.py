@@ -47,6 +47,9 @@ class DeviceConfig(BaseModel):
 
 
 class InventoryStore:
+    def __init__(self):
+        self.priority = 1000
+
     def get_device_config(self, device_name: str) -> DeviceConfig:
         raise NotImplementedError
 
@@ -100,3 +103,45 @@ class InventoryStore:
                 f"Named filters are not supported by this inventory source. "
                 f"Use inline filters with query parameters instead."
             )
+
+
+class InventoryService:
+    def __init__(self):
+        self._inventory_stores: list[InventoryStore] = []
+
+    def add_inventory_store(self, store: InventoryStore):
+        self._inventory_stores.append(store)
+        self._inventory_stores.sort(key=lambda store: store.priority)
+
+    @property
+    def default_inventory_store(self) -> InventoryStore:
+        return self._inventory_stores[0]
+
+    @property
+    def inventory_stores(self) -> list[InventoryStore]:
+        return self._inventory_stores
+
+    def get_device_config(self, device_name: str) -> DeviceConfig:
+        for store in self._inventory_stores:
+            try:
+                return store.get_device_config(device_name)
+            except KeyError:
+                continue
+        raise KeyError(f"Device '{device_name}' not found in any inventory sources")
+
+    async def alist_all_nodes(self) -> list[dict]:
+        """List all nodes from all inventory sources."""
+        results = []
+        for store in self._inventory_stores:
+            results.extend(await store.alist_all_nodes())
+        return results
+
+    def list_all_nodes(self) -> list[dict]:
+        """List all nodes from all inventory sources."""
+        results = []
+        for store in self._inventory_stores:
+            results.extend(store.list_all_nodes())
+        return results
+
+
+

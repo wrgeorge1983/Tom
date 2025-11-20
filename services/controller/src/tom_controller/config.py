@@ -143,6 +143,17 @@ class Settings(SharedSettings):
     textfsm_template_dir: str = "/app/templates/textfsm"
     ttp_template_dir: str = "/app/templates/ttp"
 
+    # plugins - different types listed separately because controller uses different types of plugins than workers, etc.
+    # inventory_plugins dict['module_name', priority]  # lower is better
+    inventory_plugins: dict[str, int] ={
+        "yaml": 100,
+    }
+
+    def get_inventory_plugin_priority(self, plugin_name: str) -> int:
+        try:
+            return self.inventory_plugins[plugin_name]
+        except KeyError:
+            raise ValueError(f"Unknown inventory plugin: {plugin_name}")
 
     @field_validator("api_keys")
     @classmethod
