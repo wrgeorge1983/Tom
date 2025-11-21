@@ -91,7 +91,7 @@ class Settings(SharedSettings):
     # inherits log, project_root, and redis settings from SharedSettings
 
     # Store settings
-    inventory_type: Literal["yaml", "swis"] = "yaml"
+    inventory_type: Literal["yaml", "solarwinds"] = "yaml"
     inventory_file: str = "defaultInventory.yml"
 
     # SolarWinds API settings
@@ -145,15 +145,17 @@ class Settings(SharedSettings):
 
     # plugins - different types listed separately because controller uses different types of plugins than workers, etc.
     # inventory_plugins dict['module_name', priority]  # lower is better
-    inventory_plugins: dict[str, int] ={
+    inventory_plugins: dict[str, int] = {
         "yaml": 100,
+        "solarwinds": 200,
     }
 
     def get_inventory_plugin_priority(self, plugin_name: str) -> int:
         try:
             return self.inventory_plugins[plugin_name]
         except KeyError:
-            raise ValueError(f"Unknown inventory plugin: {plugin_name}")
+            # Return a default priority if not specified
+            return 1000
 
     @field_validator("api_keys")
     @classmethod

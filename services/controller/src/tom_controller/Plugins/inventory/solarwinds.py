@@ -1,14 +1,16 @@
 import logging
 import re
-from collections import defaultdict
-from typing import List, Dict, Any, DefaultDict, Tuple, Optional
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Optional
 from urllib3 import disable_warnings
 
 from orionsdk import SolarWinds
 
+from tom_controller.Plugins import InventoryPlugin
 from tom_controller.config import Settings
 from tom_controller.exceptions import TomNotFoundException
-from tom_controller.inventory.inventory import InventoryStore, InventoryFilter, log, DeviceConfig
+from tom_controller.inventory.inventory import DeviceConfig, InventoryFilter
 
 disable_warnings()
 log = logging.getLogger(__name__)
@@ -114,6 +116,8 @@ class FilterRegistry:
 
 
 class ModifiedSwisClient(SolarWinds):
+    """Extended SolarWinds client with additional query methods."""
+    
     def __init__(self, hostname, username, password, *args, port=17774, **kwargs):
         connection_parameters = [hostname, username, password]
         if not all(connection_parameters):
@@ -124,7 +128,7 @@ class ModifiedSwisClient(SolarWinds):
         super().__init__(hostname, username, password, *args, port=port, **kwargs)
 
     @classmethod
-    def from_settings(cls, settings):
+    def from_settings(cls, settings: Settings):
         log.info(
             f"Creating SolarWinds client for {settings.swapi_host}:{settings.swapi_port}"
         )
@@ -173,7 +177,7 @@ class ModifiedSwisClient(SolarWinds):
         return [node for node in nodes if filter_obj.matches(node)]
 
     def get_ipsla_nodes(self):
-        query = f"""
+        query = """
         SELECT s.SiteID, s.Name, s.IPAddress, s.NodeID, s.RegionID, n.Caption
         FROM Orion.Nodes n 
          JOIN Orion.IpSla.Sites s ON n.NodeID = s.NodeID
@@ -182,12 +186,20 @@ class ModifiedSwisClient(SolarWinds):
         return results
 
 
-class SwisInventoryStore(InventoryStore):
-    def __init__(self, swis_client, settings: Settings):
-        self.swis_client = swis_client
+class SolarWindsInventoryPlugin(InventoryPlugin):
+    """SolarWinds SWIS-based inventory plugin."""
+    
+    name = "solarwinds"
+    dependencies = ["orionsdk"]
+    
+    def __init__(self, settings: Settings):
+        super().__init__(settings)
         self.settings = settings
-        self.nodes = None
         self.priority = settings.get_inventory_plugin_priority("solarwinds")
+        self.nodes: Optional[List[Dict]] = None
+        
+        # Create SWIS client
+        self.swis_client = ModifiedSwisClient.from_settings(settings)
 
     def _load_nodes(self) -> list[dict]:
         """Load all nodes from SolarWinds on startup."""
@@ -237,7 +249,7 @@ class SwisInventoryStore(InventoryStore):
         )
 
     def get_device_config(self, device_name: str) -> DeviceConfig:
-        """Find device by Caption (hostname) and return DeviceConfig."""
+        """Find device by Caption (hostname) and return DeviceConfig (sync)."""
         log.info(f"Looking up device: {device_name}")
 
         if self.nodes is None:
@@ -259,12 +271,26 @@ class SwisInventoryStore(InventoryStore):
             f"Device {device_name} not found in SolarWinds inventory"
         )
 
+    async def aget_device_config(self, device_name: str) -> DeviceConfig:
+        """Find device by Caption (hostname) and return DeviceConfig (async)."""
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            return await loop.run_in_executor(
+                executor, self.get_device_config, device_name
+            )
+
     def list_all_nodes(self) -> list[dict]:
-        """Return all nodes from SolarWinds inventory."""
+        """Return all nodes from SolarWinds inventory (sync)."""
         if self.nodes is None:
             log.info("Nodes not loaded, loading from SolarWinds...")
             self.nodes = self._load_nodes()
         return self.nodes
+
+    async def alist_all_nodes(self) -> list[dict]:
+        """Return all nodes from SolarWinds inventory (async)."""
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            return await loop.run_in_executor(executor, self.list_all_nodes)
 
     def get_filterable_fields(self) -> dict[str, str]:
         """Return available fields from SolarWinds for filtering."""

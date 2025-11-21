@@ -25,7 +25,7 @@ api_keys: ["abc123:admin", "asldfjaldkf:admin"]
 oauth_test_enabled: false  # Enable OAuth test endpoints (should be false in production)
 
 # Inventory Configuration
-inventory_type: "yaml"  # or "swis"
+inventory_type: "yaml"  # or "solarwinds"
 inventory_file: "inventory/inventory.yml"
 
 # SolarWinds SWIS/SWAPI Configuration
