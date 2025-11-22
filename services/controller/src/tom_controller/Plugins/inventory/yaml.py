@@ -3,7 +3,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import yaml
 
-from tom_controller.Plugins import InventoryPlugin
+from tom_controller.Plugins.base import InventoryPlugin, PluginSettings
 from tom_controller.config import Settings
 from tom_controller.exceptions import TomNotFoundException
 from tom_controller.inventory.inventory import DeviceConfig
@@ -14,13 +14,14 @@ class YamlInventoryPlugin(InventoryPlugin):
     
     name = "yaml"
     dependencies = []  # No external dependencies
+    settings_class = None  # Uses main settings for now (legacy mode)
     
-    def __init__(self, settings: Settings):
-        super().__init__(settings)
-        self.settings = settings
-        self.filename = settings.inventory_path
+    def __init__(self, plugin_settings: PluginSettings | None, main_settings: Settings):
+        super().__init__(plugin_settings, main_settings)
+        self.settings = main_settings
+        self.filename = main_settings.inventory_path
         self.data: Optional[dict] = None
-        self.priority = settings.get_inventory_plugin_priority("yaml")
+        self.priority = main_settings.get_inventory_plugin_priority("yaml")
         
         with open(self.filename, "r") as f:
             self.data = yaml.safe_load(f)

@@ -1,13 +1,17 @@
 import logging
+import os
 import re
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional
+
+from pydantic import BaseModel
+from pydantic_settings import SettingsConfigDict
 from urllib3 import disable_warnings
 
 from orionsdk import SolarWinds
 
-from tom_controller.Plugins import InventoryPlugin
+from tom_controller.Plugins.base import InventoryPlugin, PluginSettings
 from tom_controller.config import Settings
 from tom_controller.exceptions import TomNotFoundException
 from tom_controller.inventory.inventory import DeviceConfig, InventoryFilter
@@ -128,15 +132,15 @@ class ModifiedSwisClient(SolarWinds):
         super().__init__(hostname, username, password, *args, port=port, **kwargs)
 
     @classmethod
-    def from_settings(cls, settings: Settings):
+    def from_settings(cls, settings: "SolarwindsSettings"):
         log.info(
-            f"Creating SolarWinds client for {settings.swapi_host}:{settings.swapi_port}"
+            f"Creating SolarWinds client for {settings.host}:{settings.port}"
         )
         return cls(
-            hostname=settings.swapi_host,
-            username=settings.swapi_username,
-            password=settings.swapi_password,
-            port=settings.swapi_port,
+            hostname=settings.host,
+            username=settings.username,
+            password=settings.password,
+            port=settings.port,
         )
 
     def list_nodes(self, alive_only=True) -> List[Dict]:
@@ -186,20 +190,84 @@ class ModifiedSwisClient(SolarWinds):
         return results
 
 
+class SolarWindsMatchCriteria(BaseModel):
+    """Match criteria for SolarWinds devices."""
+
+    vendor: Optional[str] = None
+    description: Optional[str] = None
+    caption: Optional[str] = None
+
+
+class SolarWindsDeviceAction(BaseModel):
+    """Action to take when a device matches criteria."""
+
+    adapter: str
+    adapter_driver: str
+    credential_id: Optional[str] = None
+    port: int = 22
+
+
+class SolarWindsMapping(BaseModel):
+    """A single match/action rule for SolarWinds devices."""
+
+    match: SolarWindsMatchCriteria
+    action: SolarWindsDeviceAction
+
+
+class SolarwindsSettings(PluginSettings):
+    """
+    SolarWinds Plugin Settings
+    
+    Config file uses prefixed keys: plugin_solarwinds_host, plugin_solarwinds_username, etc.
+    Env vars use: TOM_PLUGIN_SOLARWINDS_HOST, TOM_PLUGIN_SOLARWINDS_USERNAME, etc.
+    Code accesses clean names: settings.host, settings.username, etc.
+    
+    Precedence: ENVVARS > env_file > yaml_file > defaults
+    """
+    
+    # Clean field names - prefixes are added automatically for config/env lookup
+    host: str
+    username: str
+    password: str
+    port: int = 17774
+    default_cred_name: str = 'default'  # default cred name attached to solarwinds inventory objects
+    device_mappings: list[SolarWindsMapping] = [
+        SolarWindsMapping(
+            match=SolarWindsMatchCriteria(vendor=".*"),
+            action=SolarWindsDeviceAction(
+                adapter="netmiko",
+                adapter_driver="cisco_ios",
+                credential_id="default",
+            )
+        )
+    ]
+    
+    model_config = SettingsConfigDict(
+        env_prefix="TOM_",
+        env_file=os.getenv("TOM_ENV_FILE", "foo.env"),
+        yaml_file=os.getenv("TOM_CONFIG_FILE", "tom_config.yaml"),
+        case_sensitive=False,
+        extra="forbid",
+        plugin_name="solarwinds",  # type: ignore[typeddict-unknown-key]
+    )
+
+
 class SolarWindsInventoryPlugin(InventoryPlugin):
     """SolarWinds SWIS-based inventory plugin."""
     
     name = "solarwinds"
     dependencies = ["orionsdk"]
+    settings_class = SolarwindsSettings
     
-    def __init__(self, settings: Settings):
-        super().__init__(settings)
-        self.settings = settings
-        self.priority = settings.get_inventory_plugin_priority("solarwinds")
+    def __init__(self, plugin_settings: SolarwindsSettings, main_settings: Settings):
+        super().__init__(plugin_settings, main_settings)
+        self.settings = plugin_settings
+        self.main_settings = main_settings
+        self.priority = main_settings.get_inventory_plugin_priority("solarwinds")
         self.nodes: Optional[List[Dict]] = None
         
         # Create SWIS client
-        self.swis_client = ModifiedSwisClient.from_settings(settings)
+        self.swis_client = ModifiedSwisClient.from_settings(plugin_settings)
 
     def _load_nodes(self) -> list[dict]:
         """Load all nodes from SolarWinds on startup."""
@@ -215,7 +283,7 @@ class SolarWindsInventoryPlugin(InventoryPlugin):
     def _node_to_device_config(self, node: dict) -> DeviceConfig:
         """Convert SolarWinds node data to DeviceConfig format using configured mappings."""
         # Try each mapping rule in order until we find a match
-        for mapping in self.settings.swapi_device_mappings:
+        for mapping in self.settings.device_mappings:
             # Create a filter from the match criteria
             filter_obj = SolarWindsFilter(
                 caption_pattern=mapping.match.caption,
@@ -227,7 +295,7 @@ class SolarWindsInventoryPlugin(InventoryPlugin):
                 # Use the credential_id from the action, or fall back to default
                 credential_id = (
                     mapping.action.credential_id
-                    or self.settings.swapi_default_cred_name
+                    or self.settings.default_cred_name
                 )
 
                 return DeviceConfig(
@@ -245,7 +313,7 @@ class SolarWindsInventoryPlugin(InventoryPlugin):
             adapter_driver="cisco_ios",
             host=node["IPAddress"],
             port=22,
-            credential_id=self.settings.swapi_default_cred_name,
+            credential_id=self.settings.default_cred_name,
         )
 
     def get_device_config(self, device_name: str) -> DeviceConfig:

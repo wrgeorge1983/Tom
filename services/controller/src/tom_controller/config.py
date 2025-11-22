@@ -43,30 +43,6 @@ class JWTProviderConfig(BaseModel):
     
     model_config = ConfigDict(extra="forbid")
 
-class SolarWindsMatchCriteria(BaseModel):
-    """Match criteria for SolarWinds devices."""
-
-    vendor: Optional[str] = None
-    description: Optional[str] = None
-    caption: Optional[str] = None
-
-
-class SolarWindsDeviceAction(BaseModel):
-    """Action to take when a device matches criteria."""
-
-    adapter: str
-    adapter_driver: str
-    credential_id: Optional[str] = None
-    port: int = 22
-
-
-class SolarWindsMapping(BaseModel):
-    """A single match/action rule for SolarWinds devices."""
-
-    match: SolarWindsMatchCriteria
-    action: SolarWindsDeviceAction
-
-
 class Settings(SharedSettings):
     """
     Settings class manages configuration options.
@@ -93,22 +69,6 @@ class Settings(SharedSettings):
     # Store settings
     inventory_type: Literal["yaml", "solarwinds"] = "yaml"
     inventory_file: str = "defaultInventory.yml"
-
-    # SolarWinds API settings
-    swapi_host: str = ""
-    swapi_username: str = ""
-    swapi_password: str = ""
-    swapi_port: int = 17774
-    swapi_device_mappings: list[SolarWindsMapping] = [
-        SolarWindsMapping(
-            match=SolarWindsMatchCriteria(vendor=".*"),
-            action=SolarWindsDeviceAction(
-                adapter="netmiko",
-                adapter_driver="cisco_ios",
-                credential_id="default",
-            ),
-        )
-    ]
 
     # Tom Core Server settings
     host: str = "0.0.0.0"
@@ -208,7 +168,7 @@ class Settings(SharedSettings):
         env_file=os.getenv("TOM_ENV_FILE", "foo.env"),
         yaml_file=os.getenv("TOM_CONFIG_FILE", "tom_config.yaml"),
         case_sensitive=False,
-        extra="forbid",
+        extra="ignore",  # Allow plugin-specific settings in the same config file
     )
 
 

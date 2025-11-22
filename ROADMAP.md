@@ -77,6 +77,7 @@
 - Plugin system for device adapters
 - Plugin discovery and registration
 - Plugin configuration management
+- Config validation tool (`tom validate-config`) to detect typos and unused keys across main and plugin settings
 
 ### UI
 - python client library
