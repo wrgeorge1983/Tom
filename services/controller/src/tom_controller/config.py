@@ -67,7 +67,7 @@ class Settings(SharedSettings):
     # inherits log, project_root, and redis settings from SharedSettings
 
     # Store settings
-    inventory_type: Literal["yaml", "solarwinds"] = "yaml"
+    inventory_type: str = "yaml"  # Plugin name - validated at plugin initialization
 
     # Tom Core Server settings
     host: str = "0.0.0.0"

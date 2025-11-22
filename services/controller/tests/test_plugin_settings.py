@@ -242,3 +242,27 @@ test_device:
             assert plugin.filename == str(Path(".") / temp_inventory)
         finally:
             Path(temp_inventory).unlink()
+
+
+class TestMissingPluginCrash:
+    """Test that missing plugins cause appropriate errors at runtime."""
+    
+    def test_missing_plugin_raises_error(self):
+        """Requesting a plugin that doesn't exist should raise ValueError at initialization."""
+        from tom_controller.Plugins.base import PluginManager
+        from tom_controller.config import Settings
+        import pytest
+        
+        # inventory_type is now str (not Literal), so this is valid at Settings level
+        settings = Settings(
+            inventory_type="nonexistent",
+            inventory_plugins={"yaml": 100}
+        )  # type: ignore[call-arg]
+        
+        pm = PluginManager()
+        pm.discover_plugins(settings)
+        
+        # Validation happens at plugin initialization, not Settings load
+        # Should raise ValueError when trying to initialize non-existent plugin
+        with pytest.raises(ValueError, match="Unknown inventory plugin 'nonexistent'"):
+            pm.initialize_inventory_plugin("nonexistent", settings)
