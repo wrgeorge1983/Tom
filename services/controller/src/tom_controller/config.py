@@ -68,7 +68,6 @@ class Settings(SharedSettings):
 
     # Store settings
     inventory_type: Literal["yaml", "solarwinds"] = "yaml"
-    inventory_file: str = "defaultInventory.yml"
 
     # Tom Core Server settings
     host: str = "0.0.0.0"
@@ -157,11 +156,6 @@ class Settings(SharedSettings):
             for key_str in self.api_keys
             for key, user in [key_str.split(":", 1)]
         }
-
-    @computed_field
-    @property
-    def inventory_path(self) -> str:
-        return str(Path(self.project_root) / self.inventory_file)
 
     model_config = SettingsConfigDict(
         env_prefix="TOM_",

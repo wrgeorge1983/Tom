@@ -101,6 +101,7 @@ class PluginSettings(BaseSettings):
         env_plugin_prefix = f"PLUGIN_{plugin_name.upper()}_"
         
         return (
+            init_settings,  # Highest priority: direct kwargs
             StripPrefixEnvSettingsSource(settings_cls, env_prefix, env_plugin_prefix),
             dotenv_settings,
             StripPrefixYamlSettingsSource(settings_cls, yaml_prefix),

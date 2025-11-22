@@ -26,10 +26,13 @@ oauth_test_enabled: false  # Enable OAuth test endpoints (should be false in pro
 
 # Inventory Configuration
 inventory_type: "yaml"  # or "solarwinds"
-inventory_file: "inventory/inventory.yml"
+
+# YAML Inventory Plugin Configuration
+# Note: Uses project_root from main settings (defined above)
+plugin_yaml_inventory_file: "inventory/inventory.yml"
 
 # SolarWinds Plugin Configuration
-# Note: These settings use the plugin prefix format
+# Note: All plugin settings use the plugin_ prefix format
 plugin_solarwinds_host: "solarwinds.example.com"
 plugin_solarwinds_port: 17774
 plugin_solarwinds_username: "swapi_user"

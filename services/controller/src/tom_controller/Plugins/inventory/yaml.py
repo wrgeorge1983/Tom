@@ -1,7 +1,11 @@
 from typing import Optional
+import os
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 import yaml
+
+from pydantic_settings import SettingsConfigDict
 
 from tom_controller.Plugins.base import InventoryPlugin, PluginSettings
 from tom_controller.config import Settings
@@ -9,17 +13,45 @@ from tom_controller.exceptions import TomNotFoundException
 from tom_controller.inventory.inventory import DeviceConfig
 
 
+class YamlSettings(PluginSettings):
+    """
+    YAML Plugin Settings
+    
+    Config file uses prefixed keys: plugin_yaml_inventory_file
+    Env vars use: TOM_PLUGIN_YAML_INVENTORY_FILE
+    Code accesses clean names: settings.inventory_file
+    
+    Note: Uses project_root from main Settings (not duplicated)
+    
+    Precedence: ENVVARS > env_file > yaml_file > defaults
+    """
+    
+    # Clean field names - prefixes are added automatically for config/env lookup
+    inventory_file: str = "defaultInventory.yml"
+    
+    model_config = SettingsConfigDict(
+        env_prefix="TOM_",
+        env_file=os.getenv("TOM_ENV_FILE", "foo.env"),
+        yaml_file=os.getenv("TOM_CONFIG_FILE", "tom_config.yaml"),
+        case_sensitive=False,
+        extra="forbid",
+        plugin_name="yaml",  # type: ignore[typeddict-unknown-key]
+    )
+
+
 class YamlInventoryPlugin(InventoryPlugin):
     """YAML file-based inventory plugin."""
     
     name = "yaml"
     dependencies = []  # No external dependencies
-    settings_class = None  # Uses main settings for now (legacy mode)
+    settings_class = YamlSettings
     
-    def __init__(self, plugin_settings: PluginSettings | None, main_settings: Settings):
+    def __init__(self, plugin_settings: YamlSettings, main_settings: Settings):
         super().__init__(plugin_settings, main_settings)
-        self.settings = main_settings
-        self.filename = main_settings.inventory_path
+        self.settings = plugin_settings
+        self.main_settings = main_settings
+        # Compute inventory path using main_settings.project_root (no duplication)
+        self.filename = str(Path(main_settings.project_root) / plugin_settings.inventory_file)
         self.data: Optional[dict] = None
         self.priority = main_settings.get_inventory_plugin_priority("yaml")
         
