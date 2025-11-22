@@ -28,15 +28,16 @@ oauth_test_enabled: false  # Enable OAuth test endpoints (should be false in pro
 inventory_type: "yaml"  # or "solarwinds"
 inventory_file: "inventory/inventory.yml"
 
-# SolarWinds SWIS/SWAPI Configuration
-swapi_host: "solarwinds.example.com"
-swapi_port: 17774
-swapi_username: "swapi_user"
-swapi_password: "swapi_pw"
-swapi_default_cred_name: "autoUser"
+# SolarWinds Plugin Configuration
+# Note: These settings use the plugin prefix format
+plugin_solarwinds_host: "solarwinds.example.com"
+plugin_solarwinds_port: 17774
+plugin_solarwinds_username: "swapi_user"
+plugin_solarwinds_password: "swapi_pw"
+plugin_solarwinds_default_cred_name: "autoUser"
 
 # SolarWinds Device Mappings - processed in order, first match wins
-swapi_device_mappings:
+plugin_solarwinds_device_mappings:
   - match:
       vendor: "cisco"
       description: "asr"

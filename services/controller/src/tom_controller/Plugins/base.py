@@ -21,21 +21,18 @@ class StripPrefixEnvSettingsSource(EnvSettingsSource):
         :param env_prefix: Base env prefix (e.g., "TOM_")
         :param plugin_prefix: Plugin-specific prefix to strip (e.g., "PLUGIN_SOLARWINDS_")
         """
-        super().__init__(settings_cls)
+        # Call parent with empty prefix so it loads ALL env vars
+        # We'll do the filtering ourselves in __call__
+        super().__init__(settings_cls, env_prefix='')
         self.plugin_prefix = plugin_prefix.upper()
         self.full_prefix = (env_prefix + plugin_prefix).upper()
-    
-    def prepare_field_value(self, field_name: str, field: Any, value: Any, value_is_complex: bool) -> Any:
-        # Reconstruct the env var name with the plugin prefix
-        env_name = self.full_prefix + field_name.upper()
-        return super().prepare_field_value(field_name, field, value, value_is_complex)
     
     def __call__(self) -> dict[str, Any]:
         d: dict[str, Any] = {}
         
         # Get all env vars that match our full prefix
         for env_name, env_value in self.env_vars.items():
-            if env_name.startswith(self.full_prefix):
+            if env_name.upper().startswith(self.full_prefix):
                 # Strip the full prefix to get the field name
                 field_name = env_name[len(self.full_prefix):].lower()
                 d[field_name] = env_value
