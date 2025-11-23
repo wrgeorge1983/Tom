@@ -826,6 +826,21 @@ wheels = [
 ]
 
 [[package]]
+name = "pynautobot"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "requests" },
+    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "platform_python_implementation == 'PyPy'" },
+    { name = "urllib3", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b6/a8/2f9f9d652f35e8f0f09f35fb5d204659515fe2a4385f8c30eecebb5569dc/pynautobot-3.0.0.tar.gz", hash = "sha256:cc0b5ccfd9edc4f7fa9777845ce895bf0f6a6e41610a8bc05c2459463351b0b7", size = 33587, upload-time = "2025-11-14T16:55:18.862Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5b/cd/8c1e495fbe21298dc484fc4a3c294388fda55d9467579885e170895411dc/pynautobot-3.0.0-py3-none-any.whl", hash = "sha256:b24c636517dfdbebdc258d283a99af079e0c278e69d705767db3e8455413590f", size = 41319, upload-time = "2025-11-14T16:55:17.874Z" },
+]
+
+[[package]]
 name = "pyright"
 version = "1.1.406"
 source = { registry = "https://pypi.org/simple" }
@@ -1196,6 +1211,7 @@ dependencies = [
     { name = "prometheus-client" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "pynautobot" },
     { name = "python-jose" },
     { name = "redis" },
     { name = "saq", extra = ["redis", "web"] },
@@ -1229,6 +1245,7 @@ requires-dist = [
     { name = "prometheus-client", specifier = ">=0.23.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
+    { name = "pynautobot", specifier = ">=3.0.0" },
     { name = "python-jose", specifier = ">=3.5.0" },
     { name = "redis", specifier = ">=5.0.0,<6.0.0" },
     { name = "saq", extras = ["redis", "web"], specifier = ">=0.25.2" },

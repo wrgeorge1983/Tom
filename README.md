@@ -70,7 +70,7 @@ is stable and usable in production, but the API may evolve based on real-world f
 - **HashiCorp Vault Integration** - Secure credential storage
 
 ### Inventory & Automation
-- **Multiple Inventory Sources** - YAML files or SolarWinds SWIS
+- **Multiple Inventory Sources** - YAML files, SolarWinds SWIS, Nautobot
 - **Queue-Based Processing** - Async job execution with Redis/SAQ
 - **Per-Device Concurrency Control** - Prevent overwhelming devices
 - **Multi-Transport Support** - Netmiko and Scrapli adapters

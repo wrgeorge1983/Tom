@@ -107,6 +107,7 @@ class Settings(SharedSettings):
     inventory_plugins: dict[str, int] = {
         "yaml": 100,
         "solarwinds": 200,
+        "nautobot": 150,
     }
 
     def get_inventory_plugin_priority(self, plugin_name: str) -> int:
