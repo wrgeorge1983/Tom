@@ -25,7 +25,7 @@ api_keys: ["abc123:admin", "asldfjaldkf:admin"]
 oauth_test_enabled: false  # Enable OAuth test endpoints (should be false in production)
 
 # Inventory Configuration
-inventory_type: "yaml"  # or "solarwinds" or "nautobot"
+inventory_type: "yaml"  # or "solarwinds" or "nautobot" or "netbox"
 
 # YAML Plugin Configuration
 # Note: Uses project_root from main settings (defined above)
@@ -55,6 +55,31 @@ plugin_nautobot_tag_filter: []     # e.g., ["production", "tom-managed"]
 # Defaults (used when platform data is missing/incomplete)
 plugin_nautobot_default_adapter: "netmiko"  # or "scrapli"
 plugin_nautobot_default_driver: "cisco_ios"
+
+# NetBox Plugin Configuration
+plugin_netbox_url: "https://netbox.company.com"
+plugin_netbox_token: "your-api-token-here"
+
+# Credential mapping - using custom field (recommended)
+plugin_netbox_credential_source: "custom_field"
+plugin_netbox_credential_field: "credential_id"
+plugin_netbox_credential_default: "default"
+
+# Optional: Using config context instead
+# plugin_netbox_credential_source: "config_context"
+# plugin_netbox_credential_context_path: "tom.credential_id"  # Can be nested like "tom.credentials.ssh"
+
+# Optional: Filter which devices to import
+# Use Status/Role/Location/Tag NAMES as they appear in your NetBox instance
+# Leave empty ([]) to disable filtering
+plugin_netbox_status_filter: []  # e.g., ["active", "staged"]
+plugin_netbox_role_filter: []    # e.g., ["Edge Router", "Core Switch"]
+plugin_netbox_location_filter: [] # e.g., ["NYC-DC1", "SFO-DC2"]  
+plugin_netbox_tag_filter: []     # e.g., ["production", "tom-managed"]
+
+# Defaults (used when platform data is missing/incomplete)
+plugin_netbox_default_adapter: "netmiko"  # or "scrapli"
+plugin_netbox_default_driver: "cisco_ios"
 
 # SolarWinds Plugin Configuration
 # Note: All plugin settings use the plugin_ prefix format
