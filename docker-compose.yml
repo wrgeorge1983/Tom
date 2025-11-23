@@ -104,6 +104,19 @@ services:
     depends_on:
       - prometheus
 
+  docs:
+    build:
+      context: ./docs
+    env_file:
+      - docker.env
+    volumes:
+      - ./docs:/app/docs
+      - ./slop:/app/slop
+    ports:
+      - "8001:8000"  # Avoid conflict with controller on 8000
+    profiles:
+      - docs  # Optional, run with docker-compose --profile docs up
+
 volumes:
   vault-data:
     driver: local
