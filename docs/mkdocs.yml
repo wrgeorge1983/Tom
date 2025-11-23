@@ -52,4 +52,4 @@ nav:
   - Home: index.md
   - Documentation: real/index.md
   - Adhoc Docs: adhoc/index.md
-  - Slop Docs: slop/index.md  # Will 404 if slop/ doesn't exist
+  # Slop docs at /slop/ if present locally (not in nav to avoid 404 on public site)
