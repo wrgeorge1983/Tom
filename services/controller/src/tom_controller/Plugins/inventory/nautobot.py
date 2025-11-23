@@ -88,9 +88,13 @@ class NautobotInventoryPlugin(InventoryPlugin):
         - config_context: Nested JSON like device.config_context.tom.credential_id
         """
         if self.settings.credential_source == "custom_field":
-            return device.custom_fields.get(
+            value = device.custom_fields.get(
                 self.settings.credential_field, self.settings.credential_default
             )
+            # Return value if it's a non-empty string, otherwise use default
+            if isinstance(value, str) and value:
+                return value
+            return self.settings.credential_default
         elif self.settings.credential_source == "config_context":
             # Navigate nested config context path
             context = device.config_context
