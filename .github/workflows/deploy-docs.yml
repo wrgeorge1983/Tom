@@ -47,10 +47,14 @@ jobs:
           echo "full_version=${VERSION}" >> $GITHUB_OUTPUT
       
       - name: Deploy docs with mike
-        run: uv run --directory docs mike deploy --push --update-aliases --config-file docs/mkdocs.yml ${{ steps.version.outputs.version }} latest
+        run: |
+          cd docs
+          uv run mike deploy --push --update-aliases ${{ steps.version.outputs.version }} latest
       
       - name: Set default version (redirect root to latest)
-        run: uv run --directory docs mike set-default --push --config-file docs/mkdocs.yml latest
+        run: |
+          cd docs
+          uv run mike set-default --push latest
       
       - name: Summary
         run: |

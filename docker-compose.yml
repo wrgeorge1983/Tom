@@ -111,7 +111,6 @@ services:
       - docker.env
     volumes:
       - ./docs:/app/docs
-      - ./slop:/app/slop
     ports:
       - "8001:8000"  # Avoid conflict with controller on 8000
     profiles:

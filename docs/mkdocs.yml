@@ -35,7 +35,7 @@ theme:
     - content.code.annotation
     - content.code.copy
 
-docs_dir: docs/docs
+docs_dir: docs
 
 plugins:
   - mermaid2
@@ -52,3 +52,4 @@ nav:
   - Home: index.md
   - Documentation: real/index.md
   - Adhoc Docs: adhoc/index.md
+  - Slop Docs: slop/index.md  # Will 404 if slop/ doesn't exist
