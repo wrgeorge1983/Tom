@@ -49,7 +49,7 @@ jobs:
       - name: Deploy docs with mike
         run: |
           cd docs
-          uv run mike deploy --push --update-aliases ${{ steps.version.outputs.version }} latest
+          uv run mike deploy --push --update-aliases --config-file mkdocs-gha.yml ${{ steps.version.outputs.version }} latest
       
       - name: Summary
         run: |

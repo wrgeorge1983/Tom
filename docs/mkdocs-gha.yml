@@ -1,0 +1,49 @@
+site_name: Tom Smykowski Documentation
+site_url: https://wrgeorge1983.github.io/tom/
+repo_url: https://github.com/wrgeorge1983/tom
+repo_name: wrgeorge1983/tom
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+
+docs_dir: docs
+
+plugins:
+  - mermaid2
+  - mike:
+      version_selector: true
+      css_dir: assets/stylesheets
+      javascript_dir: assets/javascripts
+
+nav:
+  - Home: index.md
+  - Adhoc Docs: adhoc/index.md
