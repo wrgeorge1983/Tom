@@ -53,6 +53,39 @@
   - Per-request cache control parameters
   - CommandExecutionResult model for structured responses
 
+### v0.8.0
+- Better error handling and reporting
+- Vault approle support in worker deployment
+
+### v0.10.0
+- Multi-command execution with per-command parsing
+- Flexible inventory filtering and retry handler
+- /inventory/fields API endpoint
+
+### v0.11.0
+- Monitoring and metrics system
+  - Worker and controller metrics
+  - Example Prometheus and Grafana setup in docker-compose.yml
+
+### v0.12.0
+- Plugin system for inventory sources
+  - Plugin API and architecture
+  - Plugin discovery and registration
+  - Plugin configuration management
+  - Inventory Plugins
+    - YAML file
+    - SolarWinds NPM API
+  - Inventory filtering improvements with inline filters
+  - CRUD-managed filter library (API + persistence)
+- Dynamic semaphore acquisition retry handling with time-based budgets
+  - Extend API and job models with retry and max_queue_wait parameters
+
+### v0.13.0
+- Nautobot inventory plugin
+
+### v0.14.0
+- NetBox inventory plugin
+
 ## Future Work
 
 ### Reliability
@@ -60,10 +93,6 @@
 - Expose Controller and Worker metrics (for e.g. Prometheus)
 
 ### Inventory
-- Inventory filtering improvements: support inline, per-request filters (regex for `Caption`, `Vendor`, `Description`) and/or accept filter definitions via query/body to avoid embedding filters in code.
-- Add CRUD-managed filter library (API + persistence) so operators can create, list, update, and delete named filters without code changes.
-- Nautobot inventory source
-- NetBox inventory source
 - Configuration-driven field mapping for custom schemas
 
 ### Parsing & Templating
@@ -71,12 +100,8 @@
 - Genie parser integration (maybe)
 
 ### Plugin Support
-- Plugin API and architecture
-- Plugin system for inventory sources
 - Plugin system for credential stores
 - Plugin system for device adapters
-- Plugin discovery and registration
-- Plugin configuration management
 - Config validation tool (`tom validate-config`) to detect typos and unused keys across main and plugin settings
 
 ### UI

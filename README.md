@@ -45,8 +45,8 @@ is stable and usable in production, but the API may evolve based on real-world f
 
 - **Authentication (frontend)**: OAuth2 and API Key are both fully supported
 - **Device credential management**: HashiCorp Vault integration is fully supported; AWS Secrets Manager support is planned
-- **Inventory**: YAML, SolarWinds SWIS, Nautobot, and NetBox are all supported
-- **Plugins**: Planned, likely in order to accomplish the above two items, but we'll see!
+- **Inventory**: Plugin-based system supporting YAML, SolarWinds SWIS, Nautobot, and NetBox
+- **Plugins**: Extensible plugin system for inventory sources, credential stores, and device adapters
 - **Parsing**: TextFSM and TTP are both fully supported
 
 ## Goals
