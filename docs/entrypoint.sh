@@ -2,9 +2,9 @@
 
 # Prepare slop if enabled - copy to tmpfs to avoid mount permission issues
 if [ "$INCLUDE_SLOP" = "true" ]; then
-    # Copy existing docs first (exclude slop symlink)
+    # Copy existing docs first
     mkdir -p /tmp/docs/docs
-    (cd /app/docs/docs && find . -maxdepth 1 ! -name slop ! -name . -exec cp -r {} /tmp/docs/docs/ \;)
+    cp -r /app/docs/docs/* /tmp/docs/docs/ 2>/dev/null || true
     # Then copy slop contents into it
     mkdir -p /tmp/docs/docs/slop
     cp -r /app/slop/* /tmp/docs/docs/slop/

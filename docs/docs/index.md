@@ -4,7 +4,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 
 ## Real Docs
 
-This section is where the main, structured documentation will go. For now, it's under development.
+The main, structured documentation is now available. [Start here →](real/index.md)
 
 ## Adhoc Docs
 

@@ -44,7 +44,12 @@ plugins:
       css_dir: assets/stylesheets
       javascript_dir: assets/javascripts
 
+extra:
+  version:
+    provider: mike
+
 nav:
   - Home: index.md
+  - Documentation: real/index.md
   - Adhoc Docs: adhoc/index.md
   - Slop Docs: slop/index.md
