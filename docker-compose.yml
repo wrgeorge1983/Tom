@@ -110,7 +110,7 @@ services:
     env_file:
       - docker.env
     volumes:
-      - ./docs:/app/docs
+      - ./docs/docs:/app/docs
     ports:
       - "8001:8000"  # Avoid conflict with controller on 8000
     profiles:
