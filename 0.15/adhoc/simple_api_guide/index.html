@@ -1,0 +1,927 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://wrgeorge1983.github.io/tom/0.15/adhoc/simple_api_guide/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Simple API Guide - Tom Smykowski Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#simple-api-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tom Smykowski Documentation" class="md-header__button md-logo" aria-label="Tom Smykowski Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tom Smykowski Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Simple API Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/wrgeorge1983/tom" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wrgeorge1983/tom
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Adhoc Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tom Smykowski Documentation" class="md-nav__button md-logo" aria-label="Tom Smykowski Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tom Smykowski Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/wrgeorge1983/tom" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wrgeorge1983/tom
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adhoc Docs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#job-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#start-a-job-device-via-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start a job (device via inventory)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Start a job (device via inventory)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-command-sync-or-async" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single command (sync or async)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multiple commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simple mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-mode-per-command-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced mode (per-command control)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-body-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request body fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commandspec-fields-for-advanced-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CommandSpec fields (for advanced mode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rawdirect-host-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw/Direct host endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#async-job-control-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Async job control / status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inventory
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inventory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inventory-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inventory filtering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inventory filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-named-filters-predefined" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Named Filters (Predefined)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-inline-filters-flexible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Inline Filters (Flexible)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates-parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Templates &amp; parsing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parsing-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing selection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#convenience-debug-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convenience / debug endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes-assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes / assumptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="simple-api-guide">Simple API Guide</h1>
+<p>This document explains the main Tom controller HTTP API flows: starting sync/async jobs against inventory devices, controlling caching, and selecting parsing templates. It covers the primary, common paths (not every edge case).</p>
+<h2 id="overview">Overview</h2>
+<ul>
+<li>Tom exposes HTTP endpoints to run commands against inventory devices (synchronously or asynchronously), control caching, and choose parsing templates.</li>
+<li>Authentication: API key header or JWT (configurable).</li>
+</ul>
+<h2 id="authentication">Authentication</h2>
+<ul>
+<li>Modes: <code>none</code>, <code>api_key</code>, <code>jwt</code>, <code>hybrid</code> (configurable in settings).</li>
+<li>API key: send a header (default <code>X-API-Key</code>) with a configured API key (settings <code>api_keys</code> use <code>"key:user"</code> entries).</li>
+<li>Example: <code>curl -H "X-API-Key: mykey" http://tom:8020/api/...</code></li>
+<li>JWT: send a bearer token in <code>Authorization: Bearer &lt;token&gt;</code>; Tom validates tokens against configured OIDC providers.</li>
+</ul>
+<h2 id="job-model">Job model</h2>
+<ul>
+<li>Jobs use the <code>JobResponse</code> structure with fields: <code>job_id</code>, <code>status</code> (<code>NEW|QUEUED|ACTIVE|COMPLETE|FAILED|ABORTED</code>), <code>result</code>, <code>metadata</code>, <code>attempts</code>, <code>error</code>.</li>
+<li>Command outputs are typically in <code>result["data"]</code> and cache info in <code>result["meta"]["cache"]</code>.</li>
+</ul>
+<h2 id="start-a-job-device-via-inventory">Start a job (device via inventory)</h2>
+<h3 id="single-command-sync-or-async">Single command (sync or async)</h3>
+<ul>
+<li>Endpoint: <code>GET /api/device/{device_name}/send_command</code></li>
+<li>Important query params:</li>
+<li><code>command</code> (required)</li>
+<li><code>wait</code> (bool) — <code>true</code> = synchronous (wait for job completion), <code>false</code> = async (returns job info)</li>
+<li><code>use_cache</code> (bool) — allow use of cached results (works with <code>wait=true</code>)</li>
+<li><code>cache_ttl</code> (int seconds) — TTL for cache (works with <code>wait=true</code>)</li>
+<li><code>cache_refresh</code> (bool) — force refresh of cache (works with <code>wait=true</code>)</li>
+<li><code>parse</code> (bool) — parse output (only meaningful with <code>wait=true</code>; for async parsing, use <code>GET /api/job/{job_id}?parse=true</code>)</li>
+<li><code>parser</code> (<code>textfsm</code> or <code>ttp</code>) — parser to use</li>
+<li><code>template</code> (string) — template filename to use for parsing</li>
+<li><code>include_raw</code> (bool) — include raw output along with parsed data</li>
+<li><code>username</code>/<code>password</code> — optional inline credential override (otherwise uses stored <code>credential_id</code> from inventory)</li>
+<li>Behavior:</li>
+<li>If <code>wait=true</code>, API returns parsed or raw output depending on parameters.</li>
+<li>If <code>wait=false</code>, API returns a job object with <code>job_id</code> to poll.</li>
+</ul>
+<h3 id="multiple-commands">Multiple commands</h3>
+<ul>
+<li>Endpoint: <code>POST /api/device/{device_name}/send_commands</code></li>
+<li>Body: JSON object with command configuration</li>
+<li>Two modes:</li>
+<li><strong>Simple mode</strong>: Array of command strings with global settings</li>
+<li><strong>Advanced mode</strong>: Per-command configuration with individual parse settings</li>
+</ul>
+<h4 id="simple-mode">Simple mode</h4>
+<p>Body with array of commands and global defaults:</p>
+<pre><code class="language-json">{
+  &quot;commands&quot;: [&quot;show ip int brief&quot;, &quot;show version&quot;],
+  &quot;wait&quot;: true,
+  &quot;parse&quot;: true,
+  &quot;parser&quot;: &quot;textfsm&quot;
+}
+</code></pre>
+<h4 id="advanced-mode-per-command-control">Advanced mode (per-command control)</h4>
+<p>Body with individual command specifications:</p>
+<pre><code class="language-json">{
+  &quot;commands&quot;: [
+    {
+      &quot;command&quot;: &quot;show version&quot;,
+      &quot;parse&quot;: true,
+      &quot;template&quot;: &quot;custom_version.textfsm&quot;
+    },
+    {
+      &quot;command&quot;: &quot;show ip int brief&quot;,
+      &quot;parse&quot;: true
+    },
+    {
+      &quot;command&quot;: &quot;show running-config&quot;,
+      &quot;parse&quot;: false
+    }
+  ],
+  &quot;wait&quot;: true
+}
+</code></pre>
+<h4 id="request-body-fields">Request body fields</h4>
+<ul>
+<li><code>commands</code>: Array of strings or CommandSpec objects</li>
+<li><code>wait</code> (bool): Wait for job completion</li>
+<li><code>timeout</code> (int): Timeout in seconds when wait=true</li>
+<li><code>parse</code> (bool): Default parse setting for commands</li>
+<li><code>parser</code> ("textfsm" or "ttp"): Default parser</li>
+<li><code>include_raw</code> (bool): Default include raw with parsed</li>
+<li><code>use_cache</code> (bool): Use cache for results</li>
+<li><code>cache_refresh</code> (bool): Force cache refresh</li>
+<li><code>cache_ttl</code> (int): Cache TTL in seconds</li>
+<li><code>username</code>/<code>password</code>: Optional credential override</li>
+</ul>
+<h4 id="commandspec-fields-for-advanced-mode">CommandSpec fields (for advanced mode)</h4>
+<ul>
+<li><code>command</code> (string): The command to execute</li>
+<li><code>parse</code> (bool): Whether to parse this command</li>
+<li><code>parser</code> ("textfsm" or "ttp"): Parser for this command</li>
+<li><code>template</code> (string): Template file for this command</li>
+<li><code>include_raw</code> (bool): Include raw with parsed for this command</li>
+</ul>
+<h3 id="rawdirect-host-endpoints">Raw/Direct host endpoints</h3>
+<ul>
+<li><code>GET /api/raw/send_netmiko_command</code></li>
+<li><code>GET /api/raw/send_scrapli_command</code></li>
+<li>Params: <code>host</code>, <code>device_type</code>, <code>command</code>, <code>port</code>, and either <code>credential_id</code> OR <code>username</code>+<code>password</code>. <code>wait</code> supported.</li>
+</ul>
+<h2 id="async-job-control-status">Async job control / status</h2>
+<ul>
+<li>Check job status / results: <code>GET /api/job/{job_id}</code></li>
+<li>Optional parse query params (<code>parse</code>, <code>parser</code>, <code>template</code>, <code>include_raw</code>) let you request parsing for a completed async job.</li>
+<li><code>JobResponse</code> provides helpers: <code>command_data</code> (command -&gt; output) and <code>cache_metadata</code>.</li>
+</ul>
+<h2 id="inventory">Inventory</h2>
+<ul>
+<li>Get device config: <code>GET /api/inventory/{device_name}</code> -&gt; returns <code>DeviceConfig</code> (host, adapter, adapter_driver, credential_id, port, etc.)</li>
+<li>Export inventory: <code>GET /api/inventory/export</code> (DeviceConfig map) and <code>GET /api/inventory/export/raw</code> (raw nodes)</li>
+<li>Supports filtering (see "Inventory filtering" below)</li>
+<li>List available fields: <code>GET /api/inventory/fields</code> - returns filterable fields for current inventory source</li>
+<li>List named filters: <code>GET /api/inventory/filters</code> - returns available predefined filter names</li>
+</ul>
+<h3 id="inventory-filtering">Inventory filtering</h3>
+<p>Tom supports two filtering modes for inventory export endpoints:</p>
+<h4 id="1-named-filters-predefined">1. Named Filters (Predefined)</h4>
+<p>Use the <code>filter_name</code> query parameter with predefined filter names:
+- <code>switches</code> — Common switch types (Dell, Arista, Cisco)
+- <code>routers</code> — Common router types (Cisco ASR, Juniper MX)
+- <code>arista_exclusion</code> — Arista devices excluding specific models
+- <code>iosxe</code> — Cisco IOS‑XE devices (excludes Nexus, ASA, ISE, ONS)
+- <code>ospf_crawler_filter</code> — Devices used by ospf_crawler (Cisco ASR, 29xx, Juniper MX104)</p>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash">curl -H &quot;X-API-Key: MYKEY&quot; &quot;http://tom:8020/api/inventory/export?filter_name=switches&quot;
+curl -H &quot;X-API-Key: MYKEY&quot; &quot;http://tom:8020/api/inventory/export/raw?filter_name=routers&quot;
+</code></pre>
+<h4 id="2-inline-filters-flexible">2. Inline Filters (Flexible)</h4>
+<p>Use query parameters matching field names with regex patterns. Available fields vary by inventory source:</p>
+<p><strong>SolarWinds fields:</strong> <code>NodeID</code>, <code>IPAddress</code>, <code>Uri</code>, <code>Caption</code>, <code>Description</code>, <code>Status</code>, <code>Vendor</code>, <code>DetailsUrl</code>
+<strong>YAML fields:</strong> <code>Caption</code>, <code>host</code>, <code>adapter</code>, <code>adapter_driver</code>, <code>credential_id</code>, <code>port</code></p>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash"># Filter by vendor and description
+curl &quot;http://tom:8020/api/inventory/export?Vendor=cisco&amp;Description=asr.*&quot;
+
+# Filter by hostname pattern
+curl &quot;http://tom:8020/api/inventory/export?Caption=^router.*&quot;
+
+# Multiple field filters (all must match)
+curl &quot;http://tom:8020/api/inventory/export?Vendor=arista&amp;Description=DCS-7.*&amp;Caption=.*-sw01&quot;
+</code></pre>
+<p><strong>Notes:</strong>
+- If <code>filter_name</code> is provided, it takes precedence over inline filters
+- All filter patterns are case-insensitive regex patterns
+- Multiple field filters use logical AND (all must match)
+- Use <code>GET /api/inventory/fields</code> to discover available fields for your inventory source
+- Invalid regex patterns will return an error</p>
+<h2 id="templates-parsing">Templates &amp; parsing</h2>
+<ul>
+<li>List TextFSM templates: <code>GET /api/templates/textfsm</code></li>
+<li>Test parsing without executing commands: <code>POST /api/parse/test</code></li>
+<li>Submit raw text and query params <code>parser</code>, <code>template</code>, <code>device_type</code>, <code>command</code>, <code>include_raw</code>.</li>
+</ul>
+<h2 id="caching">Caching</h2>
+<ul>
+<li>Controlled per-request (device endpoints) with query params:</li>
+<li><code>use_cache=true</code> — allow returning cached result (effective with <code>wait=true</code>)</li>
+<li><code>cache_ttl=&lt;seconds&gt;</code> — TTL for the cache entry</li>
+<li><code>cache_refresh=true</code> — force bypass/update cache</li>
+<li>When returning full job responses, cache metadata (if present) is attached under <code>_cache</code>.</li>
+</ul>
+<h2 id="parsing-selection">Parsing selection</h2>
+<ul>
+<li>Parsers supported: <code>textfsm</code> (default) and <code>ttp</code>.</li>
+<li>Use <code>template=&lt;template_filename&gt;</code> to pick a template (e.g., <code>cisco_ios_show_ip_int_brief.textfsm</code>).</li>
+<li><code>include_raw=true</code> returns raw text alongside parsed output.</li>
+<li>For multiple commands: Can specify different parsers/templates per command (see "Multiple commands" section above).</li>
+</ul>
+<h2 id="convenience-debug-endpoints">Convenience / debug endpoints</h2>
+<ul>
+<li><code>GET /api/auth/debug</code> — shows resolved auth method and token claims (requires auth)</li>
+<li>OAuth test/development endpoints (may be disabled or restricted to localhost):</li>
+<li><code>POST /api/oauth/token</code> — exchange test auth code for tokens</li>
+<li><code>GET /api/oauth/config</code> — config for test frontend</li>
+<li><code>GET /api/userinfo?access_token=...</code> — fetch userinfo from provider</li>
+</ul>
+<h2 id="examples">Examples</h2>
+<ul>
+<li>Async job (API key header):</li>
+<li><code>curl -H "X-API-Key: MYKEY" "http://tom:8020/api/device/router1/send_command?command=show%20ip%20int%20brief"</code></li>
+<li>
+<p>Response contains <code>job_id</code>; poll <code>GET /api/job/{job_id}</code>.</p>
+</li>
+<li>
+<p>Sync job, parse with TextFSM and template:</p>
+</li>
+<li>
+<p><code>curl -H "X-API-Key: MYKEY" "http://tom:8020/api/device/router1/send_command?command=show%20ip%20int%20brief&amp;wait=true&amp;parse=true&amp;parser=textfsm&amp;template=cisco_ios_show_ip_int_brief.textfsm"</code></p>
+</li>
+<li>
+<p>Force cache refresh and set TTL:</p>
+</li>
+<li>
+<p><code>.../send_command?command=...&amp;wait=true&amp;use_cache=true&amp;cache_refresh=true&amp;cache_ttl=300</code></p>
+</li>
+<li>
+<p>Multiple commands (simple mode):
+  <code>bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": ["show ip int brief", "show version"],
+      "wait": true,
+      "parse": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"</code></p>
+</li>
+<li>
+<p>Multiple commands (per-command parsing):
+  <code>bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": [
+        {"command": "show version", "parse": true, "template": "custom_version.textfsm"},
+        {"command": "show ip int brief", "parse": true},
+        {"command": "show running-config", "parse": false}
+      ],
+      "wait": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"</code></p>
+</li>
+</ul>
+<h2 id="notes-assumptions">Notes / assumptions</h2>
+<ul>
+<li>Inventory devices usually provide stored <code>credential_id</code> entries that Tom uses automatically; per-request overrides are available with <code>username</code>+<code>password</code>.</li>
+<li>Some debug and OAuth test endpoints are intended for local/dev use and may be restricted or disabled by configuration.</li>
+<li>This guide shows the common flows; for adapter-specific behavior, advanced options, or edge cases, see the controller code and config (<code>services/controller/src/tom_controller/api/api.py</code> and <code>services/controller/src/tom_controller/config.py</code>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

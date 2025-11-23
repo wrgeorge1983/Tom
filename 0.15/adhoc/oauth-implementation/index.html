@@ -1,0 +1,805 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="https://wrgeorge1983.github.io/tom/0.15/adhoc/oauth-implementation/" rel="canonical"/>
+<link href="../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.0" name="generator"/>
+<title>OAuth/JWT Implementation for Tom Smykowski - Tom Smykowski Documentation</title>
+<link href="../../assets/stylesheets/main.618322db.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/palette.ab4e12ef.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="indigo" data-md-color-primary="indigo" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#oauthjwt-implementation-for-tom-smykowski">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Tom Smykowski Documentation" class="md-header__button md-logo" data-md-component="logo" href="../.." title="Tom Smykowski Documentation">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Tom Smykowski Documentation
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              OAuth/JWT Implementation for Tom Smykowski
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="indigo" data-md-color-media="(prefers-color-scheme)" data-md-color-primary="indigo" data-md-color-scheme="default" id="__palette_0" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+</label>
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="blue" data-md-color-media="(prefers-color-scheme: light)" data-md-color-primary="blue" data-md-color-scheme="default" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_2" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="blue" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-primary="blue" data-md-color-scheme="slate" id="__palette_2" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_0" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+</label>
+</form>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/wrgeorge1983/tom" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    wrgeorge1983/tom
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<nav aria-label="Tabs" class="md-tabs" data-md-component="tabs">
+<div class="md-grid">
+<ul class="md-tabs__list">
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../..">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+</li>
+<li class="md-tabs__item">
+<a class="md-tabs__link" href="../">
+        
+  
+  
+    
+  
+  Adhoc Docs
+
+      </a>
+</li>
+</ul>
+</div>
+</nav>
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary md-nav--lifted" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Tom Smykowski Documentation" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="Tom Smykowski Documentation">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+    Tom Smykowski Documentation
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/wrgeorge1983/tom" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    wrgeorge1983/tom
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../">
+<span class="md-ellipsis">
+    
+  
+    Adhoc Docs
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#current-status-implemented-v060">
+<span class="md-ellipsis">
+      
+        Current Status: IMPLEMENTED (v0.6.0)
+      
+    </span>
+</a>
+<nav aria-label="Current Status: IMPLEMENTED (v0.6.0)" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#completed-features">
+<span class="md-ellipsis">
+      
+        Completed Features:
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#supported-oauth-providers">
+<span class="md-ellipsis">
+      
+        Supported OAuth Providers:
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#overview">
+<span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#architecture">
+<span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+</a>
+<nav aria-label="Architecture" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#authentication-flow">
+<span class="md-ellipsis">
+      
+        Authentication Flow
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#core-principles">
+<span class="md-ellipsis">
+      
+        Core Principles
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#configuration">
+<span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+</a>
+<nav aria-label="Configuration" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#oidc-discovery-support">
+<span class="md-ellipsis">
+      
+        OIDC Discovery Support
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#yaml-configuration-structure">
+<span class="md-ellipsis">
+      
+        YAML Configuration Structure
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#environment-variables">
+<span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#access-control-authorization">
+<span class="md-ellipsis">
+      
+        Access Control (Authorization)
+      
+    </span>
+</a>
+<nav aria-label="Access Control (Authorization)" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#configuration-options">
+<span class="md-ellipsis">
+      
+        Configuration Options
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#authorization-logic">
+<span class="md-ellipsis">
+      
+        Authorization Logic
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#example-configuration">
+<span class="md-ellipsis">
+      
+        Example Configuration
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#implementation-files">
+<span class="md-ellipsis">
+      
+        Implementation Files
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#implementation-details">
+<span class="md-ellipsis">
+      
+        Implementation Details
+      
+    </span>
+</a>
+<nav aria-label="Implementation Details" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#file-structure">
+<span class="md-ellipsis">
+      
+        File Structure
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#base-jwt-validator">
+<span class="md-ellipsis">
+      
+        Base JWT Validator
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#provider-specific-validators">
+<span class="md-ellipsis">
+      
+        Provider-Specific Validators
+      
+    </span>
+</a>
+<nav aria-label="Provider-Specific Validators" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#duojwtvalidator">
+<span class="md-ellipsis">
+      
+        DuoJWTValidator
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#googlejwtvalidator">
+<span class="md-ellipsis">
+      
+        GoogleJWTValidator
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#entrajwtvalidator">
+<span class="md-ellipsis">
+      
+        EntraJWTValidator
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#authentication-flow_1">
+<span class="md-ellipsis">
+      
+        Authentication Flow
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#provider-integration-details">
+<span class="md-ellipsis">
+      
+        Provider Integration Details
+      
+    </span>
+</a>
+<nav aria-label="Provider Integration Details" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#duo-security">
+<span class="md-ellipsis">
+      
+        Duo Security
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#google-oauth">
+<span class="md-ellipsis">
+      
+        Google OAuth
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#microsoft-entra-id-azure-ad">
+<span class="md-ellipsis">
+      
+        Microsoft Entra ID (Azure AD)
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#security-considerations">
+<span class="md-ellipsis">
+      
+        Security Considerations
+      
+    </span>
+</a>
+<nav aria-label="Security Considerations" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#https-enforcement">
+<span class="md-ellipsis">
+      
+        HTTPS Enforcement
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#external-security-measures">
+<span class="md-ellipsis">
+      
+        External Security Measures
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#testing">
+<span class="md-ellipsis">
+      
+        Testing
+      
+    </span>
+</a>
+<nav aria-label="Testing" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#oauth-test-endpoint">
+<span class="md-ellipsis">
+      
+        OAuth Test Endpoint
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#pkce-cli-authentication">
+<span class="md-ellipsis">
+      
+        PKCE CLI Authentication
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#future-enhancements">
+<span class="md-ellipsis">
+      
+        Future Enhancements
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1 id="oauthjwt-implementation-for-tom-smykowski">OAuth/JWT Implementation for Tom Smykowski</h1>
+<h2 id="current-status-implemented-v060">Current Status: IMPLEMENTED (v0.6.0)</h2>
+<h3 id="completed-features">Completed Features:</h3>
+<ul>
+<li>JWT validation infrastructure with JWKS and OIDC discovery</li>
+<li>Duo Security validator (tested with PKCE flow, ID tokens, and access tokens)</li>
+<li>Google OAuth validator (tested with PKCE flow and ID tokens)</li>
+<li>Microsoft Entra ID validator (fully supported with OIDC discovery)</li>
+<li>YAML-based configuration with pydantic-settings</li>
+<li>Bearer token authentication in API</li>
+<li>Hybrid authentication mode (JWT + API keys)</li>
+<li>Email-based authorization (users, domains, regex patterns)</li>
+<li>Proper 401 vs 403 error codes</li>
+<li>Test script for JWT token creation and validation</li>
+<li>Example configuration file</li>
+<li>PKCE-based CLI authentication (Python reference implementation)</li>
+</ul>
+<h3 id="supported-oauth-providers">Supported OAuth Providers:</h3>
+<ul>
+<li><strong>Duo Security</strong></li>
+<li><strong>Google OAuth</strong></li>
+<li><strong>Microsoft Entra ID (Azure AD)</strong></li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>Tom Smykowski supports JWT (JSON Web Token) validation for API authentication, enabling integration with various OAuth2/OIDC providers. As an API service, Tom only validates JWTs - it does not handle the OAuth flow itself.</p>
+<h2 id="architecture">Architecture</h2>
+<h3 id="authentication-flow">Authentication Flow</h3>
+<div class="mermaid">sequenceDiagram
+    participant User
+    participant Frontend
+    participant OAuth Provider
+    participant Tom API
+
+    User-&gt;&gt;Frontend: Login request
+    Frontend-&gt;&gt;OAuth Provider: Redirect to OAuth
+    OAuth Provider-&gt;&gt;User: Authentication prompt
+    User-&gt;&gt;OAuth Provider: Credentials
+    OAuth Provider-&gt;&gt;Frontend: JWT token
+    Frontend-&gt;&gt;Tom API: API request with Bearer token
+    Tom API-&gt;&gt;Tom API: Validate JWT
+    Tom API-&gt;&gt;Frontend: API response
+</div>
+<h3 id="core-principles">Core Principles</h3>
+<ol>
+<li><strong>JWT Validation Only</strong>: Tom validates tokens but doesn't issue them</li>
+<li><strong>Multiple Providers</strong>: Support multiple IdPs simultaneously</li>
+<li><strong>Email-Based Authorization</strong>: A valid JWT must pass authorization check (allowed_users → allowed_domains → allowed_user_regex). If all are empty, any valid JWT is authorized.</li>
+<li><strong>Configuration-Driven</strong>: Provider settings in YAML config files</li>
+<li><strong>OIDC Discovery</strong>: Automatic configuration using standard OIDC discovery protocol</li>
+</ol>
+<h2 id="configuration">Configuration</h2>
+<h3 id="oidc-discovery-support">OIDC Discovery Support</h3>
+<p>Tom automatically discovers OAuth endpoints using the standard OIDC discovery protocol.</p>
+<p><strong>Configuration Example:</strong></p>
+<pre><code class="language-yaml">jwt_providers:
+  - name: google
+    enabled: true
+    client_id: "your-client-id"
+    discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+    # Everything else auto-discovered!
+</code></pre>
+<h3 id="yaml-configuration-structure">YAML Configuration Structure</h3>
+<pre><code class="language-yaml"># tom_config.yaml
+auth_mode: jwt  # Options: none, api_key, jwt, hybrid
+
+jwt_settings:
+  require_https: true
+  leeway_seconds: 30
+
+jwt_providers:
+  - name: duo
+    enabled: true
+    issuer: "https://your-tenant.duosecurity.com"
+    client_id: "your-client-id"
+    jwks_uri: "https://your-tenant.duosecurity.com/oauth/v1/keys"
+    audience: "tom-api"
+
+  - name: google
+    enabled: false
+    client_id: "your-client.apps.googleusercontent.com"
+    discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+
+  - name: entra
+    enabled: false
+    tenant_id: "your-tenant-id"
+    client_id: "your-client-id"
+    discovery_url: "https://login.microsoftonline.com/your-tenant-id/v2.0/.well-known/openid-configuration"
+</code></pre>
+<h3 id="environment-variables">Environment Variables</h3>
+<p>Simple settings can be configured as environment variables:
+- <code>TOM_AUTH_MODE=jwt</code>
+- <code>TOM_JWT_REQUIRE_HTTPS=true</code>
+- <code>TOM_JWT_LEEWAY_SECONDS=30</code></p>
+<h2 id="access-control-authorization">Access Control (Authorization)</h2>
+<p>Tom implements email-based authorization for JWT-authenticated users:</p>
+<h3 id="configuration-options">Configuration Options</h3>
+<ul>
+<li><strong>allowed_users</strong>: List of exact usernames/emails (case-insensitive match against canonical user identifier)</li>
+<li><strong>allowed_domains</strong>: List of email domains like "example.com" (extracted from email-like claims)</li>
+<li><strong>allowed_user_regex</strong>: List of regex patterns tested against canonical user and email (case-insensitive)</li>
+</ul>
+<h3 id="authorization-logic">Authorization Logic</h3>
+<ul>
+<li><strong>Precedence</strong>: allowed_users → allowed_domains → allowed_user_regex</li>
+<li><strong>Any match grants access</strong> (OR logic between rules)</li>
+<li><strong>If all three lists are empty</strong>, any valid JWT is authorized (backward compatible)</li>
+<li><strong>Canonical user</strong>: The identifier returned by the provider validator (email | preferred_username | upn | sub)</li>
+<li><strong>Domain checks</strong>: Extract domain from email-like claims when available</li>
+<li><strong>Scope</strong>: Applies to JWT/OAuth authentication only. API key auth is unaffected.</li>
+</ul>
+<h3 id="example-configuration">Example Configuration</h3>
+<pre><code class="language-yaml"># tom_config.yaml - Global authorization rules for all JWT providers
+allowed_users:
+  - alice@example.com
+  - bob@company.com
+  - service.account
+
+allowed_domains:
+  - example.com
+  - subsidiary.com
+
+allowed_user_regex:
+  - '^netops-.*@example\.com$'
+  - '^[a-z]+\.admin@example\.com$'
+</code></pre>
+<h3 id="implementation-files">Implementation Files</h3>
+<p>Authorization is implemented in:
+- <strong>Config</strong>: <code>services/controller/src/tom_controller/config.py</code>
+- <strong>Logic</strong>: <code>services/controller/src/tom_controller/api/api.py</code> (jwt_auth function)</p>
+<h2 id="implementation-details">Implementation Details</h2>
+<h3 id="file-structure">File Structure</h3>
+<pre><code>services/controller/src/tom_controller/
+├── auth/
+│   ├── __init__.py           # Module exports
+│   ├── jwt_validator.py      # Base JWT validation logic
+│   ├── oidc_discovery.py     # OIDC discovery implementation
+│   └── providers.py          # Provider-specific validators
+├── config.py                  # JWT settings and provider config
+├── exceptions.py              # JWT exceptions
+└── api/
+    └── api.py                 # Authentication flow with jwt_auth()
+
+Additional files:
+├── tom_config.jwt.example.yaml  # Example JWT configuration
+└── tests/test_jwt_auth.py       # Test script for JWT validation
+</code></pre>
+<h3 id="base-jwt-validator">Base JWT Validator</h3>
+<p>The <code>JWTValidator</code> class in <code>auth/jwt_validator.py</code> provides common JWT validation logic:</p>
+<ul>
+<li>Decodes JWT header to get key ID (kid)</li>
+<li>Fetches public key from JWKS endpoint</li>
+<li>Verifies JWT signature</li>
+<li>Validates standard claims (exp, iat, iss, aud)</li>
+<li>Returns validated claims dictionary</li>
+</ul>
+<h3 id="provider-specific-validators">Provider-Specific Validators</h3>
+<p>Each provider has a specific validator class in <code>auth/providers.py</code>:</p>
+<h4 id="duojwtvalidator">DuoJWTValidator</h4>
+<ul>
+<li>Duo-specific JWT validation</li>
+<li>Works with both ID tokens and access tokens</li>
+<li>User identifier: <code>preferred_username</code> or <code>email</code> or <code>sub</code></li>
+</ul>
+<h4 id="googlejwtvalidator">GoogleJWTValidator</h4>
+<ul>
+<li>Google-specific JWT validation</li>
+<li>Only ID tokens work (access tokens are opaque)</li>
+<li>Validates email claim presence</li>
+<li>Optionally checks email_verified flag</li>
+<li>User identifier: <code>email</code> or <code>sub</code></li>
+</ul>
+<h4 id="entrajwtvalidator">EntraJWTValidator</h4>
+<ul>
+<li>Microsoft Entra ID (Azure AD) JWT validation</li>
+<li>Validates tenant ID if configured</li>
+<li>User identifier: <code>preferred_username</code> or <code>upn</code> or <code>email</code> or <code>sub</code></li>
+</ul>
+<h3 id="authentication-flow_1">Authentication Flow</h3>
+<p>The <code>jwt_auth()</code> function in <code>api/api.py</code> handles JWT validation:</p>
+<ol>
+<li>Extract Bearer token from Authorization header</li>
+<li>Try each enabled provider in sequence</li>
+<li>Validate token using provider-specific validator</li>
+<li>Check authorization rules (allowed_users, allowed_domains, allowed_user_regex)</li>
+<li>Return authentication response with user info and claims</li>
+</ol>
+<p>In <strong>hybrid</strong> mode, API key authentication is tried first, then JWT if API key fails.</p>
+<h2 id="provider-integration-details">Provider Integration Details</h2>
+<h3 id="duo-security">Duo Security</h3>
+<ul>
+<li><strong>OAuth 2.0 + OIDC compliant</strong></li>
+<li><strong>JWKS endpoint</strong>: <code>https://{tenant}.duosecurity.com/oauth/v1/keys</code></li>
+<li><strong>Required claims</strong>: sub, aud, exp, iat</li>
+<li><strong>User identifier</strong>: email or username in token</li>
+<li><strong>OIDC discovery</strong>: Supported</li>
+</ul>
+<h3 id="google-oauth">Google OAuth</h3>
+<ul>
+<li><strong>Standard OIDC provider</strong></li>
+<li><strong>Well-known endpoint</strong>: <code>https://accounts.google.com/.well-known/openid-configuration</code></li>
+<li><strong>User identifier</strong>: email claim</li>
+<li><strong>Note</strong>: Only ID tokens work. Access tokens are opaque and cannot be validated.</li>
+<li><strong>OIDC discovery</strong>: Supported</li>
+</ul>
+<h3 id="microsoft-entra-id-azure-ad">Microsoft Entra ID (Azure AD)</h3>
+<ul>
+<li><strong>Standard OIDC provider</strong></li>
+<li><strong>Well-known endpoint</strong>: <code>https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration</code></li>
+<li><strong>Multi-tenant</strong>: Supported with tenant validation</li>
+<li><strong>User identifier</strong>: email or UPN (User Principal Name)</li>
+<li><strong>OIDC discovery</strong>: Supported</li>
+</ul>
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="https-enforcement">HTTPS Enforcement</h3>
+<p>Tom enforces HTTPS for JWT token transmission by default. Keep this enabled in production:</p>
+<pre><code class="language-yaml">jwt_settings:
+  require_https: true  # Default: true - keep enabled for production
+</code></pre>
+<p>This setting prevents JWT tokens from being transmitted over unencrypted connections. Only disable this for local development/testing.</p>
+<h3 id="external-security-measures">External Security Measures</h3>
+<p>Consider these additional security measures at the infrastructure level:</p>
+<ul>
+<li><strong>Rate Limiting</strong>: Use a reverse proxy (nginx, traefik) or API gateway to rate-limit, monitor, and control authentication attempts</li>
+<li><strong>TLS Configuration</strong>: Ensure your reverse proxy/load balancer uses modern TLS versions (1.2+) and strong cipher suites</li>
+<li><strong>Network Isolation</strong>: Run Tom in a private network, exposing only through authenticated reverse proxies</li>
+</ul>
+<h2 id="testing">Testing</h2>
+<h3 id="oauth-test-endpoint">OAuth Test Endpoint</h3>
+<p>Tom includes a test HTML page for OAuth flow testing at:</p>
+<pre><code>http://localhost:8000/static/oauth-test.html
+</code></pre>
+<p>This provides a simple interface for testing the OAuth flow with configured providers.
+It must be enabled by setting <code>oauth_test_enabled=true</code> in <code>tom_config.yaml</code> or environment variable.</p>
+<h2 id="pkce-cli-authentication">PKCE CLI Authentication</h2>
+<p>Tom includes a reference implementation for PKCE (Proof Key for Code Exchange) authentication in CLI tools. See the example configuration and client library for details on implementing PKCE flow in your applications.</p>
+<h2 id="future-enhancements">Future Enhancements</h2>
+<ol>
+<li><strong>Enhanced RBAC</strong>: Arbitrary claim matching (e.g., Google <code>hd</code>, Entra <code>groups</code>, custom claims)</li>
+<li><strong>Per-Provider Authorization</strong>: Override global rules per provider</li>
+<li><strong>Scopes</strong>: OAuth scope-based permissions</li>
+<li><strong>Token Refresh</strong>: Handle refresh token flow</li>
+<li><strong>Revocation</strong>: Check token revocation lists</li>
+<li><strong>Additional Providers</strong>: Support for more OAuth providers as needed</li>
+</ol>
+</article>
+</div>
+<script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+<button class="md-top md-icon" data-md-component="top" hidden="" type="button">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>
