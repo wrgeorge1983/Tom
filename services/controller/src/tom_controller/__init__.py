@@ -1,6 +1,6 @@
 """Tom Smykowski: Your Network Automation Broker"""
 
-__version__ = "0.15.2"
+__version__ = "0.15.3"
 
 
 __all__ = ["__version__"]
