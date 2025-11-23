@@ -1,0 +1,61 @@
+name: Deploy Documentation
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for mike to work properly
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+      
+      - name: Install dependencies
+        run: |
+          cd docs
+          uv sync
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Extract version from tag (v0.14.5 -> 0.14)
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"  # Remove 'v' prefix
+          MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
+          echo "version=${MAJOR_MINOR}" >> $GITHUB_OUTPUT
+          echo "full_version=${VERSION}" >> $GITHUB_OUTPUT
+      
+      - name: Deploy docs with mike
+        run: |
+          cd docs
+          uv run mike deploy --push --update-aliases ${{ steps.version.outputs.version }} latest
+      
+      - name: Summary
+        run: |
+          echo "### 📚 Documentation Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }} (from tag ${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Aliases:** latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "View at: https://${{ github.repository_owner }}.github.io/tom/" >> $GITHUB_STEP_SUMMARY
