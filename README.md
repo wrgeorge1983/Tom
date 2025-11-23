@@ -45,7 +45,7 @@ is stable and usable in production, but the API may evolve based on real-world f
 
 - **Authentication (frontend)**: OAuth2 and API Key are both fully supported
 - **Device credential management**: HashiCorp Vault integration is fully supported; AWS Secrets Manager support is planned
-- **Inventory**: YAML and SolarWinds SWIS are both fully supported; NetBox and Nautobot support are coming
+- **Inventory**: YAML, SolarWinds SWIS, Nautobot, and NetBox are all supported
 - **Plugins**: Planned, likely in order to accomplish the above two items, but we'll see!
 - **Parsing**: TextFSM and TTP are both fully supported
 
@@ -70,7 +70,7 @@ is stable and usable in production, but the API may evolve based on real-world f
 - **HashiCorp Vault Integration** - Secure credential storage
 
 ### Inventory & Automation
-- **Multiple Inventory Sources** - YAML files or SolarWinds SWIS
+- **Multiple Inventory Sources** - YAML files, SolarWinds SWIS, Nautobot, NetBox
 - **Queue-Based Processing** - Async job execution with Redis/SAQ
 - **Per-Device Concurrency Control** - Prevent overwhelming devices
 - **Multi-Transport Support** - Netmiko and Scrapli adapters

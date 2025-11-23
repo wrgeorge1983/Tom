@@ -1,6 +1,6 @@
 [project]
 name = "tom-controller"
-version = "0.12.0"
+version = "0.14.0"
 description = "Tom Smykowski Network Automation Broker - Controller Service"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -13,6 +13,8 @@ dependencies = [
     "prometheus-client>=0.23.1",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
+    "pynautobot>=3.0.0",
+    "pynetbox>=7.0.0",
     "python-jose>=3.5.0",
     "redis>=5.0.0,<6.0.0",
     "saq[redis,web]>=0.25.2",

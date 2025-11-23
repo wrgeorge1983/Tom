@@ -12,11 +12,9 @@ from saq.web.starlette import saq_web
 
 from tom_controller import __version__
 from tom_controller import api
-from tom_controller.api import cache_api  # Import cache API endpoints
+from tom_controller.Plugins.base import PluginManager
 from tom_shared.cache import CacheManager
 from tom_controller.config import Settings, settings
-from tom_controller.inventory.inventory import YamlInventoryStore
-from tom_controller.inventory.solarwinds import ModifiedSwisClient, SwisInventoryStore
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
@@ -43,6 +41,13 @@ def create_app():
             force=True,  # Override existing logging config
         )
         logger = logging.getLogger(__name__)
+
+        # Initialize plugin system
+        plugin_manager = PluginManager()
+        plugin_manager.discover_plugins(settings)
+        logger.info(f"Discovered inventory plugins: {plugin_manager.inventory_plugin_names}")
+        
+        this_app.state.plugin_manager = plugin_manager
 
         print(f"DEBUG: Log level set to: {logging.getLevelName(settings.log_level)}")
 
@@ -102,19 +107,22 @@ def create_app():
             logger.warning("    All endpoints are publicly accessible.")
             logger.warning("="*80)
 
-        logger.info(
-            f"Initializing inventory store with type: {settings.inventory_type}"
-        )
+        # Initialize inventory using plugin system
+        logger.info(f"Initializing inventory plugin: {settings.inventory_type}")
+        
+        try:
+            inventory = plugin_manager.initialize_inventory_plugin(
+                plugin_name=settings.inventory_type,
+                settings=settings
+            )
+            this_app.state.inventory_store = inventory
+            logger.info(f"Successfully initialized inventory plugin: {settings.inventory_type}")
 
-        if settings.inventory_type == "yaml":
-            logger.info(f"Using YAML inventory from: {settings.inventory_path}")
-            this_app.state.inventory_store = YamlInventoryStore(settings.inventory_path)
-        elif settings.inventory_type == "swis":
-            logger.info(f"Using SWIS inventory with host: {settings.swapi_host}")
-            swis_client = ModifiedSwisClient.from_settings(settings)
-            this_app.state.inventory_store = SwisInventoryStore(swis_client, settings)
-        else:
-            raise ValueError(f"Unknown inventory_type: {settings.inventory_type}")
+        except ValueError as e:
+            logger.error(f"Failed to initialize inventory plugin: {e}")
+            logger.error(f"Available plugins: {plugin_manager.inventory_plugin_names}")
+            raise
+
         this_app.state.queue = queue
         this_app.state.jwt_providers= []
 

@@ -13,10 +13,10 @@ from tom_shared.config import SharedSettings
 
 class JWTProviderConfig(BaseModel):
     """Configuration for a JWT authentication provider.
-    
+
     Tom validates JWTs using OIDC discovery. Clients obtain tokens from their
     OAuth provider and present them to Tom for validation.
-    
+
     Required configuration:
         name: google
         enabled: true
@@ -26,11 +26,11 @@ class JWTProviderConfig(BaseModel):
 
     name: Literal["duo", "google", "entra"] = "duo"
     enabled: bool = True
-    
+
     # OIDC Discovery (required)
     discovery_url: str
     client_id: str
-    
+
     # Optional JWT validation settings
     # audience can be a string or a list of strings (OIDC allows both)
     audience: Optional[str | list[str]] = None  # Defaults to client_id if not specified
@@ -40,31 +40,8 @@ class JWTProviderConfig(BaseModel):
     # OAuth test endpoints (optional - only used if oauth_test_enabled: true)
     oauth_test_client_secret: Optional[str] = None
     oauth_test_scopes: list[str] = ["openid", "email", "profile"]
-    
+
     model_config = ConfigDict(extra="forbid")
-
-class SolarWindsMatchCriteria(BaseModel):
-    """Match criteria for SolarWinds devices."""
-
-    vendor: Optional[str] = None
-    description: Optional[str] = None
-    caption: Optional[str] = None
-
-
-class SolarWindsDeviceAction(BaseModel):
-    """Action to take when a device matches criteria."""
-
-    adapter: str
-    adapter_driver: str
-    credential_id: Optional[str] = None
-    port: int = 22
-
-
-class SolarWindsMapping(BaseModel):
-    """A single match/action rule for SolarWinds devices."""
-
-    match: SolarWindsMatchCriteria
-    action: SolarWindsDeviceAction
 
 
 class Settings(SharedSettings):
@@ -91,24 +68,7 @@ class Settings(SharedSettings):
     # inherits log, project_root, and redis settings from SharedSettings
 
     # Store settings
-    inventory_type: Literal["yaml", "swis"] = "yaml"
-    inventory_file: str = "defaultInventory.yml"
-
-    # SolarWinds API settings
-    swapi_host: str = ""
-    swapi_username: str = ""
-    swapi_password: str = ""
-    swapi_port: int = 17774
-    swapi_device_mappings: list[SolarWindsMapping] = [
-        SolarWindsMapping(
-            match=SolarWindsMatchCriteria(vendor=".*"),
-            action=SolarWindsDeviceAction(
-                adapter="netmiko",
-                adapter_driver="cisco_ios",
-                credential_id="default",
-            ),
-        )
-    ]
+    inventory_type: str = "yaml"  # Plugin name - validated at plugin initialization
 
     # Tom Core Server settings
     host: str = "0.0.0.0"
@@ -133,7 +93,7 @@ class Settings(SharedSettings):
     allowed_users: list[str] = []
     allowed_domains: list[str] = []
     allowed_user_regex: list[str] = []
-    
+
     # OAuth Test Endpoints (optional - for testing only)
     # These endpoints help test OAuth flows without building a client
     # In production, clients should handle OAuth and send JWTs to Tom
@@ -143,6 +103,21 @@ class Settings(SharedSettings):
     textfsm_template_dir: str = "/app/templates/textfsm"
     ttp_template_dir: str = "/app/templates/ttp"
 
+    # plugins - different types listed separately because controller uses different types of plugins than workers, etc.
+    # inventory_plugins dict['module_name', priority]  # lower is better
+    inventory_plugins: dict[str, int] = {
+        "yaml": 100,
+        "solarwinds": 200,
+        "nautobot": 150,
+        "netbox": 160,
+    }
+
+    def get_inventory_plugin_priority(self, plugin_name: str) -> int:
+        try:
+            return self.inventory_plugins[plugin_name]
+        except KeyError:
+            # Return a default priority if not specified
+            return 1000
 
     @field_validator("api_keys")
     @classmethod
@@ -163,8 +138,9 @@ class Settings(SharedSettings):
     def validate_allowed_user_regex(cls, v) -> list[str]:
         if not isinstance(v, list):
             raise ValueError("allowed_user_regex must be a list of strings")
-        
+
         import re
+
         for i, pattern in enumerate(v):
             if not isinstance(pattern, str):
                 raise ValueError(f"allowed_user_regex[{i}] must be a string")
@@ -185,17 +161,12 @@ class Settings(SharedSettings):
             for key, user in [key_str.split(":", 1)]
         }
 
-    @computed_field
-    @property
-    def inventory_path(self) -> str:
-        return str(Path(self.project_root) / self.inventory_file)
-
     model_config = SettingsConfigDict(
         env_prefix="TOM_",
         env_file=os.getenv("TOM_ENV_FILE", "foo.env"),
         yaml_file=os.getenv("TOM_CONFIG_FILE", "tom_config.yaml"),
         case_sensitive=False,
-        extra="forbid",
+        extra="ignore",  # Allow plugin-specific settings in the same config file
     )
 
 

@@ -113,6 +113,7 @@ class SharedSettings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
+            init_settings,  # Highest priority: direct kwargs
             env_settings,
             dotenv_settings,
             LoggingYamlConfigSettingsSource(settings_cls),

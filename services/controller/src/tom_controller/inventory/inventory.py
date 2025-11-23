@@ -1,12 +1,9 @@
-from typing import Literal, Any, Annotated, Optional, Dict
+from typing import Literal, Any, Dict
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import re
 
-import yaml
-from pydantic import BaseModel, Field, RootModel
-
-from tom_controller.exceptions import TomNotFoundException
+from pydantic import BaseModel
 
 import logging
 
@@ -49,38 +46,10 @@ class DeviceConfig(BaseModel):
     credential_id: str
 
 
-# these models are just for documentation purposes, they are not used in the code
-class SchemaNetmikoDevice(DeviceConfig):
-    adapter: Literal["netmiko"] = "netmiko"
-    adapter_driver: Literal[
-        "cisco_ios", "cisco_nxos", "arista_eos", "juniper_junos", "etc..."
-    ]
-    adapter_options: dict[str, Any] = {}
-
-
-class SchemaScrapliDevice(DeviceConfig):
-    adapter: Literal["scrapli"] = "scrapli"
-    adapter_driver: Literal[
-        "cisco_iosxe", "cisco_nxos", "cisco_iosxr", "arista_eos", "etc...."
-    ]
-    adapter_options: dict[str, Any] = {}
-
-
-SchemaDeviceConfig = Annotated[
-    SchemaNetmikoDevice | SchemaScrapliDevice, Field(discriminator="adapter")
-]
-
-
-# Wrapper model for schema generation
-class InventorySchema(RootModel[dict[str, SchemaDeviceConfig]]):
-    """Schema for inventory.yml - devices at root level"""
-
-    root: dict[str, SchemaDeviceConfig] = Field(
-        ..., description="Device configurations keyed by device name"
-    )
-
-
 class InventoryStore:
+    def __init__(self):
+        self.priority = 1000
+
     def get_device_config(self, device_name: str) -> DeviceConfig:
         raise NotImplementedError
 
@@ -106,34 +75,73 @@ class InventoryStore:
         """Return dict of field_name -> description for fields that can be filtered on."""
         raise NotImplementedError
 
+    def get_available_filters(self) -> dict[str, str]:
+        """Return dict of filter_name -> description for named filters.
+        
+        Default implementation returns empty dict (no named filters).
+        Inventory implementations can override to provide preset filters.
+        """
+        return {}
 
-class YamlInventoryStore(InventoryStore):
-    data: Optional[dict] = None
-
-    def __init__(self, filename: str):
-        self.filename = filename
-        with open(filename, "r") as f:
-            self.data = yaml.safe_load(f)
-
-    def get_device_config(self, device_name: str) -> DeviceConfig:
-        if device_name not in self.data:
-            raise TomNotFoundException(
-                f"Device {device_name} not found in {self.filename}"
+    def get_filter(self, filter_name: str) -> InventoryFilter:
+        """Get a named filter by name.
+        
+        Default implementation raises ValueError since base class has no filters.
+        Inventory implementations can override to provide preset filters.
+        
+        :param filter_name: Name of the filter to retrieve
+        :return: InventoryFilter instance
+        :raises ValueError: If filter_name is not available
+        """
+        available = list(self.get_available_filters().keys())
+        if available:
+            raise ValueError(
+                f"Unknown filter '{filter_name}'. Available: {', '.join(available)}"
+            )
+        else:
+            raise ValueError(
+                f"Named filters are not supported by this inventory source. "
+                f"Use inline filters with query parameters instead."
             )
 
-        return DeviceConfig(**self.data[device_name])
+
+class InventoryService:
+    def __init__(self):
+        self._inventory_stores: list[InventoryStore] = []
+
+    def add_inventory_store(self, store: InventoryStore):
+        self._inventory_stores.append(store)
+        self._inventory_stores.sort(key=lambda store: store.priority)
+
+    @property
+    def default_inventory_store(self) -> InventoryStore:
+        return self._inventory_stores[0]
+
+    @property
+    def inventory_stores(self) -> list[InventoryStore]:
+        return self._inventory_stores
+
+    def get_device_config(self, device_name: str) -> DeviceConfig:
+        for store in self._inventory_stores:
+            try:
+                return store.get_device_config(device_name)
+            except KeyError:
+                continue
+        raise KeyError(f"Device '{device_name}' not found in any inventory sources")
+
+    async def alist_all_nodes(self) -> list[dict]:
+        """List all nodes from all inventory sources."""
+        results = []
+        for store in self._inventory_stores:
+            results.extend(await store.alist_all_nodes())
+        return results
 
     def list_all_nodes(self) -> list[dict]:
-        """Return all nodes from YAML inventory as raw dict format."""
-        return [{"Caption": name, **config} for name, config in self.data.items()]
+        """List all nodes from all inventory sources."""
+        results = []
+        for store in self._inventory_stores:
+            results.extend(store.list_all_nodes())
+        return results
 
-    def get_filterable_fields(self) -> dict[str, str]:
-        """Return available fields for YAML inventory filtering."""
-        return {
-            "Caption": "Device name (key in YAML)",
-            "host": "IP address or hostname",
-            "adapter": "Network adapter (netmiko or scrapli)",
-            "adapter_driver": "Driver type (cisco_ios, arista_eos, etc.)",
-            "credential_id": "Credential reference",
-            "port": "SSH/Telnet port number"
-        }
+
+

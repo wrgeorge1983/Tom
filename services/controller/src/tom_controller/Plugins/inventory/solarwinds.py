@@ -1,20 +1,31 @@
 import logging
+import os
 import re
-from collections import defaultdict
-from typing import List, Dict, Any, DefaultDict, Tuple, Optional
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Optional
+
+from pydantic import BaseModel
+from pydantic_settings import SettingsConfigDict
 from urllib3 import disable_warnings
 
 from orionsdk import SolarWinds
 
+from tom_controller.Plugins.base import InventoryPlugin, PluginSettings
+from tom_controller.config import Settings
 from tom_controller.exceptions import TomNotFoundException
-from tom_controller.inventory.inventory import InventoryStore, log, DeviceConfig
+from tom_controller.inventory.inventory import DeviceConfig, InventoryFilter
 
 disable_warnings()
 log = logging.getLogger(__name__)
 
 
-class SolarWindsFilter:
-    """Utility class for filtering SolarWinds nodes based on regex patterns."""
+class SolarWindsFilter(InventoryFilter):
+    """Utility class for filtering SolarWinds nodes based on regex patterns.
+    
+    This is a convenience wrapper around InventoryFilter that provides named parameters
+    for the common SolarWinds fields: Caption, Vendor, and Description.
+    """
 
     def __init__(
         self,
@@ -23,37 +34,21 @@ class SolarWindsFilter:
         description_pattern: Optional[str] = None,
     ):
         """
-        Initialize filter with regex patterns.
+        Initialize filter with regex patterns for SolarWinds-specific fields.
 
         :param caption_pattern: Regex pattern to match against node Caption (hostname)
         :param vendor_pattern: Regex pattern to match against node Vendor
         :param description_pattern: Regex pattern to match against node Description (OS/platform)
         """
-        self.caption_regex = (
-            re.compile(caption_pattern, re.IGNORECASE) if caption_pattern else None
-        )
-        self.vendor_regex = (
-            re.compile(vendor_pattern, re.IGNORECASE) if vendor_pattern else None
-        )
-        self.description_regex = (
-            re.compile(description_pattern, re.IGNORECASE)
-            if description_pattern
-            else None
-        )
-
-    def matches(self, node: Dict) -> bool:
-        """Check if a node matches all configured filter patterns."""
-        if self.caption_regex and not self.caption_regex.search(
-            node.get("Caption", "")
-        ):
-            return False
-        if self.vendor_regex and not self.vendor_regex.search(node.get("Vendor", "")):
-            return False
-        if self.description_regex and not self.description_regex.search(
-            node.get("Description", "")
-        ):
-            return False
-        return True
+        field_patterns = {}
+        if caption_pattern:
+            field_patterns["Caption"] = caption_pattern
+        if vendor_pattern:
+            field_patterns["Vendor"] = vendor_pattern
+        if description_pattern:
+            field_patterns["Description"] = description_pattern
+        
+        super().__init__(field_patterns)
 
     @classmethod
     def switch_filter(cls) -> "SolarWindsFilter":
@@ -125,6 +120,8 @@ class FilterRegistry:
 
 
 class ModifiedSwisClient(SolarWinds):
+    """Extended SolarWinds client with additional query methods."""
+    
     def __init__(self, hostname, username, password, *args, port=17774, **kwargs):
         connection_parameters = [hostname, username, password]
         if not all(connection_parameters):
@@ -135,15 +132,15 @@ class ModifiedSwisClient(SolarWinds):
         super().__init__(hostname, username, password, *args, port=port, **kwargs)
 
     @classmethod
-    def from_settings(cls, settings):
+    def from_settings(cls, settings: "SolarwindsSettings"):
         log.info(
-            f"Creating SolarWinds client for {settings.swapi_host}:{settings.swapi_port}"
+            f"Creating SolarWinds client for {settings.host}:{settings.port}"
         )
         return cls(
-            hostname=settings.swapi_host,
-            username=settings.swapi_username,
-            password=settings.swapi_password,
-            port=settings.swapi_port,
+            hostname=settings.host,
+            username=settings.username,
+            password=settings.password,
+            port=settings.port,
         )
 
     def list_nodes(self, alive_only=True) -> List[Dict]:
@@ -184,7 +181,7 @@ class ModifiedSwisClient(SolarWinds):
         return [node for node in nodes if filter_obj.matches(node)]
 
     def get_ipsla_nodes(self):
-        query = f"""
+        query = """
         SELECT s.SiteID, s.Name, s.IPAddress, s.NodeID, s.RegionID, n.Caption
         FROM Orion.Nodes n 
          JOIN Orion.IpSla.Sites s ON n.NodeID = s.NodeID
@@ -192,26 +189,85 @@ class ModifiedSwisClient(SolarWinds):
         results = self.swis.query(query)
         return results
 
-    def test(self):
-        query = """
-            SELECT TOP 1 NodeID
-            FROM Orion.Nodes
-        """
-        log.info(f"Querying SWAPI...")
-        import requests
 
-        try:
-            results = self.swis.query(query).get("results", [])
-        except (AttributeError, requests.RequestException):
-            return False
-        return bool(results)  # empty results here also counts as failure
+class SolarWindsMatchCriteria(BaseModel):
+    """Match criteria for SolarWinds devices."""
+
+    vendor: Optional[str] = None
+    description: Optional[str] = None
+    caption: Optional[str] = None
 
 
-class SwisInventoryStore(InventoryStore):
-    def __init__(self, swis_client, settings):
-        self.swis_client = swis_client
-        self.settings = settings
-        self.nodes = None
+class SolarWindsDeviceAction(BaseModel):
+    """Action to take when a device matches criteria."""
+
+    adapter: str
+    adapter_driver: str
+    credential_id: Optional[str] = None
+    port: int = 22
+
+
+class SolarWindsMapping(BaseModel):
+    """A single match/action rule for SolarWinds devices."""
+
+    match: SolarWindsMatchCriteria
+    action: SolarWindsDeviceAction
+
+
+class SolarwindsSettings(PluginSettings):
+    """
+    SolarWinds Plugin Settings
+    
+    Config file uses prefixed keys: plugin_solarwinds_host, plugin_solarwinds_username, etc.
+    Env vars use: TOM_PLUGIN_SOLARWINDS_HOST, TOM_PLUGIN_SOLARWINDS_USERNAME, etc.
+    Code accesses clean names: settings.host, settings.username, etc.
+    
+    Precedence: ENVVARS > env_file > yaml_file > defaults
+    """
+    
+    # Clean field names - prefixes are added automatically for config/env lookup
+    host: str
+    username: str
+    password: str
+    port: int = 17774
+    default_cred_name: str = 'default'  # default cred name attached to solarwinds inventory objects
+    device_mappings: list[SolarWindsMapping] = [
+        SolarWindsMapping(
+            match=SolarWindsMatchCriteria(vendor=".*"),
+            action=SolarWindsDeviceAction(
+                adapter="netmiko",
+                adapter_driver="cisco_ios",
+                credential_id="default",
+            )
+        )
+    ]
+    
+    model_config = SettingsConfigDict(
+        env_prefix="TOM_",
+        env_file=os.getenv("TOM_ENV_FILE", "foo.env"),
+        yaml_file=os.getenv("TOM_CONFIG_FILE", "tom_config.yaml"),
+        case_sensitive=False,
+        extra="forbid",
+        plugin_name="solarwinds",  # type: ignore[typeddict-unknown-key]
+    )
+
+
+class SolarWindsInventoryPlugin(InventoryPlugin):
+    """SolarWinds SWIS-based inventory plugin."""
+    
+    name = "solarwinds"
+    dependencies = ["orionsdk"]
+    settings_class = SolarwindsSettings
+    
+    def __init__(self, plugin_settings: SolarwindsSettings, main_settings: Settings):
+        super().__init__(plugin_settings, main_settings)
+        self.settings = plugin_settings
+        self.main_settings = main_settings
+        self.priority = main_settings.get_inventory_plugin_priority("solarwinds")
+        self.nodes: Optional[List[Dict]] = None
+        
+        # Create SWIS client
+        self.swis_client = ModifiedSwisClient.from_settings(plugin_settings)
 
     def _load_nodes(self) -> list[dict]:
         """Load all nodes from SolarWinds on startup."""
@@ -227,7 +283,7 @@ class SwisInventoryStore(InventoryStore):
     def _node_to_device_config(self, node: dict) -> DeviceConfig:
         """Convert SolarWinds node data to DeviceConfig format using configured mappings."""
         # Try each mapping rule in order until we find a match
-        for mapping in self.settings.swapi_device_mappings:
+        for mapping in self.settings.device_mappings:
             # Create a filter from the match criteria
             filter_obj = SolarWindsFilter(
                 caption_pattern=mapping.match.caption,
@@ -239,7 +295,7 @@ class SwisInventoryStore(InventoryStore):
                 # Use the credential_id from the action, or fall back to default
                 credential_id = (
                     mapping.action.credential_id
-                    or self.settings.swapi_default_cred_name
+                    or self.settings.default_cred_name
                 )
 
                 return DeviceConfig(
@@ -257,11 +313,11 @@ class SwisInventoryStore(InventoryStore):
             adapter_driver="cisco_ios",
             host=node["IPAddress"],
             port=22,
-            credential_id=self.settings.swapi_default_cred_name,
+            credential_id=self.settings.default_cred_name,
         )
 
     def get_device_config(self, device_name: str) -> DeviceConfig:
-        """Find device by Caption (hostname) and return DeviceConfig."""
+        """Find device by Caption (hostname) and return DeviceConfig (sync)."""
         log.info(f"Looking up device: {device_name}")
 
         if self.nodes is None:
@@ -271,8 +327,6 @@ class SwisInventoryStore(InventoryStore):
         log.info(f"Searching through {len(self.nodes)} nodes for {device_name}")
 
         # Create filter to find device by caption (hostname)
-        from tom_controller.inventory.solarwinds import SolarWindsFilter
-
         device_filter = SolarWindsFilter(caption_pattern=f"^{re.escape(device_name)}$")
 
         for node in self.nodes:
@@ -285,12 +339,26 @@ class SwisInventoryStore(InventoryStore):
             f"Device {device_name} not found in SolarWinds inventory"
         )
 
+    async def aget_device_config(self, device_name: str) -> DeviceConfig:
+        """Find device by Caption (hostname) and return DeviceConfig (async)."""
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            return await loop.run_in_executor(
+                executor, self.get_device_config, device_name
+            )
+
     def list_all_nodes(self) -> list[dict]:
-        """Return all nodes from SolarWinds inventory."""
+        """Return all nodes from SolarWinds inventory (sync)."""
         if self.nodes is None:
             log.info("Nodes not loaded, loading from SolarWinds...")
             self.nodes = self._load_nodes()
         return self.nodes
+
+    async def alist_all_nodes(self) -> list[dict]:
+        """Return all nodes from SolarWinds inventory (async)."""
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            return await loop.run_in_executor(executor, self.list_all_nodes)
 
     def get_filterable_fields(self) -> dict[str, str]:
         """Return available fields from SolarWinds for filtering."""
@@ -304,3 +372,11 @@ class SwisInventoryStore(InventoryStore):
             "Vendor": "Device vendor",
             "DetailsUrl": "SolarWinds details URL"
         }
+
+    def get_available_filters(self) -> dict[str, str]:
+        """Return available named filters for SolarWinds inventory."""
+        return FilterRegistry.get_available_filters()
+
+    def get_filter(self, filter_name: str) -> SolarWindsFilter:
+        """Get a named SolarWinds filter by name."""
+        return FilterRegistry.get_filter(filter_name)
