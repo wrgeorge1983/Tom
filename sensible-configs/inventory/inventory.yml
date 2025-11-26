@@ -1,0 +1,22 @@
+# Tom Smykowski - Device Inventory
+# Replace with your actual devices
+
+router1:
+  host: "192.168.1.1"
+  adapter: "netmiko"
+  adapter_driver: "cisco_ios"
+  credential_id: "lab_creds"
+  port: 22
+
+switch1:
+  host: "192.168.1.10"
+  adapter: "scrapli"
+  adapter_driver: "cisco_iosxe"
+  credential_id: "lab_creds"
+  port: 22
+
+# Add more devices as needed
+# Supported adapters: netmiko, scrapli
+# Common drivers:
+#   netmiko: cisco_ios, cisco_nxos, arista_eos, juniper_junos
+#   scrapli: cisco_iosxe, cisco_nxos, cisco_iosxr, arista_eos, juniper_junos

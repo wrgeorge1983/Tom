@@ -1,0 +1,12 @@
+# Tom Smykowski - Credential Store (YAML)
+# Only used if TOM_WORKER_CREDENTIAL_STORE=yaml
+# For better security, use Vault instead
+
+lab_creds:
+  username: admin
+  password: your-password-here
+
+# Add more credential sets as needed
+# production_creds:
+#   username: netops
+#   password: different-password

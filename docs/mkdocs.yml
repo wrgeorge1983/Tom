@@ -5,37 +5,57 @@ repo_name: wrgeorge1983/tom
 
 theme:
   name: material
+  font:
+    text: Inter  # Modern, clean font (or: Roboto, Open Sans, Source Sans Pro)
+    code: Fira Code  # Nice code font with ligatures (or: JetBrains Mono, Source Code Pro)
   palette:
-    - media: "(prefers-color-scheme)"
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: blue
-      accent: blue
+    # Light mode
+    - scheme: default
+      primary: blue-grey  # Options: indigo, blue, cyan, teal, green, lime, amber, orange, deep-orange, red, pink, purple
+      accent: deep-orange # Complementary accent color
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: blue
-      accent: blue
+    # Dark mode  
+    - scheme: slate
+      primary: blue-grey
+      accent: deep-orange
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.tabs
-    - navigation.sections
-    - navigation.expand
-    - navigation.top
-    - search.suggest
-    - search.highlight
-    - content.tabs.link
-    - content.code.annotation
-    - content.code.copy
+    # Navigation
+    - navigation.instant  # Instant loading (SPA-like)
+    - navigation.instant.prefetch  # Prefetch pages on hover
+    - navigation.tracking  # Update URL with active anchor
+    - navigation.tabs  # Top-level sections as tabs
+    - navigation.tabs.sticky  # Keep tabs visible when scrolling
+#    - navigation.sections  # Render sections as groups
+    - navigation.expand  # Expand all collapsible sections
+    - navigation.path  # Show breadcrumbs
+    - navigation.indexes  # Section index pages
+    - navigation.top  # Back to top button
+    
+    # Table of contents
+    - toc.follow  # Sidebar follows scroll
+    - toc.integrate  # Integrate TOC into left sidebar (cleaner look)
+    
+    # Search
+    - search.suggest  # Search suggestions
+    - search.highlight  # Highlight search terms
+    - search.share  # Share search URL
+    
+    # Content
+    - content.tabs.link  # Link content tabs
+    - content.code.annotation  # Code annotations
+    - content.code.copy  # Copy button on code blocks
+    - content.code.select  # Select button on code blocks
+    - content.tooltips  # Improved tooltips
+    - content.action.edit  # Edit page button
+    - content.action.view  # View source button
 
 docs_dir: docs
+
 
 plugins:
   - mermaid2
@@ -47,6 +67,10 @@ plugins:
 extra:
   version:
     provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/wrgeorge1983/tom
+  generator: true  # Remove "Made with Material for MkDocs" footer
 
 nav:
   - Home: index.md

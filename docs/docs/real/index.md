@@ -72,8 +72,9 @@ sequenceDiagram
 
 ## Next Steps
 
-- [Getting Started](getting-started.md) - Installation and initial configuration
+- [Getting Started Fast](getting-started-FAST.md) - 5-minute minimal setup
+- [Getting Started Sensibly](getting-started.md) - Installation and initial configuration
 - [API Reference](api/index.md) - Complete API endpoint documentation
 - [Authentication](auth/index.md) - OAuth2 and API key configuration
 - [Inventory](inventory/index.md) - Setting up inventory sources
-- [Parsing](parsing/index.md) - Using TextFSM and TTP parsers
+- [Parsing](parsing.md) - Using TextFSM and TTP parsers
