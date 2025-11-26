@@ -28,6 +28,9 @@ COPY --from=builder --chown=app:app /app /app
 
 WORKDIR /app/services/worker
 
+# Set default project root for containerized deployment
+ENV TOM_WORKER_PROJECT_ROOT=/app
+
 CMD [".venv/bin/python", "-m", "tom_worker.main"]
 
 

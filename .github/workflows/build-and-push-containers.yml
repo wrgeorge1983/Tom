@@ -46,8 +46,15 @@ jobs:
           fi
           # Remove 'v' prefix if present
           VERSION_NUMBER="${VERSION#v}"
+          
+          # Extract major.minor and major from version (e.g., 0.15.4 -> 0.15 and 0)
+          MAJOR=$(echo "$VERSION_NUMBER" | cut -d. -f1)
+          MAJOR_MINOR=$(echo "$VERSION_NUMBER" | cut -d. -f1-2)
+          
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "version_number=${VERSION_NUMBER}" >> $GITHUB_OUTPUT
+          echo "major=${MAJOR}" >> $GITHUB_OUTPUT
+          echo "major_minor=${MAJOR_MINOR}" >> $GITHUB_OUTPUT
       
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v5
@@ -56,8 +63,8 @@ jobs:
           file: ./services/${{ matrix.service }}/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:${{ steps.version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:${{ steps.version.outputs.version_number }}
+            ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:${{ steps.version.outputs.major_minor }}
             ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -67,6 +74,6 @@ jobs:
           echo "### ✅ Built and pushed tom-${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Images pushed:**" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:${{ steps.version.outputs.version_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:${{ steps.version.outputs.major_minor }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ github.repository_owner }}/tom-${{ matrix.service }}:latest\`" >> $GITHUB_STEP_SUMMARY
