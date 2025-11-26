@@ -73,8 +73,7 @@ sequenceDiagram
 ## Next Steps
 
 - [Getting Started Fast](getting-started-FAST.md) - 5-minute minimal setup
-- [Getting Started Sensibly](getting-started.md) - Installation and initial configuration
-- [API Reference](api/index.md) - Complete API endpoint documentation
-- [Authentication](auth/index.md) - OAuth2 and API key configuration
-- [Inventory](inventory/index.md) - Setting up inventory sources
+- [Getting Started Sensibly](getting-started.md) - More complete setup with Vault
+- [Architecture](architecture.md) - How Tom's components work together
 - [Parsing](parsing.md) - Using TextFSM and TTP parsers
+- [API Documentation](http://localhost:8000/docs) - Swagger UI (when Tom is running)

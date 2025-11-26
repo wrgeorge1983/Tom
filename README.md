@@ -5,6 +5,8 @@
 
 # Tom Smykowski
 
+**[Documentation](https://wrgeorge1983.github.io/tom/)** | **[Getting Started Sensibly](https://wrgeorge1983.github.io/tom/real/getting-started/)** | **[Getting Started Irresponsibly Fast](https://wrgeorge1983.github.io/tom/real/getting-started-FAST/)**
+
 Tom Smykowski is your Network Automation Broker: He takes the network state FROM 
 your equipment and gives it TO your developers. He deals with your damn equipment,
 so the developers don't have to!
@@ -108,51 +110,18 @@ sequenceDiagram
     T -->> C: final response 
 ```
 
-### Detailed
-[Detailed Diagram](./docs/overal-sequence-detail.md)
-
 ## Documentation
 
-### API & Architecture
-- [API Endpoints](./docs/api-endpoints.md) - Complete API reference
+Full documentation is available at **[wrgeorge1983.github.io/tom](https://wrgeorge1983.github.io/tom/)**
+
+- [Getting Started Fast](https://wrgeorge1983.github.io/tom/real/getting-started-FAST/) - 5-minute minimal setup
+- [Getting Started Sensibly](https://wrgeorge1983.github.io/tom/real/getting-started/) - More complete setup with Vault
+- [Architecture](https://wrgeorge1983.github.io/tom/real/architecture/) - How Tom's components work together
+- [Parsing Guide](https://wrgeorge1983.github.io/tom/real/parsing/) - TextFSM and TTP parsing
+
+Additional references:
 - [Roadmap](./ROADMAP.md) - Development roadmap and completed features
-
-### Monitoring
-- [Metrics Documentation](./docs/metrics.md) - Prometheus metrics reference and monitoring guide
-
-### Output Parsing
-- [Parsing Guide](./docs/parsing.md) - Complete guide to TextFSM and TTP parsing
-- [Template README](./templates/README.md) - Quick reference for custom templates
-
-### OAuth/JWT Authentication
-- [OAuth Implementation](./docs/oauth-implementation.md) - Complete JWT authentication documentation
-
-## Quick Start
-
-### With JWT Authentication
-1. Copy the example JWT config:
-   ```bash
-   cp tom_config.jwt.example.yaml tom_config.yaml
-   ```
-
-2. Configure your OAuth providers in `tom_config.yaml`
-
-3. Start the services:
-   ```bash
-   docker compose up
-   ```
-
-4. Use `tomclient` to interact with Tom:
-   ```bash
-   # Authenticate with your OAuth provider
-   tomclient auth login
-   
-   # Make API calls
-   tomclient inventory
-   tomclient device router1 "show ip int bri"
-   ```
-
-**Note:** The `tomclient` CLI tool is the recommended way to interact with Tom. See the `tomclient` repository for installation and usage.
+- [Custom Templates](./templates/README.md) - Adding your own parsing templates
 
 ## Inspiration
 
