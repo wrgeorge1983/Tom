@@ -23,7 +23,7 @@
 <input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
 <label class="md-overlay" for="__drawer"></label>
 <div data-md-component="skip">
-<a class="md-skip" href="#tom-smykowski-documentation">
+<a class="md-skip" href="#what-is-tom">
           Skip to content
         </a>
 </div>
@@ -286,47 +286,48 @@
 <a class="md-content__button md-icon" href="https://github.com/wrgeorge1983/tom/raw/master/docs/real/index.md" title="View source of this page">
 <svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"></path></svg>
 </a>
-<h1 id="tom-smykowski-documentation">Tom Smykowski Documentation</h1>
+<h1 id="what-is-tom">What is Tom?</h1>
 <h2 id="overview">Overview</h2>
 <p>Tom Smykowski is a Network Automation Broker that takes network state FROM your equipment and gives it TO your developers. He deals with your network equipment, so the developers don't have to.</p>
 <p>Think of Tom as a jump-host for your applications, with all the network automation complexities handled for you.</p>
 <h2 id="the-problem">The Problem</h2>
-<p>Network automation projects consistently require the same foundational components, yet these are often re-implemented for each project. More critically, services that interact directly with users through web interfaces or chat applications should not communicate directly with network equipment or manage credentials. Security vulnerabilities in user-facing services are common, even among experienced engineering teams, and creating a direct path to network infrastructure creates unnecessary risk.</p>
+<p>Network automation projects constantly require the same basic components just to make it work00, yet these are often re-implemented for each project. More critically, services that interact directly with users through web interfaces or chat applications should not communicate directly with network equipment or manage credentials. Security vulnerabilities in user-facing services are common, even among experienced engineering teams, and creating a direct path to network infrastructure creates unnecessary risk.</p>
 <p>The network automation ecosystem offers a substantial toolbox—transport drivers, parsing engines, template renderers, inventory systems, and credential management—but integrating these components well and securely represents a significant engineering challenge that shouldn't be repeated for every project.</p>
 <h2 id="what-tom-provides">What Tom Provides</h2>
 <p>Tom serves as a centralized broker that handles:</p>
 <ul>
-<li><strong>Transport and Drivers</strong>: Integration with Netmiko, scrapli, and other connectivity frameworks</li>
-<li><strong>Parsing</strong>: Support for TextFSM, TTP, and other parsing engines with 900+ built-in templates</li>
-<li><strong>Inventory Management</strong>: Plugin-based system supporting YAML, SolarWinds SWIS, Nautobot, and NetBox</li>
+<li><strong>Transport and Drivers</strong>: Integration with Netmiko, Scrapli, and other ways of directly interacting with your equipment</li>
+<li><strong>Parsing</strong>: Support for TextFSM, TTP, and other parsing engines with 900+ built-in templates (courtesy of the <a href="https://github.com/networktocode/ntc-templates">NTC Templates repo</a>)</li>
+<li><strong>Inventory Management</strong>: Plugin-based system supporting Nautobot, NetBox, and SolarWinds NPM (and also YAML files if your really must)</li>
 <li><strong>Security</strong>: HashiCorp Vault integration for credentials, JWT/OAuth2 authentication for users</li>
 <li><strong>Queue Management</strong>: Asynchronous job processing with per-device concurrency control</li>
-<li><strong>Caching</strong>: Redis-backed response caching to reduce load on device management planes</li>
+<li><strong>Caching</strong>: Optional response caching to reduce load on device management planes and faster responses</li>
 </ul>
 <h2 id="architecture">Architecture</h2>
-<p>Tom uses a controller-worker architecture with Redis as the message broker:</p>
+<p>Tom fits into the <a href="https://reference.networkautomation.forum/Framework/Framework/#the-architecture">NAF Automation Framework</a> like so: 
+<img alt="Tom in the NAF Automation Framework" src="tom-naf.png"/></p>
+<p>The process of using Tom looks like this: </p>
 <div class="mermaid">sequenceDiagram
     actor C as Client 
-    participant T as Tom Controller
-    participant R as Redis Queue
-    participant W as Tom Worker
-    participant D as Network Device
+    participant T as Tom
+    participant D as Network Device&lt;br/&gt;R1&lt;br/&gt;192.168.1.1
 
     C -&gt;&gt; T: /send_command
         note over C,T: device=R1&lt;br/&gt;command="sh ip int bri"
-    T -&gt;&gt; T: Validate auth &amp; lookup inventory
-    T -&gt;&gt; R: Queue job
-    R --&gt;&gt; W: Dispatch job
-    W -&gt;&gt; W: Lookup credential
-    W -&gt;&gt; D: Execute command
+    T -&gt;&gt; T: lookup inventory (inc. host &amp; credential ref)
+    T -&gt;&gt; T: lookup credential
+    T -&gt;&gt; D: sh ip int bri
     activate D
-        D --&gt;&gt; W: Raw output
+        D --&gt;&gt; T: &lt;raw output&gt;
     deactivate D
-    W -&gt;&gt; W: Parse if requested
-    W -&gt;&gt; R: Store result
-    R --&gt;&gt; T: Job complete
-    T --&gt;&gt; C: Return result
+    T -&gt;&gt; T: parse if needed
+    T --&gt;&gt; C: final response 
 </div>
+<p>Internally, Tom uses a controller-worker architecture that is discussed in more detail in <a href="architecture/">Architecture</a>,
+but the most important detail to understand is that <strong>Tom is NOT another library or code-level dependency. Instead, it's a standalone
+service typically deployed as a set of Docker containers</strong>.</p>
+<p>In fact, that's a big part of the point: your automation code will be better, smaller, faster, more stable, and more secure 
+if you don't have to pull in all the dependencies required to handle all that network equipment directly.</p>
 <h3 id="components">Components</h3>
 <p><strong>Controller</strong>: FastAPI-based REST API that handles authentication, inventory lookups, and job queueing. The controller never directly connects to network devices.</p>
 <p><strong>Worker</strong>: Executes network commands using Netmiko or scrapli adapters. Workers retrieve credentials from Vault, manage per-device concurrency, and handle response parsing.</p>

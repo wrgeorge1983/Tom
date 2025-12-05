@@ -194,23 +194,18 @@
 <p>Tom uses a controller-worker architecture:</p>
 <pre><code>┌─────────────────────────────────────────────────────────────────┐
 │                            Tom                                  │
-│  ┌─────────────┐    ┌─────────┐    ┌─────────────────────────┐  │
-│  │ Controller  │◄──►│  Redis  │◄──►│  Worker (1 or more)     │  │
-│  │  (API)      │    │         │    │                         │  │
-│  └──────┬──────┘    └────┬────┘    └───────────┬─────────────┘  │
-│         │                │                     │                │
-│         ▼                │                     ▼                │
-│  ┌─────────────┐         │              ┌─────────────┐         │
-│  │  Inventory  │         │              │ Credential  │         │
-│  │   Source    │         │              │   Store     │         │
-│  └─────────────┘         │              └─────────────┘         │
-└──────────────────────────┼──────────────────────┼───────────────┘
-                           │                      │
-                           ▼                      ▼
-                    ┌─────────────┐        ┌─────────────┐
-                    │   Cache     │        │   Network   │
-                    │  (Redis)    │        │   Devices   │
-                    └─────────────┘        └─────────────┘
+│  ┌─────────────┐    ┌─────────┐    ┌─────────────────────────┐  │  ┌─────────────┐
+│  │ Controller  │◄──►│  Redis  │◄──►│  Worker (1 or more)     │◄───►│   Network   │
+│  │  (API)      │    │         │    │                         │  │  │   Devices   │
+│  └──────┬──────┘    └─────────┘    └───────────┬─────────────┘  │  └─────────────┘
+│         │                                      │                │
+│         ▼                                      ▼                │
+│  ┌─────────────┐                        ┌─────────────┐         │
+│  │  Inventory  │                        │ Credential  │         │
+│  │   Source    │                        │   Store     │         │
+│  └─────────────┘                        └─────────────┘         │
+└─────────────────────────────────────────────────────────────────┘
+
 </code></pre>
 <h3 id="controller">Controller</h3>
 <p>The controller is a FastAPI application that:</p>
@@ -227,8 +222,8 @@
 <p>Workers execute the actual network commands:</p>
 <ul>
 <li>Pull jobs from the Redis queue</li>
-<li>Retrieve credentials from Vault (or YAML store)</li>
-<li>Connect to devices using Netmiko or scrapli</li>
+<li>Retrieve credentials from Vault (or other credential store)</li>
+<li>Connect to devices using Netmiko or Scrapli</li>
 <li>Execute commands and capture output</li>
 <li>Store results back in Redis</li>
 </ul>
@@ -249,10 +244,10 @@
 <li>Port</li>
 </ul>
 <p>Supported sources:
-- YAML file (built-in)
-- NetBox (plugin)
-- Nautobot (plugin)
-- SolarWinds SWIS (plugin)</p>
+- NetBox
+- Nautobot 
+- SolarWinds NPM 
+- YAML file (if you must) </p>
 <h3 id="credential-store">Credential Store</h3>
 <p>Credentials are stored separately from inventory and referenced by ID:</p>
 <ul>
@@ -276,12 +271,12 @@
     T -&gt;&gt; T: Lookup device in inventory
     T -&gt;&gt; Q: Enqueue job
     note over T,Q: host, driver, credential_id, command
-    T --&gt;&gt; C: (waiting...)
 
     W -&gt;&gt; Q: Fetch job
     activate W
     W -&gt;&gt; V: Get credential by ID
     V --&gt;&gt; W: username, password
+    T -&gt;&gt; Q: Poll for completion
     W -&gt;&gt; D: Execute command
     activate D
     D --&gt;&gt; W: Raw output
