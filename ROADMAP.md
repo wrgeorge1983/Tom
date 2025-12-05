@@ -104,6 +104,14 @@
 - Plugin system for device adapters
 - Config validation tool (`tom validate-config`) to detect typos and unused keys across main and plugin settings
 
+### User-Context Credentials
+- Pass OAuth/JWT identity through to workers
+- Worker credential lookup based on authenticated user identity
+  - Per-user credentials in Vault (e.g., `secret/tom/users/{email}/credentials`)
+  - User+device or user+endpoint credential combinations
+- Enables scenarios where different users have different access levels to the same devices
+- Supports delegated authentication to backend systems (gRPC endpoints, DHCP servers, etc.)
+
 ### UI
 - python client library
 - golang client library

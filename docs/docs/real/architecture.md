@@ -9,23 +9,18 @@ Tom uses a controller-worker architecture:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                            Tom                                  │
-│  ┌─────────────┐    ┌─────────┐    ┌─────────────────────────┐  │
-│  │ Controller  │◄──►│  Redis  │◄──►│  Worker (1 or more)     │  │
-│  │  (API)      │    │         │    │                         │  │
-│  └──────┬──────┘    └────┬────┘    └───────────┬─────────────┘  │
-│         │                │                     │                │
-│         ▼                │                     ▼                │
-│  ┌─────────────┐         │              ┌─────────────┐         │
-│  │  Inventory  │         │              │ Credential  │         │
-│  │   Source    │         │              │   Store     │         │
-│  └─────────────┘         │              └─────────────┘         │
-└──────────────────────────┼──────────────────────┼───────────────┘
-                           │                      │
-                           ▼                      ▼
-                    ┌─────────────┐        ┌─────────────┐
-                    │   Cache     │        │   Network   │
-                    │  (Redis)    │        │   Devices   │
-                    └─────────────┘        └─────────────┘
+│  ┌─────────────┐    ┌─────────┐    ┌─────────────────────────┐  │  ┌─────────────┐
+│  │ Controller  │◄──►│  Redis  │◄──►│  Worker (1 or more)     │◄───►│   Network   │
+│  │  (API)      │    │         │    │                         │  │  │   Devices   │
+│  └──────┬──────┘    └─────────┘    └───────────┬─────────────┘  │  └─────────────┘
+│         │                                      │                │
+│         ▼                                      ▼                │
+│  ┌─────────────┐                        ┌─────────────┐         │
+│  │  Inventory  │                        │ Credential  │         │
+│  │   Source    │                        │   Store     │         │
+│  └─────────────┘                        └─────────────┘         │
+└─────────────────────────────────────────────────────────────────┘
+                                                  
 ```
 
 ### Controller
@@ -46,8 +41,8 @@ The controller **never connects to network devices directly**. This separation m
 Workers execute the actual network commands:
 
 - Pull jobs from the Redis queue
-- Retrieve credentials from Vault (or YAML store)
-- Connect to devices using Netmiko or scrapli
+- Retrieve credentials from Vault (or other credential store)
+- Connect to devices using Netmiko or Scrapli
 - Execute commands and capture output
 - Store results back in Redis
 
@@ -71,10 +66,10 @@ The inventory maps device names to connection parameters:
 - Port
 
 Supported sources:
-- YAML file (built-in)
-- NetBox (plugin)
-- Nautobot (plugin)
-- SolarWinds SWIS (plugin)
+- NetBox
+- Nautobot 
+- SolarWinds NPM 
+- YAML file (if you must) 
 
 ### Credential Store
 
@@ -104,12 +99,12 @@ sequenceDiagram
     T ->> T: Lookup device in inventory
     T ->> Q: Enqueue job
     note over T,Q: host, driver, credential_id, command
-    T -->> C: (waiting...)
     
     W ->> Q: Fetch job
     activate W
     W ->> V: Get credential by ID
     V -->> W: username, password
+    T ->> Q: Poll for completion
     W ->> D: Execute command
     activate D
     D -->> W: Raw output

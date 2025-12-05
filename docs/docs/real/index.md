@@ -1,4 +1,4 @@
-# Tom Smykowski Documentation
+# What is Tom?
 
 ## Overview
 
@@ -8,7 +8,7 @@ Think of Tom as a jump-host for your applications, with all the network automati
 
 ## The Problem
 
-Network automation projects consistently require the same foundational components, yet these are often re-implemented for each project. More critically, services that interact directly with users through web interfaces or chat applications should not communicate directly with network equipment or manage credentials. Security vulnerabilities in user-facing services are common, even among experienced engineering teams, and creating a direct path to network infrastructure creates unnecessary risk.
+Network automation projects constantly require the same basic components just to make it work00, yet these are often re-implemented for each project. More critically, services that interact directly with users through web interfaces or chat applications should not communicate directly with network equipment or manage credentials. Security vulnerabilities in user-facing services are common, even among experienced engineering teams, and creating a direct path to network infrastructure creates unnecessary risk.
 
 The network automation ecosystem offers a substantial toolbox—transport drivers, parsing engines, template renderers, inventory systems, and credential management—but integrating these components well and securely represents a significant engineering challenge that shouldn't be repeated for every project.
 
@@ -16,40 +16,44 @@ The network automation ecosystem offers a substantial toolbox—transport driver
 
 Tom serves as a centralized broker that handles:
 
-- **Transport and Drivers**: Integration with Netmiko, scrapli, and other connectivity frameworks
-- **Parsing**: Support for TextFSM, TTP, and other parsing engines with 900+ built-in templates
-- **Inventory Management**: Plugin-based system supporting YAML, SolarWinds SWIS, Nautobot, and NetBox
+- **Transport and Drivers**: Integration with Netmiko, Scrapli, and other ways of directly interacting with your equipment
+- **Parsing**: Support for TextFSM, TTP, and other parsing engines with 900+ built-in templates (courtesy of the [NTC Templates repo](https://github.com/networktocode/ntc-templates))
+- **Inventory Management**: Plugin-based system supporting Nautobot, NetBox, and SolarWinds NPM (and also YAML files if your really must)
 - **Security**: HashiCorp Vault integration for credentials, JWT/OAuth2 authentication for users
 - **Queue Management**: Asynchronous job processing with per-device concurrency control
-- **Caching**: Redis-backed response caching to reduce load on device management planes
+- **Caching**: Optional response caching to reduce load on device management planes and faster responses
 
 ## Architecture
 
-Tom uses a controller-worker architecture with Redis as the message broker:
+Tom fits into the [NAF Automation Framework](https://reference.networkautomation.forum/Framework/Framework/#the-architecture) like so: 
+![Tom in the NAF Automation Framework](tom-naf.png)
+
+The process of using Tom looks like this: 
 
 ```mermaid
 sequenceDiagram
     actor C as Client 
-    participant T as Tom Controller
-    participant R as Redis Queue
-    participant W as Tom Worker
-    participant D as Network Device
+    participant T as Tom
+    participant D as Network Device<br/>R1<br/>192.168.1.1
         
     C ->> T: /send_command
         note over C,T: device=R1<br/>command="sh ip int bri"
-    T ->> T: Validate auth & lookup inventory
-    T ->> R: Queue job
-    R -->> W: Dispatch job
-    W ->> W: Lookup credential
-    W ->> D: Execute command
+    T ->> T: lookup inventory (inc. host & credential ref)
+    T ->> T: lookup credential
+    T ->> D: sh ip int bri
     activate D
-        D -->> W: Raw output
+        D -->> T: <raw output>
     deactivate D
-    W ->> W: Parse if requested
-    W ->> R: Store result
-    R -->> T: Job complete
-    T -->> C: Return result
+    T ->> T: parse if needed
+    T -->> C: final response 
 ```
+
+Internally, Tom uses a controller-worker architecture that is discussed in more detail in [Architecture](architecture.md),
+but the most important detail to understand is that **Tom is NOT another library or code-level dependency. Instead, it's a standalone
+service typically deployed as a set of Docker containers**.
+
+In fact, that's a big part of the point: your automation code will be better, smaller, faster, more stable, and more secure 
+if you don't have to pull in all the dependencies required to handle all that network equipment directly.
 
 ### Components
 
