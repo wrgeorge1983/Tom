@@ -34,8 +34,10 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 Edit `tom_controller_config.yaml` and replace the placeholder:
 
 ```yaml
-api_keys: ["YOUR-GENERATED-KEY-HERE:admin"]
+api_keys: ["REPLACE_ME_WITH_YOUR_API_KEY:admin"]
 ```
+
+Replace `REPLACE_ME_WITH_YOUR_API_KEY` with your generated key.
 
 ## 3. Configure Your Inventory
 
@@ -82,11 +84,9 @@ Wait for services to start, then open a new terminal for the next steps.
 
 ## 5. Store Credentials in Vault
 
-Use the included `credload.py` script (no need to install the vault CLI):
+Use the included `credload.py` script from the repo root (no need to install the vault CLI):
 
 ```bash
-cd tom
-
 # Interactive - prompts for username and password securely
 uv run credload.py put lab_creds
 
@@ -166,7 +166,7 @@ docker compose logs worker
 2. Check credentials in Vault:
 
     ```bash
-    vault kv get secret/lab_creds
+    uv run credload.py get lab_creds
     ```
 
 3. Review worker logs for errors

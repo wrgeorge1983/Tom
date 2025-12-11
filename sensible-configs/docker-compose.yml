@@ -3,7 +3,7 @@
 
 services:
   controller:
-    image: ghcr.io/wrgeorge1983/tom-controller:0.15
+    image: ghcr.io/wrgeorge1983/tom-controller:latest
     environment:
       TOM_PROJECT_ROOT: /app
       TOM_CONFIG_FILE: /app/tom_controller_config.yaml
@@ -22,7 +22,7 @@ services:
       - redis
 
   worker:
-    image: ghcr.io/wrgeorge1983/tom-worker:0.15
+    image: ghcr.io/wrgeorge1983/tom-worker:latest
     depends_on:
       - redis
       - vault
