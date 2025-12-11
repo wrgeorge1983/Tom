@@ -4,7 +4,9 @@ import logging
 from typing import Optional
 from fastapi import Request, Depends, Query
 
-from tom_controller.api.api import router, do_auth, AuthResponse
+from tom_controller.api.api import router
+from tom_controller.api import do_auth
+from tom_controller.api.auth import AuthResponse
 from tom_controller.exceptions import TomException
 
 logger = logging.getLogger(__name__)

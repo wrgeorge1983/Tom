@@ -3,32 +3,28 @@ import os
 import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, TypedDict, Literal, Dict, Any
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Request, Query, HTTPException, Response
 import httpx
 from jose import jwt as jose_jwt
-from jose.exceptions import JWTError
 from pydantic import BaseModel
 import saq
-from saq import Status
 
+from tom_controller.api.auth import AuthResponse, _jwt_auth, do_auth
+from tom_controller.api.helpers import enqueue_job
 from tom_controller.api.models import (
     JobResponse,
     SendCommandsRequest,
     SendCommandRequest,
     RawCommandRequest,
-    CommandSpec,
 )
 from tom_controller.monitoring import MetricsExporter
-from tom_controller.api import monitoring_api
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 
-from tom_controller.config import settings as app_settings
 from tom_controller.exceptions import (
     TomException,
     TomAuthException,
-    TomAuthorizationException,
     TomNotFoundException,
     TomValidationException,
 )
@@ -38,7 +34,6 @@ from tom_controller.inventory.inventory import (
     InventoryFilter,
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
-from tom_controller.auth import JWTValidationError, JWTValidator
 from tom_controller.parsing import parse_output
 from tom_controller.parsing.textfsm_parser import TextFSMParser
 
@@ -47,185 +42,6 @@ logger = logging.getLogger(__name__)
 
 def get_inventory_store(request: Request) -> InventoryStore:
     return request.app.state.inventory_store
-
-
-class AuthResponse(TypedDict):
-    method: Literal["api_key", "jwt", "none"]
-    user: str | None
-    provider: Optional[str]
-    claims: Optional[Dict[str, Any]]
-
-
-def api_key_auth(request: Request) -> AuthResponse:
-    valid_headers = request.app.state.settings.api_key_headers
-    valid_api_keys = request.app.state.settings.api_key_users
-
-    for header in valid_headers:
-        api_key = request.headers.get(header)
-        if api_key in valid_api_keys:
-            return {
-                "method": "api_key",
-                "user": valid_api_keys[api_key],
-                "provider": None,
-                "claims": None,
-            }
-
-    header_keys = ", ".join(f"'{header}'" for header in valid_headers)
-
-    raise TomAuthException(
-        f"Missing or invalid API key. Requires one of these headers: {header_keys}"
-    )
-
-
-async def _jwt_auth(token: str, providers: list[JWTValidator]) -> AuthResponse:
-    """Validate JWT against providers in order."""
-
-    import re
-
-    token_issuer = None
-
-    try:
-        unverified_claims = jose_jwt.get_unverified_claims(token)
-        token_issuer = unverified_claims.get("iss")
-        oauth_provider = next(
-            provider for provider in providers if provider.issuer == token_issuer
-        )
-    except JWTError as e:
-        logging.error(f"JWT validation failed: {e}")
-        raise TomAuthException("Invalid JWT token - could not extract issuer") from e
-    except StopIteration:
-        logging.error(f"No matching provider found for issuer: {token_issuer}")
-        raise TomAuthException("Invalid JWT token - issuer not found")
-
-    logging.info(f"Token issuer (unverified): {token_issuer}")
-
-    try:
-        claims = await oauth_provider.validate_token(token)
-        user = oauth_provider.get_user_identifier(claims)
-    except JWTValidationError as e:
-        logging.warning(
-            f"JWT validation failed for provider {oauth_provider.name}: {e}"
-        )
-        raise TomAuthException("Invalid JWT token - could not validate token") from e
-    finally:
-        await oauth_provider.close()
-
-    # Enforce simple allow policy for JWT-authenticated users.
-    # Precedence: allowed_users > allowed_domains > allowed_user_regex
-    allowed_users = [u.lower() for u in app_settings.allowed_users]
-    allowed_domains = [d.lower() for d in app_settings.allowed_domains]
-    allowed_user_regex = app_settings.allowed_user_regex or []
-
-    if allowed_users or allowed_domains or allowed_user_regex:
-        canonical_user = (user or "").lower()
-
-        # 1) Exact user allowlist
-        if allowed_users and canonical_user in allowed_users:
-            pass  # allowed
-        else:
-            # Determine email-like identifier for domain matching
-            email_like = None
-            for k in ("email", "preferred_username", "upn"):
-                v = claims.get(k)
-                if isinstance(v, str) and "@" in v:
-                    email_like = v
-                    break
-
-            # 2) Domain allowlist
-            domain_ok = False
-            if allowed_domains and email_like:
-                domain = email_like.split("@")[-1].lower()
-                domain_ok = domain in allowed_domains
-
-            if not domain_ok:
-                # 3) Regex against canonical user, then email if present
-                regex_ok = False
-                if allowed_user_regex:
-                    regex_ok = any(
-                        re.search(p, canonical_user, flags=re.IGNORECASE)
-                        for p in allowed_user_regex
-                    ) or (
-                        isinstance(email_like, str)
-                        and any(
-                            re.search(p, email_like, flags=re.IGNORECASE)
-                            for p in allowed_user_regex
-                        )
-                    )
-
-                if not regex_ok:
-                    raise TomAuthorizationException(
-                        f"Access denied: {canonical_user=} not permitted by policy"
-                    )
-
-    if app_settings.permit_logging_user_details:
-        logging.info(
-            f"JWT successfully validated by {oauth_provider.name} for user {user}"
-        )
-    else:
-        logging.info(f"JWT successfully validated by {oauth_provider.name}")
-
-    return {
-        "method": "jwt",
-        "user": user,
-        "provider": oauth_provider.name,
-        "claims": claims,
-    }
-
-
-async def jwt_auth(request: Request) -> AuthResponse:
-    """Validate JWT from Authorization header."""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise TomAuthException("Missing or invalid Bearer token")
-
-    token = auth_header[7:]  # Remove "Bearer " prefix
-
-    # Debug: Log token prefix only when PII logging is permitted
-    if app_settings.permit_logging_user_details:
-        logging.info(f"Attempting JWT validation with token starting: {token[:50]}...")
-    else:
-        logging.info("Attempting JWT validation")
-
-    # Check HTTPS requirement
-    settings = request.app.state.settings
-    if settings.jwt_require_https:
-        # Check if connection is secure
-        if request.url.scheme != "https":
-            # Allow localhost for development
-            if request.client and request.client.host not in [
-                "127.0.0.1",
-                "localhost",
-                "::1",
-            ]:
-                raise TomAuthException("JWT authentication requires HTTPS")
-
-    return await _jwt_auth(token, request.app.state.jwt_providers)
-
-
-async def do_auth(request: Request) -> AuthResponse:
-    settings = request.app.state.settings
-
-    # Debug logging
-    logging.info(f"Auth check - auth_mode: {settings.auth_mode}")
-
-    if settings.auth_mode == "none":
-        return {"method": "none", "user": None, "provider": None, "claims": None}
-
-    # Try API key auth first in hybrid mode
-    if settings.auth_mode in ["api_key", "hybrid"]:
-        try:
-            return api_key_auth(request)
-
-        except TomAuthException:
-            if settings.auth_mode == "api_key":
-                raise
-            # Continue to JWT check in hybrid mode
-
-    # Try JWT auth
-    if settings.auth_mode in ["jwt", "hybrid"]:
-        return await jwt_auth(request)
-
-    raise TomException(f"Unknown auth mode {settings.auth_mode}")
 
 
 class AuthRouter(APIRouter):
@@ -237,66 +53,10 @@ class AuthRouter(APIRouter):
         super().__init__(*args, **kwargs)
 
 
-async def enqueue_job(
-    queue: saq.Queue,
-    function_name: str,
-    args: BaseModel,
-    wait: bool = False,
-    timeout: int = 10,
-    retries: int = 3,
-    max_queue_wait: int = 300,
-) -> JobResponse:
-    logger.info(f"Enqueuing job: {function_name}")
-    job = await queue.enqueue(
-        function_name,
-        timeout=timeout,
-        json=args.model_dump_json(),
-        retries=retries,
-        retry_delay=1.0,
-        retry_backoff=True,
-    )
-    logger.info(f"Enqueued job {job.id} with retries={job.retries}")
-
-    if wait:
-        await job.refresh(until_complete=float(timeout))
-        # Log job completion status
-        if job.status == Status.COMPLETE:
-            logger.info(
-                f"Job {job.id} completed successfully after {job.attempts} attempt(s)"
-            )
-        elif job.status == Status.FAILED:
-            # Extract useful error info
-            error_summary = None
-            if job.error:
-                # Look for our custom exception types in the error
-                if "AuthenticationException" in job.error:
-                    error_summary = "Authentication failed"
-                elif "GatingException" in job.error:
-                    error_summary = "Device busy"
-                else:
-                    # Get the last line of the traceback which usually has the actual error
-                    error_lines = job.error.strip().split("\n")
-                    if error_lines:
-                        error_summary = error_lines[-1][:200]  # Limit length
-
-            logger.error(
-                f"Job {job.id} FAILED after {job.attempts} attempt(s) - {error_summary or 'Unknown error'}"
-            )
-        elif job.status == Status.ABORTED:
-            logger.warning(f"Job {job.id} was aborted after {job.attempts} attempt(s)")
-        else:
-            logger.info(
-                f"Job {job.id} status: {job.status} after {job.attempts} attempt(s)"
-            )
-
-    job_response = JobResponse.from_job(job)
-    return job_response
-
-
 router = AuthRouter()
 
 # Unauthenticated router for Prometheus metrics
-metrics_router = APIRouter()
+prometheus_router = APIRouter()
 
 
 @router.get("/")
@@ -1097,7 +857,7 @@ async def send_inventory_commands(
     return response
 
 
-@metrics_router.get("/metrics")
+@prometheus_router.get("/metrics")
 async def metrics(request: Request) -> Response:
     """Prometheus metrics endpoint (unauthenticated for Prometheus scraping).
 
@@ -1230,7 +990,7 @@ async def get_userinfo(
 
 
 # OAuth endpoints (not requiring authentication)
-oauth_router = APIRouter()
+oauth_test_router = APIRouter()
 
 
 def _ensure_localhost(request: Request):
@@ -1261,7 +1021,7 @@ class TokenResponse(BaseModel):
     id_token: Optional[str] = None
 
 
-@oauth_router.post("/oauth/token")
+@oauth_test_router.post("/oauth/token")
 async def exchange_token(
     request: Request, token_request: TokenRequest
 ) -> TokenResponse:
@@ -1368,7 +1128,7 @@ async def exchange_token(
             )
 
 
-@oauth_router.get("/oauth/config")
+@oauth_test_router.get("/oauth/config")
 async def get_oauth_config(request: Request) -> dict:
     """Get OAuth configuration for the test frontend.
 
@@ -1423,7 +1183,7 @@ if os.getenv("TOM_ENABLE_TEST_RECORDING", "").lower() == "true":
         "WARN:\t  TOM_ENABLE_TEST_RECORDING=true - this is a DEVELOPER ONLY feature"
     )
 
-    @oauth_router.post("/dev/record-jwt")
+    @oauth_test_router.post("/dev/record-jwt")
     async def record_jwt_for_testing(request: Request):
         # Restrict to localhost regardless of oauth_test_enabled flag
         _ensure_localhost(request)

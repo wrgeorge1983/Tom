@@ -10,6 +10,7 @@ from redis import asyncio as aioredis
 import saq
 from saq.web.starlette import saq_web
 
+import tom_controller.api.auth
 from tom_controller import __version__
 from tom_controller import api
 from tom_controller.Plugins.base import PluginManager
@@ -239,18 +240,18 @@ def create_app():
 
     app.include_router(api.router, prefix="/api")
     app.include_router(
-        api.oauth_router, prefix="/api"
+        api.oauth_test_router, prefix="/api"
     )  # OAuth endpoints don't require auth
 
     # Include unauthenticated metrics endpoint for Prometheus
-    app.include_router(api.metrics_router, prefix="/api")
+    app.include_router(api.prometheus_router, prefix="/api")
 
     # Include monitoring API endpoints with auth dependency
     # (authenticated - contains sensitive operational data)
     from tom_controller.api import monitoring_api
     from fastapi import Depends
 
-    monitoring_api.router.dependencies.append(Depends(api.do_auth))
+    monitoring_api.router.dependencies.append(Depends(tom_controller.api.auth.do_auth))
     app.include_router(monitoring_api.router, prefix="/api")
 
     @app.get("/health")
