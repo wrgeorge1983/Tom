@@ -47,7 +47,7 @@ class NautobotSettings(PluginSettings):
     location_filter: list[str] = []  # e.g., ["NYC-DC1", "SFO-DC2"]
     tag_filter: list[str] = []  # e.g., ["production", "tom-managed"]
 
-    # Defaults when platform data is missing or incomplete
+    # Defaults when platform's netmiko_device_type is not set
     default_adapter: Literal["netmiko", "scrapli"] = "netmiko"
     default_driver: str = "cisco_ios"
 
@@ -116,44 +116,20 @@ class NautobotInventoryPlugin(InventoryPlugin):
         """
         Determine adapter (netmiko/scrapli) and driver from device platform.
 
-        Uses platform data if available, falls back to configured defaults.
-        Nautobot should have the right platform data - we just read it.
+        Uses platform's built-in netmiko_device_type field if set,
+        otherwise falls back to configured defaults.
         """
         if not device.platform:
             return (self.settings.default_adapter, self.settings.default_driver)
 
-        # Try to get driver from platform
-        driver = None
-
-        # Prefer netmiko_device_type if available
+        # Use Nautobot's built-in netmiko_device_type field
         if (
             hasattr(device.platform, "netmiko_device_type")
             and device.platform.netmiko_device_type
         ):
-            driver = device.platform.netmiko_device_type
-        # Fall back to napalm driver with mapping
-        elif (
-            hasattr(device.platform, "napalm_driver") and device.platform.napalm_driver
-        ):
-            driver = self._map_napalm_to_netmiko(device.platform.napalm_driver)
-
-        # If we got a driver, use default adapter; otherwise use full defaults
-        if driver:
-            return (self.settings.default_adapter, driver)
+            return (self.settings.default_adapter, device.platform.netmiko_device_type)
 
         return (self.settings.default_adapter, self.settings.default_driver)
-
-    def _map_napalm_to_netmiko(self, napalm_driver: str) -> str:
-        """Map NAPALM driver names to netmiko/scrapli driver names."""
-        mapping = {
-            "ios": "cisco_ios",
-            "iosxe": "cisco_iosxe",
-            "nxos": "cisco_nxos",
-            "iosxr": "cisco_iosxr",
-            "eos": "arista_eos",
-            "junos": "juniper_junos",
-        }
-        return mapping.get(napalm_driver, "cisco_ios")
 
     def _get_host_ip(self, device) -> str:
         """

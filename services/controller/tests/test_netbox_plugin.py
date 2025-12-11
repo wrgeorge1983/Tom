@@ -179,8 +179,8 @@ class TestNetBoxCredentialExtraction:
 class TestPlatformDriverMapping:
     """Test platform to adapter/driver mapping."""
 
-    def test_netmiko_driver_preferred(self):
-        """Use netmiko_driver when available."""
+    def test_defaults_used(self):
+        """Use default adapter and driver when no custom fields configured."""
         from tom_controller.Plugins.inventory.netbox import (
             NetBoxSettings,
             NetBoxInventoryPlugin,
@@ -190,6 +190,8 @@ class TestPlatformDriverMapping:
         nb_settings = NetBoxSettings(
             url="https://netbox.example.com",
             token="test-token",
+            default_adapter="netmiko",
+            default_driver="cisco_ios",
         )
         main_settings = Settings()  # type: ignore[call-arg]
 
@@ -205,20 +207,18 @@ class TestPlatformDriverMapping:
         try:
             plugin = NetBoxInventoryPlugin(nb_settings, main_settings)
 
-            # Mock device with platform that has netmiko_driver
+            # Mock device without custom fields
             device = Mock()
-            device.platform = Mock()
-            device.platform.netmiko_driver = "cisco_ios"
-            device.platform.napalm_driver = "ios"
+            device.custom_fields = {}
 
             adapter, driver = plugin._determine_adapter_and_driver(device)
-            assert adapter == "netmiko"  # Uses default adapter
-            assert driver == "cisco_ios"  # Uses platform's netmiko_driver
+            assert adapter == "netmiko"
+            assert driver == "cisco_ios"
         finally:
             del sys.modules["pynetbox"]
 
-    def test_scrapli_default_adapter(self):
-        """Use scrapli when set as default adapter."""
+    def test_custom_field_override(self):
+        """Use custom field values when configured and present."""
         from tom_controller.Plugins.inventory.netbox import (
             NetBoxSettings,
             NetBoxInventoryPlugin,
@@ -228,7 +228,10 @@ class TestPlatformDriverMapping:
         nb_settings = NetBoxSettings(
             url="https://netbox.example.com",
             token="test-token",
-            default_adapter="scrapli",
+            default_adapter="netmiko",
+            default_driver="cisco_ios",
+            adapter_custom_field="tom_adapter",
+            driver_custom_field="tom_driver",
         )
         main_settings = Settings()  # type: ignore[call-arg]
 
@@ -244,19 +247,21 @@ class TestPlatformDriverMapping:
         try:
             plugin = NetBoxInventoryPlugin(nb_settings, main_settings)
 
-            # Mock device with platform
+            # Mock device with custom fields
             device = Mock()
-            device.platform = Mock()
-            device.platform.netmiko_driver = "cisco_iosxe"
+            device.custom_fields = {
+                "tom_adapter": "scrapli",
+                "tom_driver": "arista_eos",
+            }
 
             adapter, driver = plugin._determine_adapter_and_driver(device)
-            assert adapter == "scrapli"  # Uses configured default adapter
-            assert driver == "cisco_iosxe"  # Uses platform driver
+            assert adapter == "scrapli"
+            assert driver == "arista_eos"
         finally:
             del sys.modules["pynetbox"]
 
-    def test_fallback_when_no_platform(self):
-        """Use default adapter/driver when device has no platform."""
+    def test_fallback_when_custom_field_empty(self):
+        """Use defaults when custom fields configured but device doesn't have values."""
         from tom_controller.Plugins.inventory.netbox import (
             NetBoxSettings,
             NetBoxInventoryPlugin,
@@ -266,6 +271,10 @@ class TestPlatformDriverMapping:
         nb_settings = NetBoxSettings(
             url="https://netbox.example.com",
             token="test-token",
+            default_adapter="netmiko",
+            default_driver="cisco_ios",
+            adapter_custom_field="tom_adapter",
+            driver_custom_field="tom_driver",
         )
         main_settings = Settings()  # type: ignore[call-arg]
 
@@ -281,9 +290,9 @@ class TestPlatformDriverMapping:
         try:
             plugin = NetBoxInventoryPlugin(nb_settings, main_settings)
 
-            # Mock device with no platform
+            # Mock device with empty custom fields
             device = Mock()
-            device.platform = None
+            device.custom_fields = {}
 
             adapter, driver = plugin._determine_adapter_and_driver(device)
             assert adapter == "netmiko"

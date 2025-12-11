@@ -47,7 +47,14 @@ class NetBoxSettings(PluginSettings):
     location_filter: list[str] = []  # e.g., ["NYC-DC1", "SFO-DC2"]
     tag_filter: list[str] = []  # e.g., ["production", "tom-managed"]
 
-    # Defaults when platform data is missing or incomplete
+    # Platform/driver mapping
+    # NetBox doesn't have built-in driver fields. Either use defaults for all devices,
+    # or specify custom fields on your platforms/devices to look up driver info.
+    # Leave empty to use defaults.
+    adapter_custom_field: str = ""  # Custom field name for adapter (netmiko/scrapli)
+    driver_custom_field: str = ""  # Custom field name for driver (e.g., cisco_ios)
+
+    # Defaults - used when custom fields are not configured or not found
     default_adapter: Literal["netmiko", "scrapli"] = "netmiko"
     default_driver: str = "cisco_ios"
 
@@ -114,37 +121,31 @@ class NetBoxInventoryPlugin(InventoryPlugin):
 
     def _determine_adapter_and_driver(self, device) -> tuple[str, str]:
         """
-        Determine adapter (netmiko/scrapli) and driver from device platform.
+        Determine adapter (netmiko/scrapli) and driver from device.
 
-        Uses platform data if available, falls back to configured defaults.
-        NetBox should have the right platform data - we just read it.
+        Checks configured custom fields if set, otherwise uses defaults.
         """
-        if not device.platform:
-            return (self.settings.default_adapter, self.settings.default_driver)
+        adapter = self.settings.default_adapter
+        driver = self.settings.default_driver
 
-        # Try to get driver from platform
-        driver = None
+        # Check custom fields on device if configured
+        if hasattr(device, "custom_fields") and device.custom_fields:
+            if self.settings.adapter_custom_field:
+                cf_adapter = device.custom_fields.get(
+                    self.settings.adapter_custom_field
+                )
+                if cf_adapter:
+                    adapter = cf_adapter
 
-        # Prefer netmiko_device_type if available
-        if (
-            hasattr(device.platform, "netmiko_driver")
-            and device.platform.netmiko_driver
-        ):
-            driver = device.platform.netmiko_driver
-        # Fall back to napalm driver with mapping
-        elif (
-            hasattr(device.platform, "napalm_driver") and device.platform.napalm_driver
-        ):
-            driver = self._map_napalm_to_netmiko(device.platform.napalm_driver)
+            if self.settings.driver_custom_field:
+                cf_driver = device.custom_fields.get(self.settings.driver_custom_field)
+                if cf_driver:
+                    driver = cf_driver
 
-        # If we got a driver, use default adapter; otherwise use full defaults
-        if driver:
-            return (self.settings.default_adapter, driver)
+        return (adapter, driver)
 
-        return (self.settings.default_adapter, self.settings.default_driver)
-
-    def _map_napalm_to_netmiko(self, napalm_driver: str) -> str:
-        """Map NAPALM driver names to netmiko/scrapli driver names."""
+    def _unused_map_napalm_to_netmiko(self, napalm_driver: str) -> str:
+        """Map NAPALM driver names to netmiko/scrapli driver names. UNUSED - kept for reference."""
         mapping = {
             "ios": "cisco_ios",
             "iosxe": "cisco_iosxe",
