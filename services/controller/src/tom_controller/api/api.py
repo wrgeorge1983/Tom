@@ -29,6 +29,7 @@ from tom_controller.exceptions import (
     TomException,
     TomAuthException,
     TomAuthorizationException,
+    TomNotFoundException,
     TomValidationException,
 )
 from tom_controller.inventory.inventory import (
@@ -737,6 +738,8 @@ async def send_inventory_command_get(
 ) -> JobResponse | str | dict:
     logger.info(f"Device command request: {device_name} - {command[:50]}...")
     device_config = inventory_store.get_device_config(device_name)
+    if device_config is None:
+        raise TomNotFoundException(f"Device '{device_name}' not found in inventory")
 
     if username is not None and password is not None:
         credential = InlineSSHCredential(username=username, password=password)
@@ -845,6 +848,8 @@ async def send_inventory_command(
     """Send a single command to a device from inventory."""
     logger.info(f"Device command request: {device_name} - {body.command[:50]}...")
     device_config = inventory_store.get_device_config(device_name)
+    if device_config is None:
+        raise TomNotFoundException(f"Device '{device_name}' not found in inventory")
 
     if body.username is not None and body.password is not None:
         credential = InlineSSHCredential(username=body.username, password=body.password)
@@ -989,6 +994,8 @@ async def send_inventory_commands(
         ```
     """
     device_config = inventory_store.get_device_config(device_name)
+    if device_config is None:
+        raise TomNotFoundException(f"Device '{device_name}' not found in inventory")
 
     # Handle credentials
     if body.username is not None and body.password is not None:
