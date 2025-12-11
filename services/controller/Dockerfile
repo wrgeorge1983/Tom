@@ -28,6 +28,9 @@ COPY --from=builder --chown=app:app /app /app
 
 WORKDIR /app/services/controller
 
+# Set default project root for containerized deployment
+ENV TOM_PROJECT_ROOT=/app
+
 CMD [".venv/bin/fastapi", "run", "src/tom_controller/main.py"]
 
 

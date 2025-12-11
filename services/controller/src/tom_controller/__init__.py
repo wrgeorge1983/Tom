@@ -1,6 +1,7 @@
 """Tom Smykowski: Your Network Automation Broker"""
 
-__version__ = "0.15.1"
+from importlib.metadata import version
 
+__version__ = version("tom-controller")
 
 __all__ = ["__version__"]

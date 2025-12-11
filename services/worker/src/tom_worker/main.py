@@ -3,6 +3,7 @@ import signal
 import logging
 import sys
 import uuid
+from importlib.metadata import version as get_version
 
 import redis.asyncio as redis
 import saq, saq.types
@@ -31,13 +32,11 @@ saq_logger.setLevel(settings.log_level)
 queue = saq.Queue.from_url(settings.redis_url)
 
 
-
-
 async def main():
     logger.info("Starting worker main function")
     loop = asyncio.get_running_loop()
     shutdown_event = asyncio.Event()
-    
+
     # Generate unique worker ID
     worker_id = f"worker-{uuid.uuid4().hex[:8]}"
     logger.info(f"Worker ID: {worker_id}")
@@ -60,16 +59,17 @@ async def main():
 
     semaphore_redis_client = redis.from_url(settings.redis_url)
 
-    cache_redis = redis.from_url(settings.redis_url, decode_responses=True)  # needs decode_responses=True
+    cache_redis = redis.from_url(
+        settings.redis_url, decode_responses=True
+    )  # needs decode_responses=True
     cache_manager = CacheManager(cache_redis, settings)
-    
+
     # Start heartbeat task
     monitoring_redis = redis.from_url(settings.redis_url)
+    worker_version = get_version("tom-worker")
+
     heartbeat_coro = heartbeat_task(
-        monitoring_redis,
-        worker_id,
-        shutdown_event,
-        version="0.10.0"
+        monitoring_redis, worker_id, shutdown_event, version=worker_version
     )
     heartbeat_task_handle = asyncio.create_task(heartbeat_coro)
     logger.info(f"Started heartbeat task for worker {worker_id}")
@@ -86,12 +86,12 @@ async def main():
         """Record job start time for duration tracking."""
         import time
         import json
-        
+
         job = ctx.get("job")
         worker_id = ctx.get("worker_id", "unknown")
-        
+
         ctx["job_start_time"] = time.time()
-        
+
         # Extract job info for logging
         device = "unknown"
         commands = []
@@ -102,7 +102,7 @@ async def main():
                 commands = data.get("commands", [])
             except Exception:
                 pass
-        
+
         logger.info(
             f"Worker {worker_id}: Starting job {job.id if job else 'unknown'} "
             f"[{job.function if job else 'unknown'}] for device {device} "
@@ -114,42 +114,45 @@ async def main():
         """Record job stats after processing."""
         from tom_worker.monitoring import record_job_stats
         import time
-        
+
         job = ctx["job"]
         worker_id = ctx["worker_id"]
         monitoring_redis = ctx["monitoring_redis"]
-        
+
         # Extract device from job kwargs if available
         device = "unknown"
         credential_id = None
         command = None
-        
+
         # Try to extract info from job kwargs
         if job.kwargs and "json" in job.kwargs:
             try:
                 import json
+
                 data = json.loads(job.kwargs["json"])
                 device = data.get("host", "unknown")
                 credential_id = data.get("credential_id")
                 commands = data.get("commands", [])
                 if commands:
                     command = ", ".join(commands[:3])  # First 3 commands
-                logger.debug(f"Extracted from job: device={device}, commands={commands[:3] if commands else 'none'}")
+                logger.debug(
+                    f"Extracted from job: device={device}, commands={commands[:3] if commands else 'none'}"
+                )
             except Exception as e:
                 logger.debug(f"Failed to extract job info: {e}")
                 pass  # Fallback to defaults
         else:
             logger.debug(f"No json in job.kwargs: {job.kwargs}")
-        
+
         # Determine status and error
         status = "success" if job.status == "complete" else "failed"
         error = str(job.error) if job.error else None
-        
+
         # Calculate duration
         duration = None
         if "job_start_time" in ctx:
             duration = time.time() - ctx["job_start_time"]
-        
+
         # Log job completion
         if status == "success":
             logger.info(
@@ -162,16 +165,16 @@ async def main():
             error_summary = "Unknown error"
             if error:
                 # Get last line of error which usually has the actual exception
-                error_lines = error.strip().split('\n')
+                error_lines = error.strip().split("\n")
                 if error_lines:
                     error_summary = error_lines[-1][:200]
-            
+
             logger.error(
                 f"Worker {worker_id}: FAILED job {job.id} "
                 f"for device {device} after {duration:.2f}s "
                 f"(attempt {job.attempts}): {error_summary}"
             )
-        
+
         # Record stats
         await record_job_stats(
             monitoring_redis,
@@ -183,7 +186,7 @@ async def main():
             job_id=job.id,
             credential_id=credential_id,
             command=command,
-            attempts=job.attempts
+            attempts=job.attempts,
         )
 
     worker = saq.Worker(
@@ -213,7 +216,7 @@ async def main():
     finally:
         logger.info("Disconnecting from queue")
         await worker.queue.disconnect()
-        
+
         # Clean up heartbeat task
         shutdown_event.set()
         try:
@@ -221,10 +224,10 @@ async def main():
         except asyncio.TimeoutError:
             logger.warning("Heartbeat task did not shutdown cleanly")
             heartbeat_task_handle.cancel()
-            
+
         # Close monitoring Redis connection
         await monitoring_redis.close()
-        
+
         logger.info("Cleanup complete")
 
 

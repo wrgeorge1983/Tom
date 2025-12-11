@@ -9,6 +9,7 @@
 # ///
 
 import argparse
+import getpass
 import requests
 import yaml
 import sys
@@ -55,6 +56,38 @@ class VaultCredentialManager:
         for secret in sorted(secrets):
             print(f"  - {secret}")
         print(f"\nTotal: {len(secrets)} credentials")
+
+    def put_cred(
+        self,
+        cred_id: str,
+        username: str,
+        password: str,
+        path_prefix: str = "credentials",
+    ):
+        """Store a single credential"""
+        cred_data = {"username": username, "password": password}
+        path = f"{path_prefix}/{cred_id}"
+        if self._write_secret(path, cred_data):
+            print(f"✓ Stored credential: {cred_id}")
+            return True
+        else:
+            print(f"✗ Failed to store credential: {cred_id}")
+            return False
+
+    def get_cred(self, cred_id: str, path_prefix: str = "credentials"):
+        """Get a specific credential"""
+        path = f"{path_prefix}/{cred_id}"
+        secret = self._read_secret(path)
+        if secret:
+            print(f"Credential: {cred_id}")
+            print(f"  username: {secret.get('username', '(not set)')}")
+            print(
+                f"  password: {'*' * len(secret.get('password', ''))} ({len(secret.get('password', ''))} chars)"
+            )
+            return secret
+        else:
+            print(f"✗ Credential not found: {cred_id}")
+            return None
 
     def delete_cred(self, cred_id: str, path_prefix: str = "credentials"):
         """Delete a specific credential"""
@@ -104,6 +137,20 @@ class VaultCredentialManager:
             print(f"  Error writing {path}: {e}")
             return False
 
+    def _read_secret(self, path: str) -> dict | None:
+        """Read secret from KV v2 store"""
+        url = f"{self.addr}/v1/{self.mount_point}/data/{path}"
+
+        try:
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return response.json()["data"]["data"]
+        except requests.RequestException as e:
+            print(f"  Error reading {path}: {e}")
+            return None
+
     def _list_secrets(self, path: str) -> list | None:
         """List secrets at path"""
         url = f"{self.addr}/v1/{self.mount_point}/metadata/{path}"
@@ -151,8 +198,24 @@ def main():
     load_parser = subparsers.add_parser("load", help="Load credentials from YAML file")
     load_parser.add_argument("file", help="YAML file to load")
 
+    # Put command (new)
+    put_parser = subparsers.add_parser(
+        "put", help="Store a single credential (prompts for password if not provided)"
+    )
+    put_parser.add_argument("cred_id", help="Credential ID (e.g., 'lab_creds')")
+    put_parser.add_argument(
+        "--username", "-u", help="Username (prompts if not provided)"
+    )
+    put_parser.add_argument(
+        "--password", "-p", help="Password (prompts securely if not provided)"
+    )
+
+    # Get command (new)
+    get_parser = subparsers.add_parser("get", help="Get a specific credential")
+    get_parser.add_argument("cred_id", help="Credential ID to retrieve")
+
     # List command
-    list_parser = subparsers.add_parser("list", help="List all credential names")
+    subparsers.add_parser("list", help="List all credential names")
 
     # Delete command
     delete_parser = subparsers.add_parser("delete", help="Delete a specific credential")
@@ -177,6 +240,28 @@ def main():
     if args.command == "load":
         success = vault.load_creds(args.file, args.path_prefix)
         sys.exit(0 if success else 1)
+
+    elif args.command == "put":
+        # Get username - from arg or prompt
+        username = args.username
+        if not username:
+            username = input("Username: ")
+
+        # Get password - from arg or secure prompt
+        password = args.password
+        if not password:
+            password = getpass.getpass("Password: ")
+
+        if not username or not password:
+            print("Error: Username and password are required")
+            sys.exit(1)
+
+        success = vault.put_cred(args.cred_id, username, password, args.path_prefix)
+        sys.exit(0 if success else 1)
+
+    elif args.command == "get":
+        secret = vault.get_cred(args.cred_id, args.path_prefix)
+        sys.exit(0 if secret else 1)
 
     elif args.command == "list":
         vault.list_creds(args.path_prefix)

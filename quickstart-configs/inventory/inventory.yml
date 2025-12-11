@@ -1,0 +1,9 @@
+# Tom Smykowski - Quick Start Inventory
+# Minimal device inventory - credentials passed via API
+
+router1:
+  host: "192.168.155.227"
+  adapter: "netmiko"
+  adapter_driver: "cisco_ios"
+  port: 22
+  credential_id: "unused"  # Required by schema, but not used with inline credentials

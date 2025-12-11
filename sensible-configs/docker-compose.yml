@@ -1,0 +1,60 @@
+# Tom Smykowski - Sensible Setup Docker Compose
+# Includes: controller, workers, Redis (TLS), Vault (dev mode)
+
+services:
+  controller:
+    image: ghcr.io/wrgeorge1983/tom-controller:latest
+    environment:
+      TOM_PROJECT_ROOT: /app
+      TOM_CONFIG_FILE: /app/tom_controller_config.yaml
+      TOM_REDIS_HOST: redis
+      TOM_REDIS_PORT: 6380
+      TOM_REDIS_USE_TLS: "true"
+      TOM_REDIS_TLS_CHECK_HOSTNAME: "true"
+      TOM_REDIS_TLS_CERT_REQS: none
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./tom_controller_config.yaml:/app/tom_controller_config.yaml
+      - ./inventory:/app/inventory
+      - ./templates:/app/templates
+    depends_on:
+      - redis
+
+  worker:
+    image: ghcr.io/wrgeorge1983/tom-worker:latest
+    depends_on:
+      - redis
+      - vault
+    deploy:
+      replicas: 3
+    environment:
+      TOM_WORKER_PROJECT_ROOT: /app
+      TOM_WORKER_REDIS_HOST: redis
+      TOM_WORKER_REDIS_PORT: 6380
+      TOM_WORKER_REDIS_USE_TLS: "true"
+      TOM_WORKER_REDIS_TLS_CHECK_HOSTNAME: "true"
+      TOM_WORKER_REDIS_TLS_CERT_REQS: none
+      TOM_WORKER_CREDENTIAL_STORE: vault
+      TOM_WORKER_VAULT_URL: http://vault:8200
+      TOM_WORKER_VAULT_TOKEN: myroot
+    volumes:
+      - ./inventory:/app/inventory
+
+  redis:
+    build: ../docker/redis
+    ports:
+      - "6380:6380"
+
+  vault:
+    image: hashicorp/vault:1.20.2
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV: "true"
+      VAULT_DEV_ROOT_TOKEN_ID: myroot
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_ADDR: http://vault:8200
+    cap_add:
+      - IPC_LOCK
+    command: ["vault", "server", "-dev"]

@@ -29,5 +29,5 @@ COPY --chown=mkdocs:mkdocs . .
 # Expose port
 EXPOSE 8000
 
-# Run entrypoint script
-CMD ["./entrypoint.sh"]
+# Run mkdocs serve directly (shell form for proper signal handling)
+CMD uv run mkdocs serve --dev-addr 0.0.0.0:8000

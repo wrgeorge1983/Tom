@@ -1,0 +1,39 @@
+# Tom Smykowski - Quick Start Docker Compose
+# Minimal setup using published images - no building required
+
+services:
+  controller:
+    image: ghcr.io/wrgeorge1983/tom-controller:latest
+    environment:
+      TOM_CONFIG_FILE: /app/tom_controller_config.yaml
+      TOM_PROJECT_ROOT: /app
+      TOM_REDIS_HOST: redis
+      TOM_REDIS_PORT: 6379
+      TOM_REDIS_USE_TLS: "false"  # Plain Redis for quickstart simplicity
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./tom_controller_config.yaml:/app/tom_controller_config.yaml
+      - ./inventory:/app/inventory
+    depends_on:
+      - redis
+
+  worker:
+    image: ghcr.io/wrgeorge1983/tom-worker:latest
+    depends_on:
+      - redis
+    deploy:
+      replicas: 3
+    environment:
+      TOM_WORKER_PROJECT_ROOT: /app
+      TOM_WORKER_CREDENTIAL_FILE: inventory/creds.yml
+      TOM_WORKER_REDIS_HOST: redis
+      TOM_WORKER_REDIS_PORT: 6379
+      TOM_WORKER_REDIS_USE_TLS: "false"  # Plain Redis for quickstart simplicity
+    volumes:
+      - ./inventory:/app/inventory
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

@@ -31,7 +31,7 @@ class YamlCredentialStore(CredentialStore):
             or "password" not in self.data[credential_id]
         ):
             raise TomException(
-                f"Credential {credential_id} does missing username or password"
+                f"Credential {credential_id} is missing username or password"
             )
         cred_data = self.data[credential_id]
         return SSHCredentials(

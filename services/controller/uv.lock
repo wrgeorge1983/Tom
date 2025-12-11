@@ -1498,8 +1498,8 @@ wheels = [
 
 [[package]]
 name = "tom-controller"
-version = "0.15.1"
-source = { virtual = "." }
+version = "0.17.2"
+source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi", extra = ["standard"] },
