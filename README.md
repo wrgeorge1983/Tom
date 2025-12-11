@@ -5,7 +5,7 @@
 
 # Tom Smykowski
 
-**[Documentation](https://wrgeorge1983.github.io/tom/)** | **[Getting Started Sensibly](https://wrgeorge1983.github.io/tom/real/getting-started/)** | **[Getting Started Irresponsibly Fast](https://wrgeorge1983.github.io/tom/real/getting-started-FAST/)**
+**[Online Documentation](https://wrgeorge1983.github.io/Tom/)** | **[Getting Started Sensibly](https://wrgeorge1983.github.io/Tom/real/getting-started/)** | **[Getting Started Irresponsibly Fast](https://wrgeorge1983.github.io/Tom/real/getting-started-FAST/)** | **[Slack](https://networktocode.slack.com/archives/C0A0PER1Y6L)**
 
 Tom Smykowski is your Network Automation Broker: He takes the network state FROM 
 your equipment and gives it TO your developers. He deals with your damn equipment,
@@ -28,8 +28,7 @@ Network Automation has a huge toolbox, and integrating with all of it (especiall
 doing so well, and securely) is a huge challenge. 
 
 - **Transport/Drivers** - Netmiko, scrapli, etc.
-- **Parsing engines and templates** - TextFSM, ttp, genie, etc.
-- **Rendering templates** - Jinja2, ttp, etc.
+- **Parsing engines and templates** - TextFSM, TTP, etc.
 - **Inventory** - Talk to your source-of-truth, digest inventory files, map drivers 
     to different gear from different vendors, make sure you use the correct  
     parsing templates, etc. 
@@ -43,13 +42,7 @@ system details (looking at you, Templating Libraries!)
 ## Project Status
 **Beta** - Tom is currently feature-somewhat-complete as it were. All the major features are in place and functional, 
 but where we expect to support several variations for a given feature, mostly only one is implemented. The project 
-is stable and usable in production, but the API may evolve based on real-world feedback.
-
-- **Authentication (frontend)**: OAuth2 and API Key are both fully supported
-- **Device credential management**: HashiCorp Vault integration is fully supported; AWS Secrets Manager support is planned
-- **Inventory**: Plugin-based system supporting YAML, SolarWinds SWIS, Nautobot, and NetBox
-- **Plugins**: Extensible plugin system for inventory sources, credential stores, and device adapters
-- **Parsing**: TextFSM and TTP are both fully supported
+is stable and usable in production, but the API will evolve based on feedback and usage.
 
 ## Goals
 
@@ -67,21 +60,20 @@ is stable and usable in production, but the API may evolve based on real-world f
   - **Google OAuth** - Tested with ID tokens (access tokens are opaque)
   - **Microsoft Entra ID** - Fully supported
   - reference implementation for a CLI utility: [tomclient](https://github.com/wrgeorge1983/tomclient)
-- **Email-Based Authorization** - Control access by user, domain, or regex pattern
-- **Hybrid Auth Mode** - Use both API keys and JWTs simultaneously
+- **Email-Address-Based Authorization** - Control access by user, domain, or regex pattern
 - **HashiCorp Vault Integration** - Secure credential storage
 
 ### Inventory & Automation
 - **Multiple Inventory Sources** - YAML files, SolarWinds SWIS, Nautobot, NetBox
 - **Queue-Based Processing** - Async job execution with Redis/SAQ
-- **Per-Device Concurrency Control** - Prevent overwhelming devices
+- **Per-Device Concurrency Control** - Prevent overwhelming device management planes
 - **Multi-Transport Support** - Netmiko and Scrapli adapters
 
 ### Parsing & Templating
-- **TextFSM Parsing** - 929+ built-in templates via ntc-templates
+- **TextFSM Parsing** - 900+ built-in templates via ntc-templates
 - **TTP Parsing** - Flexible template-based parsing
-- **Custom Template Index** - Register custom templates for auto-discovery
 - **Auto-Discovery** - Automatic template selection based on platform and command
+- **Custom Template Index** - Register custom templates for auto-discovery
 
 ### Caching
 - **Redis-Backed Cache** - Reduce load on device management planes
@@ -91,7 +83,10 @@ is stable and usable in production, but the API may evolve based on real-world f
 - **Per-Request Control** - Override cache behavior per API call
 
 ## Architecture
-### Simplified 
+
+Tom fits into the [NAF Automation Framework](https://reference.networkautomation.forum/Framework/Framework/#the-architecture) as a "Network Automation Broker" - see the [architecture docs](https://wrgeorge1983.github.io/Tom/real/architecture/) for details.
+
+A simplified diagram of what happens when you make a request:
 ```mermaid
 sequenceDiagram
     actor C as Client 
@@ -109,15 +104,17 @@ sequenceDiagram
     T ->> T: parse if needed
     T -->> C: final response 
 ```
+More detailed architecture diagrams and descriptions are available at [wrgeorge1983.github.io/Tom/real/architecture/](https://wrgeorge1983.github.io/Tom/real/architecture/)
 
 ## Documentation
 
-Full documentation is available at **[wrgeorge1983.github.io/tom](https://wrgeorge1983.github.io/tom/)**
+Full documentation is available at **[wrgeorge1983.github.io/Tom](https://wrgeorge1983.github.io/Tom/)** (and also built and deployed with the 'docs'
+container in 'docker-compose.yml')
 
-- [Getting Started Fast](https://wrgeorge1983.github.io/tom/real/getting-started-FAST/) - 5-minute minimal setup
-- [Getting Started Sensibly](https://wrgeorge1983.github.io/tom/real/getting-started/) - More complete setup with Vault
-- [Architecture](https://wrgeorge1983.github.io/tom/real/architecture/) - How Tom's components work together
-- [Parsing Guide](https://wrgeorge1983.github.io/tom/real/parsing/) - TextFSM and TTP parsing
+- [Getting Started Fast](https://wrgeorge1983.github.io/Tom/real/getting-started-FAST/) - 5-minute minimal setup
+- [Getting Started Sensibly](https://wrgeorge1983.github.io/Tom/real/getting-started/) - More complete setup with Vault
+- [Architecture](https://wrgeorge1983.github.io/Tom/real/architecture/) - How Tom's components work together
+- [Parsing Guide](https://wrgeorge1983.github.io/Tom/real/parsing/) - TextFSM and TTP parsing
 
 Additional references:
 - [Roadmap](./ROADMAP.md) - Development roadmap and completed features

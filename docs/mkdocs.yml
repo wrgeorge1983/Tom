@@ -1,5 +1,5 @@
 site_name: Tom Smykowski Documentation
-site_url: https://wrgeorge1983.github.io/tom/
+site_url: https://wrgeorge1983.github.io/Tom/
 repo_url: https://github.com/wrgeorge1983/tom
 repo_name: wrgeorge1983/tom
 
@@ -70,10 +70,12 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/wrgeorge1983/tom
+    - icon: fontawesome/brands/slack
+      link: https://networktocode.slack.com/archives/C0A0PER1Y6L
   generator: true  # Remove "Made with Material for MkDocs" footer
 
 nav:
   - Home: index.md
-  - Documentation: real/index.md
+  - "What is Tom?": real/index.md
   - Adhoc Docs: adhoc/index.md
   # Slop docs at /slop/ if present locally (not in nav to avoid 404 on public site)

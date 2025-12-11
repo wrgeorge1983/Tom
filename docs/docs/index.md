@@ -34,6 +34,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 
 - [YAML Credentials](real/yaml-credentials.md) - File-based credential store (not recommended)
 
-## Adhoc Docs
+## Getting Help
 
-Older, unstructured documentation is available in the [Adhoc section](adhoc/index.md).
+- [Slack](https://networktocode.slack.com/archives/C0A0PER1Y6L) - `#tom_smykowski_nab` channel on Network to Code Slack
+- [GitHub Issues](https://github.com/wrgeorge1983/tom/issues) - Bug reports and feature requests
