@@ -424,8 +424,9 @@ cd tom/sensible-configs
 <pre><code class="language-bash">python3 -c &quot;import secrets; print(secrets.token_urlsafe(32))&quot;
 </code></pre>
 <p>Edit <code>tom_controller_config.yaml</code> and replace the placeholder:</p>
-<pre><code class="language-yaml">api_keys: [&quot;YOUR-GENERATED-KEY-HERE:admin&quot;]
+<pre><code class="language-yaml">api_keys: [&quot;REPLACE_ME_WITH_YOUR_API_KEY:admin&quot;]
 </code></pre>
+<p>Replace <code>REPLACE_ME_WITH_YOUR_API_KEY</code> with your generated key.</p>
 <h2 id="3-configure-your-inventory">3. Configure Your Inventory</h2>
 <p>Edit <code>inventory/inventory.yml</code> with your devices:</p>
 <pre><code class="language-yaml">router1:
@@ -461,10 +462,8 @@ switch1:
 </ul>
 <p>Wait for services to start, then open a new terminal for the next steps.</p>
 <h2 id="5-store-credentials-in-vault">5. Store Credentials in Vault</h2>
-<p>Use the included <code>credload.py</code> script (no need to install the vault CLI):</p>
-<pre><code class="language-bash">cd tom
-
-# Interactive - prompts for username and password securely
+<p>Use the included <code>credload.py</code> script from the repo root (no need to install the vault CLI):</p>
+<pre><code class="language-bash"># Interactive - prompts for username and password securely
 uv run credload.py put lab_creds
 
 # Or provide on command line
@@ -524,7 +523,7 @@ docker compose exec worker ping 192.168.1.1</code></p>
 <li>
 <p>Check credentials in Vault:</p>
 <p><code>bash
-vault kv get secret/lab_creds</code></p>
+uv run credload.py get lab_creds</code></p>
 </li>
 <li>
 <p>Review worker logs for errors</p>
