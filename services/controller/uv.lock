@@ -1499,7 +1499,7 @@ wheels = [
 [[package]]
 name = "tom-controller"
 version = "0.17.1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi", extra = ["standard"] },

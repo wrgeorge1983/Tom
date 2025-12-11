@@ -22,15 +22,9 @@
   replace = "version = \"{new_version}\""
 
   [[tool.bumpversion.files]]
-  filename = "services/controller/src/tom_controller/__init__.py"
-
-  [[tool.bumpversion.files]]
   filename = "services/worker/pyproject.toml"
   search = "version = \"{current_version}\""
   replace = "version = \"{new_version}\""
-
-  [[tool.bumpversion.files]]
-  filename = "services/worker/src/tom_worker/__init__.py"
 
 #  [[tool.bumpversion.files]]      # this breaks things!
 #  filename = "shared/pyproject.toml"
