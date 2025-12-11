@@ -1498,7 +1498,7 @@ wheels = [
 
 [[package]]
 name = "tom-controller"
-version = "0.17.3"
+version = "0.17.4"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
