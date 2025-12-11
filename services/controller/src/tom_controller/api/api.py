@@ -34,6 +34,7 @@ from tom_controller.exceptions import (
 from tom_controller.inventory.inventory import (
     InventoryStore,
     DeviceConfig,
+    InventoryFilter,
 )
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
 from tom_controller.auth import JWTValidationError, JWTValidator
@@ -573,8 +574,6 @@ async def export_inventory(
 
             # Apply inline filters if any field patterns provided
             if filter_params:
-                from tom_controller.inventory.inventory import InventoryFilter
-
                 filter_obj = InventoryFilter(filter_params)
                 nodes = [node for node in nodes if filter_obj.matches(node)]
                 log.info(
@@ -644,8 +643,6 @@ async def export_raw_inventory(
 
             # Apply inline filters if any field patterns provided
             if filter_params:
-                from tom_controller.inventory.inventory import InventoryFilter
-
                 filter_obj = InventoryFilter(filter_params)
                 nodes = [node for node in nodes if filter_obj.matches(node)]
                 log.info(

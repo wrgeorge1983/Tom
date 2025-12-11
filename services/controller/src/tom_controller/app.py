@@ -45,21 +45,24 @@ def create_app():
         # Initialize plugin system
         plugin_manager = PluginManager()
         plugin_manager.discover_plugins(settings)
-        logger.info(f"Discovered inventory plugins: {plugin_manager.inventory_plugin_names}")
-        
+        logger.info(
+            f"Discovered inventory plugins: {plugin_manager.inventory_plugin_names}"
+        )
+
         this_app.state.plugin_manager = plugin_manager
 
-        print(f"DEBUG: Log level set to: {logging.getLevelName(settings.log_level)}")
+        logger.debug(f"Log level set to: {logging.getLevelName(settings.log_level)}")
 
         # Initialize redis cache
-        cm_redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)  # needs decode_responses=True
+        cm_redis_client = aioredis.from_url(
+            settings.redis_url, decode_responses=True
+        )  # needs decode_responses=True
         cache_manager = CacheManager(cm_redis_client, settings)
         this_app.state.cache_manager = cache_manager
-        
+
         # Also store a redis client for monitoring (no decode_responses for binary data)
         monitoring_redis_client = aioredis.from_url(settings.redis_url)
         this_app.state.redis_client = monitoring_redis_client
-
 
         # Initialize inventory store on startup
         this_app.state.settings = settings
@@ -68,55 +71,76 @@ def create_app():
         logger.info(f"Auth mode: {settings.auth_mode}")
         logger.info(f"API keys configured: {len(settings.api_keys)}")
         logger.info(f"JWT providers configured: {len(settings.jwt_providers)}")
-        
+
         if settings.auth_mode == "api_key":
             if not settings.api_keys:
-                logger.error("="*80)
-                logger.error("⚠️  SECURITY WARNING: auth_mode='api_key' but no api_keys configured!")
+                logger.error("=" * 80)
+                logger.error(
+                    "SECURITY WARNING: auth_mode='api_key' but no api_keys configured!"
+                )
                 logger.error("    The API is effectively unprotected.")
-                logger.error("    Set auth_mode='none' to acknowledge, or configure api_keys.")
-                logger.error("="*80)
-                raise ValueError("auth_mode='api_key' requires api_keys to be configured")
-        
+                logger.error(
+                    "    Set auth_mode='none' to acknowledge, or configure api_keys."
+                )
+                logger.error("=" * 80)
+                raise ValueError(
+                    "auth_mode='api_key' requires api_keys to be configured"
+                )
+
         elif settings.auth_mode == "jwt":
             enabled_providers = [p for p in settings.jwt_providers if p.enabled]
             if not enabled_providers:
-                logger.error("="*80)
-                logger.error("⚠️  SECURITY WARNING: auth_mode='jwt' but no enabled JWT providers configured!")
+                logger.error("=" * 80)
+                logger.error(
+                    "SECURITY WARNING: auth_mode='jwt' but no enabled JWT providers configured!"
+                )
                 logger.error("    The API is effectively unprotected.")
-                logger.error("    Set auth_mode='none' to acknowledge, or configure jwt_providers.")
-                logger.error("="*80)
-                raise ValueError("auth_mode='jwt' requires at least one enabled JWT provider")
-        
+                logger.error(
+                    "    Set auth_mode='none' to acknowledge, or configure jwt_providers."
+                )
+                logger.error("=" * 80)
+                raise ValueError(
+                    "auth_mode='jwt' requires at least one enabled JWT provider"
+                )
+
         elif settings.auth_mode == "hybrid":
             has_api_keys = bool(settings.api_keys)
             enabled_providers = [p for p in settings.jwt_providers if p.enabled]
             has_jwt = bool(enabled_providers)
-            
+
             if not has_api_keys and not has_jwt:
-                logger.error("="*80)
-                logger.error("⚠️  SECURITY WARNING: auth_mode='hybrid' but neither api_keys nor JWT providers configured!")
+                logger.error("=" * 80)
+                logger.error(
+                    "SECURITY WARNING: auth_mode='hybrid' but neither api_keys nor JWT providers configured!"
+                )
                 logger.error("    The API is effectively unprotected.")
-                logger.error("    Set auth_mode='none' to acknowledge, or configure api_keys and/or jwt_providers.")
-                logger.error("="*80)
-                raise ValueError("auth_mode='hybrid' requires api_keys and/or JWT providers to be configured")
-        
+                logger.error(
+                    "    Set auth_mode='none' to acknowledge, or configure api_keys and/or jwt_providers."
+                )
+                logger.error("=" * 80)
+                raise ValueError(
+                    "auth_mode='hybrid' requires api_keys and/or JWT providers to be configured"
+                )
+
         elif settings.auth_mode == "none":
-            logger.warning("="*80)
-            logger.warning("⚠️  SECURITY NOTICE: auth_mode='none' - API has NO authentication")
+            logger.warning("=" * 80)
+            logger.warning(
+                "SECURITY NOTICE: auth_mode='none' - API has NO authentication"
+            )
             logger.warning("    All endpoints are publicly accessible.")
-            logger.warning("="*80)
+            logger.warning("=" * 80)
 
         # Initialize inventory using plugin system
         logger.info(f"Initializing inventory plugin: {settings.inventory_type}")
-        
+
         try:
             inventory = plugin_manager.initialize_inventory_plugin(
-                plugin_name=settings.inventory_type,
-                settings=settings
+                plugin_name=settings.inventory_type, settings=settings
             )
             this_app.state.inventory_store = inventory
-            logger.info(f"Successfully initialized inventory plugin: {settings.inventory_type}")
+            logger.info(
+                f"Successfully initialized inventory plugin: {settings.inventory_type}"
+            )
 
         except ValueError as e:
             logger.error(f"Failed to initialize inventory plugin: {e}")
@@ -124,30 +148,34 @@ def create_app():
             raise
 
         this_app.state.queue = queue
-        this_app.state.jwt_providers= []
+        this_app.state.jwt_providers = []
 
         # Pre-warm JWT provider caches (OIDC discovery + JWKS) and build issuer->provider map
         if settings.auth_mode in ["jwt", "hybrid"]:
             logger.info("Pre-warming JWT provider caches...")
             from tom_controller.auth import get_jwt_validator
-            
+
             for provider_config in settings.jwt_providers:
                 if not provider_config.enabled:
                     continue
-                
+
                 validator = None
                 try:
                     logger.info(f"Initializing JWT provider: {provider_config.name}")
                     config_dict = provider_config.model_dump()
                     validator = get_jwt_validator(config_dict)
-                    
+
                     await validator._ensure_discovery()
 
                     if not validator.issuer:
-                        raise TomException(f"Issuer not configured for provider {provider_config.name}")
+                        raise TomException(
+                            f"Issuer not configured for provider {provider_config.name}"
+                        )
 
                     if not validator.jwks_uri:
-                        raise TomException(f"JWKS URI not configured for provider {provider_config.name}")
+                        raise TomException(
+                            f"JWKS URI not configured for provider {provider_config.name}"
+                        )
 
                     await validator.fetch_jwks()
                     logger.info(f"  JWKS cached from: {validator.jwks_uri}")
@@ -162,13 +190,14 @@ def create_app():
         # Print OAuth test endpoint URL if enabled
         if settings.oauth_test_enabled:
             # Use localhost for display if host is 0.0.0.0
-            display_host = "localhost" if settings.host in ("0.0.0.0", "::") else settings.host
+            display_host = (
+                "localhost" if settings.host in ("0.0.0.0", "::") else settings.host
+            )
             oauth_url = f"http://{display_host}:{settings.port}/static/oauth-test.html"
-            print("\n" + "="*80)
-            print("🔐 OAuth Test Endpoint Active")
-            print(f"   URL: {oauth_url}")
-            print("="*80 + "\n")
-            logger.info(f"OAuth test endpoint available at: {oauth_url}")
+            logger.info("=" * 80)
+            logger.info("OAuth Test Endpoint Active")
+            logger.info(f"   URL: {oauth_url}")
+            logger.info("=" * 80)
 
         yield
         # Cleanup on shutdown if needed
@@ -212,14 +241,15 @@ def create_app():
     app.include_router(
         api.oauth_router, prefix="/api"
     )  # OAuth endpoints don't require auth
-    
+
     # Include unauthenticated metrics endpoint for Prometheus
     app.include_router(api.metrics_router, prefix="/api")
-    
+
     # Include monitoring API endpoints with auth dependency
     # (authenticated - contains sensitive operational data)
     from tom_controller.api import monitoring_api
     from fastapi import Depends
+
     monitoring_api.router.dependencies.append(Depends(api.do_auth))
     app.include_router(monitoring_api.router, prefix="/api")
 
