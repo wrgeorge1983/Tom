@@ -36,35 +36,12 @@ redis_db: 0
 # to use with 'credential_plugin', then configure that plugin using its
 # prefixed settings.
 #
-# Available plugins: yaml, vault
+# Available plugins: vault (recommended), yaml (development only)
 
-credential_plugin: "yaml"
-
-# -----------------------------------------------------------------------------
-# YAML Credential Plugin
-# -----------------------------------------------------------------------------
-#
-# Reads credentials from a YAML file. Simple, no external dependencies.
-#
-# Settings prefix: plugin_yaml_
-# Env var prefix:  TOM_WORKER_PLUGIN_YAML_
-#
-# Example env var: TOM_WORKER_PLUGIN_YAML_CREDENTIAL_FILE=inventory/creds.yml
-
-plugin_yaml_credential_file: "inventory/creds.yml"
-
-# The credential file should have this format:
-#
-#   my_credential_id:
-#     username: myuser
-#     password: mypassword
-#
-#   another_credential:
-#     username: admin
-#     password: secret123
+credential_plugin: "vault"
 
 # -----------------------------------------------------------------------------
-# Vault Credential Plugin
+# Vault Credential Plugin (Recommended)
 # -----------------------------------------------------------------------------
 #
 # Reads credentials from HashiCorp Vault (KV v2 secrets engine).
@@ -79,16 +56,37 @@ plugin_yaml_credential_file: "inventory/creds.yml"
 # Secrets are read from: secret/data/{credential_path_prefix}/{credential_id}
 # Each secret must contain 'username' and 'password' keys.
 
-# plugin_vault_url: "https://vault.example.com:8200"
-# plugin_vault_verify_ssl: true
-# plugin_vault_credential_path_prefix: "credentials"
+plugin_vault_url: "http://localhost:8200"
+plugin_vault_verify_ssl: true
+plugin_vault_credential_path_prefix: "credentials"
 
 # Token authentication (development only - DO NOT use in production!)
-# plugin_vault_token: "hvs.xxxxxxxxxxxxx"
+plugin_vault_token: "myroot"
 
 # AppRole authentication (recommended for production)
 # plugin_vault_role_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 # plugin_vault_secret_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# -----------------------------------------------------------------------------
+# YAML Credential Plugin (Development Only)
+# -----------------------------------------------------------------------------
+#
+# Reads credentials from a YAML file. NOT recommended for production.
+# Credentials are stored in plaintext on disk.
+#
+# Settings prefix: plugin_yaml_
+# Env var prefix:  TOM_WORKER_PLUGIN_YAML_
+#
+# To use YAML instead of Vault, set:
+#   credential_plugin: "yaml"
+
+# plugin_yaml_credential_file: "inventory/creds.yml"
+
+# The credential file should have this format:
+#
+#   my_credential_id:
+#     username: myuser
+#     password: mypassword
 
 # =============================================================================
 # Environment Variable Reference
@@ -103,9 +101,6 @@ plugin_yaml_credential_file: "inventory/creds.yml"
 #   TOM_WORKER_REDIS_PORT
 #   TOM_WORKER_CREDENTIAL_PLUGIN
 #
-# YAML plugin settings:
-#   TOM_WORKER_PLUGIN_YAML_CREDENTIAL_FILE
-#
 # Vault plugin settings:
 #   TOM_WORKER_PLUGIN_VAULT_URL
 #   TOM_WORKER_PLUGIN_VAULT_TOKEN
@@ -113,3 +108,6 @@ plugin_yaml_credential_file: "inventory/creds.yml"
 #   TOM_WORKER_PLUGIN_VAULT_SECRET_ID
 #   TOM_WORKER_PLUGIN_VAULT_VERIFY_SSL
 #   TOM_WORKER_PLUGIN_VAULT_CREDENTIAL_PATH_PREFIX
+#
+# YAML plugin settings:
+#   TOM_WORKER_PLUGIN_YAML_CREDENTIAL_FILE

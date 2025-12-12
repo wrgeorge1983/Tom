@@ -1,8 +1,8 @@
-# YAML Credential Store
+# YAML Credential Store (Development Only)
 
 Store credentials in a local YAML file.
 
-**Not recommended for production.** Use [Vault](vault-credentials.md) instead.
+**Not recommended.** Use [Vault](vault-credentials.md) instead. YAML credentials store passwords in plaintext on disk.
 
 ## Configuration
 

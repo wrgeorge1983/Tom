@@ -1,6 +1,6 @@
-# Vault Credential Store
+# Vault Credential Store (Recommended)
 
-Store credentials securely in HashiCorp Vault.
+Store credentials securely in HashiCorp Vault. This is the default and recommended credential store.
 
 ## Configuration
 

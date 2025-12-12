@@ -22,8 +22,8 @@ class Settings(SharedSettings):
 
     # inherits log, project_root, and redis settings from SharedSettings
 
-    # Credential plugin selection
-    credential_plugin: str = "yaml"
+    # Credential plugin selection (vault recommended for production)
+    credential_plugin: str = "vault"
 
     model_config = SettingsConfigDict(
         env_prefix="TOM_WORKER_",

@@ -203,8 +203,8 @@ class CredentialPluginManager:
     it fails immediately with a clear error message.
     """
 
-    # Known credential plugins - add new ones here
-    KNOWN_PLUGINS = ["yaml", "vault"]
+    # Known credential plugins - add new ones here (vault is recommended/default)
+    KNOWN_PLUGINS = ["vault", "yaml"]
 
     def __init__(self):
         self._loaded_plugin: type[CredentialPlugin] | None = None
