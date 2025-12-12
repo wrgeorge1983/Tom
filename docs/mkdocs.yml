@@ -67,6 +67,7 @@ plugins:
 extra:
   version:
     provider: mike
+    alias: true
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/wrgeorge1983/tom

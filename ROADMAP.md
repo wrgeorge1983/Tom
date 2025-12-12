@@ -86,6 +86,19 @@
 ### v0.14.0
 - NetBox inventory plugin
 
+### v0.15.0 - v0.17.0
+- Documentation site with versioning (GitHub Pages + mike)
+- Quickstart and sensible-configs example setups
+- Update credential management CLI tool (`credload.py`)
+- Internal refactoring and code organization
+
+### v0.18.0
+- Plugin system for credential stores
+  - Vault credential plugin (default, recommended)
+  - YAML credential plugin (development only)
+  - Plugin discovery, dependency checking, and validation
+  - Prefixed plugin settings (`plugin_<name>_*`)
+
 ## Future Work
 
 ### Reliability
@@ -100,7 +113,8 @@
 - Genie parser integration (maybe)
 
 ### Plugin Support
-- Plugin system for credential stores
+- Credential plugin: AWS Secrets Manager
+- Credential plugin: Nautobot Secrets
 - Plugin system for device adapters
 - Config validation tool (`tom validate-config`) to detect typos and unused keys across main and plugin settings
 
