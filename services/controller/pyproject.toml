@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tom-controller"
-version = "0.17.4"
+version = "0.18.0"
 description = "Tom Smykowski Network Automation Broker - Controller Service"
 readme = "README.md"
 requires-python = ">=3.13"
