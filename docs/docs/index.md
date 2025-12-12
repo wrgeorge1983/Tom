@@ -32,6 +32,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 
 ## Credentials
 
+- [Vault Credentials](real/vault-credentials.md) - HashiCorp Vault integration (recommended)
 - [YAML Credentials](real/yaml-credentials.md) - File-based credential store (not recommended)
 
 ## Getting Help

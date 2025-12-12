@@ -10,10 +10,10 @@ import saq, saq.types
 
 from tom_shared.cache import CacheManager
 
-from tom_worker.credentials.credentials import YamlCredentialStore
-from tom_worker.exceptions import GatingException, TransientException
+from tom_worker.exceptions import TomException
 from tom_worker.jobs import foo, send_commands_netmiko, send_commands_scrapli
 from tom_worker.monitoring import heartbeat_task
+from tom_worker.Plugins.base import CredentialPluginManager
 from .config import settings
 
 # Configure logging before creating the queue
@@ -41,21 +41,30 @@ async def main():
     worker_id = f"worker-{uuid.uuid4().hex[:8]}"
     logger.info(f"Worker ID: {worker_id}")
 
-    match settings.credential_store:
-        case "yaml":
-            logger.info(f"Using YAML credential store from {settings.credential_path}")
-            credential_store = YamlCredentialStore(settings.credential_path)
+    # Initialize credential plugin
+    # This loads the specific plugin configured, checking dependencies and raising
+    # clear errors if anything is wrong (missing module, missing deps, etc.)
+    plugin_manager = CredentialPluginManager()
+    try:
+        credential_plugin = plugin_manager.initialize_credential_plugin(
+            settings.credential_plugin, settings
+        )
+        logger.info(f"Loaded credential plugin: {settings.credential_plugin}")
+    except ValueError as e:
+        logger.error(
+            f"Failed to load credential plugin '{settings.credential_plugin}': {e}"
+        )
+        raise SystemExit(1)
 
-        case "vault":
-            logger.info("Using Vault credential store")
-            from tom_worker.credentials.vault import VaultCredentialStore, VaultClient
-
-            vault_client = await VaultClient.from_settings(settings)
-            await vault_client.validate_access()
-            credential_store = VaultCredentialStore(vault_client)
-
-        case _:
-            raise ValueError(f"Unknown credential store: {settings.credential_store}")
+    # Validate the plugin (connectivity, auth, file existence, etc.)
+    try:
+        await credential_plugin.validate()
+        logger.info(
+            f"Credential plugin '{settings.credential_plugin}' validated successfully"
+        )
+    except TomException as e:
+        logger.error(f"Credential plugin validation failed: {e}")
+        raise SystemExit(1)
 
     semaphore_redis_client = redis.from_url(settings.redis_url)
 
@@ -75,7 +84,9 @@ async def main():
     logger.info(f"Started heartbeat task for worker {worker_id}")
 
     def worker_setup(ctx: saq.types.Context):
-        ctx["credential_store"] = credential_store
+        ctx["credential_store"] = (
+            credential_plugin  # CredentialPlugin has same interface
+        )
         ctx["redis_client"] = semaphore_redis_client
         ctx["cache_manager"] = cache_manager
         ctx["settings"] = settings

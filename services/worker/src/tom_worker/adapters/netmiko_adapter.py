@@ -7,11 +7,9 @@ from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoAuthenticationException
 
 from tom_shared.models import NetmikoSendCommandModel
-from tom_worker.credentials.credentials import (
-    SSHCredentials,
-    CredentialStore,
-)
+from tom_worker.credentials.credentials import SSHCredentials
 from tom_worker.exceptions import TomException, AuthenticationException
+from tom_worker.Plugins.base import CredentialPlugin
 
 
 class NetmikoAdapter:
@@ -63,7 +61,7 @@ class NetmikoAdapter:
 
     @classmethod
     async def from_model(
-        cls, model: NetmikoSendCommandModel, credential_store: CredentialStore
+        cls, model: NetmikoSendCommandModel, credential_store: CredentialPlugin
     ) -> "NetmikoAdapter":
         if model.credential.type == "stored":
             credential = await credential_store.get_ssh_credentials(

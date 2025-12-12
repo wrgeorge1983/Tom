@@ -138,11 +138,13 @@ The controller config lives in `tom_controller_config.yaml`. See `tom_controller
 
 ### Worker Configuration
 
-Worker settings are in docker-compose environment variables. The key ones:
+Worker settings are in docker-compose environment variables or `tom_worker_config.yaml`. The key ones:
 
-- `TOM_WORKER_CREDENTIAL_STORE` - `vault` or `yaml`
-- `TOM_WORKER_VAULT_URL` / `TOM_WORKER_VAULT_TOKEN` - Vault connection
-- `TOM_WORKER_CREDENTIAL_FILE` - Path to YAML creds (if using yaml store)
+- `TOM_WORKER_CREDENTIAL_PLUGIN` - `vault` or `yaml`
+- Vault plugin: `TOM_WORKER_PLUGIN_VAULT_URL`, `TOM_WORKER_PLUGIN_VAULT_TOKEN`
+- YAML plugin: `TOM_WORKER_PLUGIN_YAML_CREDENTIAL_FILE`
+
+See [Vault Credentials](vault-credentials.md) or [YAML Credentials](yaml-credentials.md) for details.
 
 ## Troubleshooting
 
