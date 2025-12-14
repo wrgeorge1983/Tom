@@ -188,7 +188,7 @@ curl "http://localhost:8000/api/inventory/export" \
   -H "X-API-Key: your-api-key"
 
 # Query a specific device
-curl -X POST "http://localhost:8000/device/router1/send_command" \
+curl -X POST "http://localhost:8000/api/device/router1/send_command" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"command": "show version", "wait": true}'

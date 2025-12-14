@@ -80,7 +80,7 @@ cd tom/quickstart-configs
 ## Step 6: Test It
 
 ```bash
-curl -X POST "http://localhost:8000/device/my-router/send_command" \
+curl -X POST "http://localhost:8000/api/device/my-router/send_command" \
   -H "X-API-Key: your-generated-key-here" \
   -H "Content-Type: application/json" \
   -d '{

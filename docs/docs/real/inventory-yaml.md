@@ -189,7 +189,7 @@ arista_creds:
 ### 4. Test
 
 ```bash
-curl -X POST "http://localhost:8000/device/core-rtr-01/send_command" \
+curl -X POST "http://localhost:8000/api/device/core-rtr-01/send_command" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"command": "show version", "wait": true}'

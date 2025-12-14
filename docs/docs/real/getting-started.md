@@ -107,7 +107,7 @@ uv run credload.py delete lab_creds  # Delete a credential
 ## 6. Test the API
 
 ```bash
-curl -X POST "http://localhost:8000/device/router1/send_command" \
+curl -X POST "http://localhost:8000/api/device/router1/send_command" \
   -H "X-API-Key: YOUR-GENERATED-KEY-HERE" \
   -H "Content-Type: application/json" \
   -d '{
