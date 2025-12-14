@@ -476,7 +476,7 @@ uv run credload.py get lab_creds     # View a credential (password masked)
 uv run credload.py delete lab_creds  # Delete a credential
 </code></pre>
 <h2 id="6-test-the-api">6. Test the API</h2>
-<pre><code class="language-bash">curl -X POST &quot;http://localhost:8000/device/router1/send_command&quot; \
+<pre><code class="language-bash">curl -X POST &quot;http://localhost:8000/api/device/router1/send_command&quot; \
   -H &quot;X-API-Key: YOUR-GENERATED-KEY-HERE&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -d '{

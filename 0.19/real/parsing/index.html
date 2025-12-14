@@ -407,7 +407,7 @@
 <p>Tom can parse raw command output into structured data using TextFSM or TTP templates.</p>
 <h2 id="specifying-a-template">Specifying a Template</h2>
 <p>To parse command output, specify a template explicitly:</p>
-<pre><code class="language-bash">curl -X POST &quot;http://localhost:8000/device/router1/send_command&quot; \
+<pre><code class="language-bash">curl -X POST &quot;http://localhost:8000/api/device/router1/send_command&quot; \
   -H &quot;X-API-Key: your-api-key&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -d '{
@@ -437,7 +437,7 @@
 <h2 id="built-in-template-library">Built-in Template Library</h2>
 <p>Tom includes the <a href="https://github.com/networktocode/ntc-templates">NTC Templates</a> open source library - over 900 TextFSM templates covering common commands across Cisco, Arista, Juniper, and many other platforms.</p>
 <h3 id="listing-available-templates">Listing Available Templates</h3>
-<pre><code class="language-bash">curl &quot;http://localhost:8000/parsing/templates&quot; \
+<pre><code class="language-bash">curl &quot;http://localhost:8000/api/templates/textfsm&quot; \
   -H &quot;X-API-Key: your-api-key&quot;
 </code></pre>
 <h3 id="automatic-template-matching">Automatic Template Matching</h3>
@@ -447,7 +447,7 @@
 <li><strong>Command</strong> being executed</li>
 </ol>
 <p>For example, <code>show ip interface brief</code> on a <code>cisco_ios</code> device automatically matches <code>cisco_ios_show_ip_interface_brief.textfsm</code>:</p>
-<pre><code class="language-bash">curl -X POST &quot;http://localhost:8000/device/router1/send_command&quot; \
+<pre><code class="language-bash">curl -X POST &quot;http://localhost:8000/api/device/router1/send_command&quot; \
   -H &quot;X-API-Key: your-api-key&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -d '{

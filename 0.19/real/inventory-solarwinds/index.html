@@ -680,7 +680,7 @@ curl &quot;http://localhost:8000/api/inventory/export?filter_name=switches&quot;
   -H &quot;X-API-Key: your-api-key&quot;
 
 # Query a specific device (by Caption/hostname)
-curl -X POST &quot;http://localhost:8000/device/core-rtr-01/send_command&quot; \
+curl -X POST &quot;http://localhost:8000/api/device/core-rtr-01/send_command&quot; \
   -H &quot;X-API-Key: your-api-key&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -d '{&quot;command&quot;: &quot;show version&quot;, &quot;wait&quot;: true}'
