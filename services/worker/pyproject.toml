@@ -19,6 +19,9 @@ dependencies = [
     "tom-shared",
 ]
 
+[project.scripts]
+tom-worker-validate = "tom_worker.validate:main"
+
 [tool.uv.sources]
 tom-shared = { path = "../../shared", editable = true }
 

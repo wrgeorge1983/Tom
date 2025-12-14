@@ -28,6 +28,9 @@ dependencies = [
     "uvicorn>=0.33.0",
 ]
 
+[project.scripts]
+tom-controller-validate = "tom_controller.validate:main"
+
 [dependency-groups]
 dev = [
     "fakeredis>=2.32.0",

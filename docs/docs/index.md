@@ -14,6 +14,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 ## Core Concepts
 
 - [Architecture](real/architecture.md) - How Tom's components work together
+- [Configuration](real/configuration.md) - Config files, environment variables, and validation
 - [Parsing](real/parsing.md) - TextFSM and TTP parsing
 
 ## Inventory
