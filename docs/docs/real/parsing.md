@@ -7,7 +7,7 @@ Tom can parse raw command output into structured data using TextFSM or TTP templ
 To parse command output, specify a template explicitly:
 
 ```bash
-curl -X POST "http://localhost:8000/device/router1/send_command" \
+curl -X POST "http://localhost:8000/api/device/router1/send_command" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -48,7 +48,7 @@ Tom includes the [NTC Templates](https://github.com/networktocode/ntc-templates)
 ### Listing Available Templates
 
 ```bash
-curl "http://localhost:8000/parsing/templates" \
+curl "http://localhost:8000/api/templates/textfsm" \
   -H "X-API-Key: your-api-key"
 ```
 
@@ -62,7 +62,7 @@ If you specify `parse=true` but don't specify a template, Tom will attempt to fi
 For example, `show ip interface brief` on a `cisco_ios` device automatically matches `cisco_ios_show_ip_interface_brief.textfsm`:
 
 ```bash
-curl -X POST "http://localhost:8000/device/router1/send_command" \
+curl -X POST "http://localhost:8000/api/device/router1/send_command" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{

@@ -1,24 +1,27 @@
-# Using YAML Credential Store
+# YAML Credential Store (Development Only)
 
-If you really want to store credentials unencrypted on your disk, here's how to use YAML as a credential source.
+Store credentials in a local YAML file.
 
-**This is NOT recommended for anything beyond local testing.** Use Vault instead.
+**Not recommended.** Use [Vault](vault-credentials.md) instead. YAML credentials store passwords in plaintext on disk.
 
 ## Configuration
 
-Edit your docker-compose worker environment to use YAML credentials:
+Set the credential plugin to `yaml` in your worker config:
 
 ```yaml
-environment:
-  TOM_WORKER_CREDENTIAL_STORE: yaml
-  TOM_WORKER_CREDENTIAL_FILE: inventory/creds.yml
+# tom_worker_config.yaml
+credential_plugin: "yaml"
+plugin_yaml_credential_file: "inventory/creds.yml"
 ```
 
-If using the sensible-configs setup, comment out the Vault settings and uncomment the YAML ones.
+Or via environment variables:
+
+```bash
+TOM_WORKER_CREDENTIAL_PLUGIN=yaml
+TOM_WORKER_PLUGIN_YAML_CREDENTIAL_FILE=inventory/creds.yml
+```
 
 ## Credential File Format
-
-Create a YAML file with your credentials:
 
 ```yaml
 # inventory/creds.yml
@@ -30,35 +33,28 @@ lab_creds:
 production_creds:
   username: netops
   password: different-password
-
-cisco_tacacs:
-  username: tacacs_user
-  password: tacacs_secret
 ```
 
-Each top-level key is a `credential_id` that you reference in your inventory:
+Each top-level key is a `credential_id` referenced in your inventory:
 
 ```yaml
 # inventory/inventory.yml
-
 router1:
   host: "192.168.1.1"
   adapter: "netmiko"
   adapter_driver: "cisco_ios"
-  credential_id: "lab_creds"  # References the YAML credential
+  credential_id: "lab_creds"
 ```
 
 ## Why You Shouldn't Use This
 
-1. **Plaintext passwords** - Anyone with file access can read them
-2. **Version control risk** - Easy to accidentally commit credentials
-3. **No audit trail** - No logging of credential access
-4. **No rotation support** - Manual updates required
+- **Plaintext passwords** - Anyone with file access can read them
+- **Version control risk** - Easy to accidentally commit credentials
+- **No audit trail** - No logging of credential access
+- **No rotation support** - Manual updates required
 
-## When It Might Be Acceptable
+## When It's Acceptable
 
 - Local development with test credentials
 - Isolated lab environments
 - Quick testing before setting up Vault
-
-For anything else, use [Vault](getting-started.md#5-store-credentials-in-vault).

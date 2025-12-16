@@ -19,26 +19,35 @@ class NautobotSettings(PluginSettings):
     Env vars use: TOM_PLUGIN_NAUTOBOT_URL, TOM_PLUGIN_NAUTOBOT_TOKEN, etc.
     Code accesses: settings.url, settings.token, etc.
 
-    Supports two credential mapping strategies:
-    1. Custom Field: Direct field on device (recommended, simpler)
-    2. Config Context: Hierarchical JSON data (more complex, more flexible)
+    Each field (credential, adapter, driver) can be sourced from either:
+    - custom_field: A custom field on the device
+    - config_context: A path in the device's config context JSON
+
+    Set *_source to choose where to read from, and *_field to specify
+    the custom field name or config context path (dot-notation for nested).
     """
 
     # Connection
     url: str
     token: str
 
-    # Credential mapping - choose source
+    # Credential settings
     credential_source: Literal["custom_field", "config_context"] = "custom_field"
+    credential_field: str = "credential_id"  # custom field name or config context path
+    default_credential: str = "default"
 
-    # For custom_field source
-    credential_field: str = "credential_id"
+    # Adapter settings (netmiko or scrapli)
+    adapter_source: Literal["custom_field", "config_context"] = "custom_field"
+    adapter_field: str = ""  # empty = use default_adapter
+    default_adapter: Literal["netmiko", "scrapli"] = "netmiko"
 
-    # For config_context source (can be nested like "tom.credentials.ssh")
-    credential_context_path: str = "credential_id"
+    # Driver settings (e.g., cisco_ios, arista_eos)
+    driver_source: Literal["custom_field", "config_context"] = "custom_field"
+    driver_field: str = ""  # empty = use default_driver
+    default_driver: str = "cisco_ios"
 
-    # Default credential ID
-    credential_default: str = "default"
+    # Port (default only for now)
+    default_port: int = 22
 
     # Optional filters - use names as they appear in Nautobot
     # Leave empty to disable filtering
@@ -46,10 +55,6 @@ class NautobotSettings(PluginSettings):
     role_filter: list[str] = []  # e.g., ["Edge Router", "Core Switch"]
     location_filter: list[str] = []  # e.g., ["NYC-DC1", "SFO-DC2"]
     tag_filter: list[str] = []  # e.g., ["production", "tom-managed"]
-
-    # Defaults when platform's netmiko_device_type is not set
-    default_adapter: Literal["netmiko", "scrapli"] = "netmiko"
-    default_driver: str = "cisco_ios"
 
     model_config = SettingsConfigDict(
         env_prefix="TOM_",
@@ -79,57 +84,79 @@ class NautobotInventoryPlugin(InventoryPlugin):
 
         self.nb = pynautobot.api(url=plugin_settings.url, token=plugin_settings.token)
 
-    def _get_credential_id(self, device) -> str:
+    def _get_value_from_source(
+        self,
+        device,
+        source: Literal["custom_field", "config_context"],
+        field: str,
+        default: str,
+    ) -> str:
         """
-        Extract credential ID from device based on configured source.
+        Extract a value from device based on configured source.
 
-        Supports:
-        - custom_field: Direct field like device.custom_fields.credential_id
-        - config_context: Nested JSON like device.config_context.tom.credential_id
+        :param device: Nautobot device object
+        :param source: Where to read from ("custom_field" or "config_context")
+        :param field: Custom field name or config context path (dot-notation)
+        :param default: Default value if not found or empty
+        :return: The extracted value or default
         """
-        if self.settings.credential_source == "custom_field":
-            value = device.custom_fields.get(
-                self.settings.credential_field, self.settings.credential_default
-            )
-            # Return value if it's a non-empty string, otherwise use default
+        if not field:
+            return default
+
+        if source == "custom_field":
+            value = device.custom_fields.get(field)
             if isinstance(value, str) and value:
                 return value
-            return self.settings.credential_default
-        elif self.settings.credential_source == "config_context":
+            return default
+
+        elif source == "config_context":
             # Navigate nested config context path
             context = device.config_context
-            for key in self.settings.credential_context_path.split("."):
+            if not context:
+                return default
+
+            for key in field.split("."):
                 if isinstance(context, dict):
                     context = context.get(key, {})
                 else:
-                    context = {}
-                    break
+                    return default
 
-            # If we got a string, use it; otherwise use default
             if isinstance(context, str) and context:
                 return context
-            return self.settings.credential_default
+            return default
 
-        return self.settings.credential_default
+        return default
 
-    def _determine_adapter_and_driver(self, device) -> tuple[str, str]:
-        """
-        Determine adapter (netmiko/scrapli) and driver from device platform.
+    def _get_credential_id(self, device) -> str:
+        """Extract credential ID from device."""
+        return self._get_value_from_source(
+            device,
+            self.settings.credential_source,
+            self.settings.credential_field,
+            self.settings.default_credential,
+        )
 
-        Uses platform's built-in netmiko_device_type field if set,
-        otherwise falls back to configured defaults.
-        """
-        if not device.platform:
-            return (self.settings.default_adapter, self.settings.default_driver)
+    def _get_adapter(self, device) -> str:
+        """Extract adapter from device."""
+        value = self._get_value_from_source(
+            device,
+            self.settings.adapter_source,
+            self.settings.adapter_field,
+            self.settings.default_adapter,
+        )
+        # Validate adapter value
+        if value in ("netmiko", "scrapli"):
+            return value
+        return self.settings.default_adapter
 
-        # Use Nautobot's built-in netmiko_device_type field
-        if (
-            hasattr(device.platform, "netmiko_device_type")
-            and device.platform.netmiko_device_type
-        ):
-            return (self.settings.default_adapter, device.platform.netmiko_device_type)
-
-        return (self.settings.default_adapter, self.settings.default_driver)
+    def _get_driver(self, device) -> str:
+        """Extract driver from device."""
+        return self._get_value_from_source(
+            device,
+            self.settings.driver_source,
+            self.settings.driver_field,
+            self.settings.default_driver,
+        )
 
     def _get_host_ip(self, device) -> str:
         """
@@ -152,13 +179,11 @@ class NautobotInventoryPlugin(InventoryPlugin):
 
     def _device_to_config(self, device) -> DeviceConfig:
         """Convert Nautobot device record to Tom DeviceConfig."""
-        adapter, driver = self._determine_adapter_and_driver(device)
-
         return DeviceConfig(
-            adapter=cast(Literal["netmiko", "scrapli"], adapter),
-            adapter_driver=driver,
+            adapter=cast(Literal["netmiko", "scrapli"], self._get_adapter(device)),
+            adapter_driver=self._get_driver(device),
             host=self._get_host_ip(device),
-            port=22,  # Could make configurable later
+            port=self.settings.default_port,
             credential_id=self._get_credential_id(device),
         )
 
@@ -180,6 +205,14 @@ class NautobotInventoryPlugin(InventoryPlugin):
 
         return filters
 
+    def _needs_config_context(self) -> bool:
+        """Check if any field uses config_context as its source."""
+        return (
+            self.settings.credential_source == "config_context"
+            or self.settings.adapter_source == "config_context"
+            or self.settings.driver_source == "config_context"
+        )
+
     def get_device(self, device_id: str) -> DeviceConfig | None:
         """
         Retrieve a single device by name from Nautobot.
@@ -187,12 +220,8 @@ class NautobotInventoryPlugin(InventoryPlugin):
         Returns None if device not found.
         """
         try:
-            # Need to include config_context if using that source
-            include = []
-            if self.settings.credential_source == "config_context":
-                include.append("config_context")
-
-            include_param = ",".join(include) if include else None
+            # Need to include config_context if any field uses it
+            include_param = "config_context" if self._needs_config_context() else None
 
             device = self.nb.dcim.devices.get(name=device_id, include=include_param)
 
@@ -219,12 +248,8 @@ class NautobotInventoryPlugin(InventoryPlugin):
             # Build filters from settings
             filters = self._build_filter_params()
 
-            # Need to include config_context if using that source
-            include = []
-            if self.settings.credential_source == "config_context":
-                include.append("config_context")
-
-            include_param = ",".join(include) if include else None
+            # Need to include config_context if any field uses it
+            include_param = "config_context" if self._needs_config_context() else None
 
             # Fetch all devices matching filters
             devices = self.nb.dcim.devices.filter(include=include_param, **filters)
@@ -261,12 +286,8 @@ class NautobotInventoryPlugin(InventoryPlugin):
             # Build filters from settings
             filters = self._build_filter_params()
 
-            # Need to include config_context if using that source
-            include = []
-            if self.settings.credential_source == "config_context":
-                include.append("config_context")
-
-            include_param = ",".join(include) if include else None
+            # Need to include config_context if any field uses it
+            include_param = "config_context" if self._needs_config_context() else None
 
             # Fetch all devices matching filters - pynautobot returns list of Record objects
             devices = self.nb.dcim.devices.filter(include=include_param, **filters)
@@ -274,14 +295,13 @@ class NautobotInventoryPlugin(InventoryPlugin):
             # Convert to dict list, preserving device name as Caption
             result = []
             for device in devices:
-                adapter, driver = self._determine_adapter_and_driver(device)
                 result.append(
                     {
                         "Caption": device.name,  # pyright: ignore [reportAttributeAccessIssue]
-                        "adapter": adapter,
-                        "adapter_driver": driver,
+                        "adapter": self._get_adapter(device),
+                        "adapter_driver": self._get_driver(device),
                         "host": self._get_host_ip(device),
-                        "port": 22,
+                        "port": self.settings.default_port,
                         "credential_id": self._get_credential_id(device),
                         "adapter_options": {},
                     }

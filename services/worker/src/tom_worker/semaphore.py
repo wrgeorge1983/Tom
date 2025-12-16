@@ -1,5 +1,14 @@
-import asyncio
+import logging
+from contextlib import asynccontextmanager
+from typing import Optional
+
 import redis.asyncio as redis
+import saq.types
+
+from tom_worker.exceptions import AuthenticationException, PermanentException
+from tom_worker.retry_handler import RetryHandler
+
+logger = logging.getLogger(__name__)
 
 
 class DeviceSemaphore:
@@ -51,3 +60,49 @@ class DeviceSemaphore:
     async def release_lease(self, job_id: str):
         """Release a lease for this device"""
         await self.redis_client.zrem(self.lease_key, job_id)
+
+
+@asynccontextmanager
+async def device_lease(
+    ctx: saq.types.Context,
+    redis_client: redis.Redis,
+    device_id: str,
+    job_id: str,
+    max_queue_wait: Optional[int] = None,
+):
+    """
+    Async context manager for acquiring a device semaphore with retry handling.
+
+    Handles:
+    - Semaphore acquisition with time-based retry budget
+    - Restoration of normal retry settings after lease acquired
+    - Marking non-retryable errors (auth failures, permanent errors)
+    - Automatic lease release on exit
+
+    Usage:
+        async with device_lease(ctx, redis_client, device_id, job_id, max_queue_wait):
+            async with await SomeAdapter.from_model(model, creds) as adapter:
+                result = await adapter.send_commands(commands)
+    """
+    semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
+    lease_acquired = await semaphore.acquire_lease(job_id)
+
+    # Handle device busy with time-based retry budget
+    # This may raise GatingException to trigger SAQ retry
+    RetryHandler.handle_device_busy(ctx, device_id, lease_acquired, max_queue_wait)
+
+    try:
+        # Restore original retry settings now that we have the lease
+        # This ensures other errors (network, auth) get normal retry behavior
+        RetryHandler.restore_original_settings(ctx)
+        yield semaphore
+    except (AuthenticationException, PermanentException) as e:
+        # Mark job as non-retryable by setting retries = attempts
+        # This prevents SAQ from retrying authentication failures
+        job = ctx.get("job")
+        if job:
+            job.retries = job.attempts
+        logger.error(f"Non-retryable error for {device_id}: {e}")
+        raise
+    finally:
+        await semaphore.release_lease(job_id)

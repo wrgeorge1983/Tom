@@ -1,16 +1,113 @@
 # Tom Smykowski Worker Service Configuration
-# YAML version of worker-related settings from local.env.example
+# ============================================
+#
+# This file configures the Tom Worker service. All settings can also be set via
+# environment variables with the TOM_WORKER_ prefix (case-insensitive).
+#
+# Precedence (highest to lowest):
+#   1. Environment variables (TOM_WORKER_*)
+#   2. .env file (set via TOM_WORKER_ENV_FILE)
+#   3. This YAML config file (set via TOM_WORKER_CONFIG_FILE)
+#   4. Default values
+#
+# To use a custom config file location, set:
+#   TOM_WORKER_CONFIG_FILE=/path/to/config.yaml
 
-# Worker Service Settings
-log_level: "info"
+# =============================================================================
+# Core Worker Settings
+# =============================================================================
+
+log_level: "info"           # debug, info, warning, error
+project_root: "../../.."    # Path to project root (for resolving relative paths)
+
+# Redis connection (inherited from shared settings)
 redis_host: "localhost"
 redis_port: 6379
-project_root: "../../.."
+redis_db: 0
+# redis_username: ""        # Optional - for Redis ACL auth
+# redis_password: ""        # Optional - for Redis auth
+# redis_use_tls: false      # Set to true for TLS connections
 
-# Credential Store Configuration
-credential_store: "yaml"  # or "vault"
-credential_file: "inventory/assets.yml"
+# =============================================================================
+# Credential Plugin Configuration
+# =============================================================================
+#
+# The worker uses a plugin system for credential stores. Select which plugin
+# to use with 'credential_plugin', then configure that plugin using its
+# prefixed settings.
+#
+# Available plugins: vault (recommended), yaml (development only)
 
-# Vault Configuration (for vault credential store)
-vault_url: "http://localhost:8200"
-vault_token: "myroot"  # using 'myroot' is crazy insecure, don't do in prod!
+credential_plugin: "vault"
+
+# -----------------------------------------------------------------------------
+# Vault Credential Plugin (Recommended)
+# -----------------------------------------------------------------------------
+#
+# Reads credentials from HashiCorp Vault (KV v2 secrets engine).
+#
+# Settings prefix: plugin_vault_
+# Env var prefix:  TOM_WORKER_PLUGIN_VAULT_
+#
+# Authentication options:
+#   - Token auth (dev only): set plugin_vault_token
+#   - AppRole auth (production): set plugin_vault_role_id AND plugin_vault_secret_id
+#
+# Secrets are read from: secret/data/{credential_path_prefix}/{credential_id}
+# Each secret must contain 'username' and 'password' keys.
+
+plugin_vault_url: "http://localhost:8200"
+plugin_vault_verify_ssl: true
+plugin_vault_credential_path_prefix: "credentials"
+
+# Token authentication (development only - DO NOT use in production!)
+plugin_vault_token: "myroot"
+
+# AppRole authentication (recommended for production)
+# plugin_vault_role_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# plugin_vault_secret_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# -----------------------------------------------------------------------------
+# YAML Credential Plugin (Development Only)
+# -----------------------------------------------------------------------------
+#
+# Reads credentials from a YAML file. NOT recommended for production.
+# Credentials are stored in plaintext on disk.
+#
+# Settings prefix: plugin_yaml_
+# Env var prefix:  TOM_WORKER_PLUGIN_YAML_
+#
+# To use YAML instead of Vault, set:
+#   credential_plugin: "yaml"
+
+# plugin_yaml_credential_file: "inventory/creds.yml"
+
+# The credential file should have this format:
+#
+#   my_credential_id:
+#     username: myuser
+#     password: mypassword
+
+# =============================================================================
+# Environment Variable Reference
+# =============================================================================
+#
+# All settings can be set via environment variables. The mapping is:
+#
+# Core settings:
+#   TOM_WORKER_LOG_LEVEL
+#   TOM_WORKER_PROJECT_ROOT
+#   TOM_WORKER_REDIS_HOST
+#   TOM_WORKER_REDIS_PORT
+#   TOM_WORKER_CREDENTIAL_PLUGIN
+#
+# Vault plugin settings:
+#   TOM_WORKER_PLUGIN_VAULT_URL
+#   TOM_WORKER_PLUGIN_VAULT_TOKEN
+#   TOM_WORKER_PLUGIN_VAULT_ROLE_ID
+#   TOM_WORKER_PLUGIN_VAULT_SECRET_ID
+#   TOM_WORKER_PLUGIN_VAULT_VERIFY_SSL
+#   TOM_WORKER_PLUGIN_VAULT_CREDENTIAL_PATH_PREFIX
+#
+# YAML plugin settings:
+#   TOM_WORKER_PLUGIN_YAML_CREDENTIAL_FILE

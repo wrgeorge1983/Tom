@@ -1498,7 +1498,7 @@ wheels = [
 
 [[package]]
 name = "tom-controller"
-version = "0.17.2"
+version = "0.20.0"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
@@ -1576,6 +1576,7 @@ source = { editable = "../../shared" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "pyyaml" },
     { name = "redis" },
 ]
 
@@ -1583,6 +1584,7 @@ dependencies = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "redis", specifier = ">=5.0.0,<6.0.0" },
 ]
 

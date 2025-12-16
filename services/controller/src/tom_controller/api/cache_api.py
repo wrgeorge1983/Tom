@@ -4,13 +4,15 @@ import logging
 from typing import Optional
 from fastapi import Request, Depends, Query
 
-from tom_controller.api.api import router, do_auth, AuthResponse
+from tom_controller.api.api import api_router
+from tom_controller.api import do_auth
+from tom_controller.api.auth import AuthResponse
 from tom_controller.exceptions import TomException
 
 logger = logging.getLogger(__name__)
 
 
-@router.delete("/cache/{device_name}")
+@api_router.delete("/cache/{device_name}")
 async def invalidate_device_cache(
     request: Request,
     device_name: str,
@@ -40,7 +42,7 @@ async def invalidate_device_cache(
     }
 
 
-@router.delete("/cache")
+@api_router.delete("/cache")
 async def clear_all_cache(
     request: Request,
     auth: AuthResponse = Depends(do_auth)
@@ -65,7 +67,7 @@ async def clear_all_cache(
     }
 
 
-@router.get("/cache")
+@api_router.get("/cache")
 async def list_cache_keys(
     request: Request,
     device_name: Optional[str] = Query(None, description="Filter keys by device name"),
@@ -93,7 +95,7 @@ async def list_cache_keys(
     }
 
 
-@router.get("/cache/stats")
+@api_router.get("/cache/stats")
 async def get_cache_stats(
     request: Request,
     auth: AuthResponse = Depends(do_auth)

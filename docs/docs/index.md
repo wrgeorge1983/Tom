@@ -10,10 +10,13 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 
 - [Getting Started Sensibly](real/getting-started.md) - Setup with Vault and Redis TLS
 - [Getting Started Irresponsibly Fast](real/getting-started-FAST.md) - 5-minute minimal setup
+- [Tutorial: Tom with Nautobot](real/tutorial.md) - Connect Tom to your existing Nautobot instance
 
 ## Core Concepts
 
 - [Architecture](real/architecture.md) - How Tom's components work together
+- [Configuration](real/configuration.md) - Config files, environment variables, and validation
+- [Adapters and Drivers](real/drivers.md) - Supported network platforms (Netmiko, Scrapli)
 - [Parsing](real/parsing.md) - TextFSM and TTP parsing
 
 ## Inventory
@@ -22,6 +25,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 - [YAML Inventory](real/inventory-yaml.md) - File-based inventory
 - [NetBox](real/inventory-netbox.md) - NetBox integration
 - [Nautobot](real/inventory-nautobot.md) - Nautobot integration
+    - [Nautobot Device Setup](real/nautobot-device-setup.md) - Configure devices in Nautobot for Tom
 - [SolarWinds](real/inventory-solarwinds.md) - SolarWinds NPM integration
 
 ## Authentication
@@ -32,7 +36,8 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 
 ## Credentials
 
-- [YAML Credentials](real/yaml-credentials.md) - File-based credential store (not recommended)
+- [Vault Credentials](real/vault-credentials.md) - HashiCorp Vault integration (default, recommended)
+- [YAML Credentials](real/yaml-credentials.md) - File-based credential store (development only)
 
 ## Getting Help
 

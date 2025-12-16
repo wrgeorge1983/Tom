@@ -3,13 +3,11 @@ import saq.types
 
 from tom_worker.adapters import NetmikoAdapter, ScrapliAsyncAdapter
 from tom_worker.config import Settings
-from tom_worker.exceptions import GatingException, AuthenticationException, PermanentException
-from tom_worker.retry_handler import RetryHandler
-from tom_worker.semaphore import DeviceSemaphore
+from tom_worker.semaphore import device_lease
 from tom_shared.models import (
-    NetmikoSendCommandModel, 
+    NetmikoSendCommandModel,
     ScrapliSendCommandModel,
-    CommandExecutionResult
+    CommandExecutionResult,
 )
 from tom_shared.cache import CacheManager
 
@@ -38,13 +36,12 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
 
     use_cache = model.use_cache
     cache_refresh = model.cache_refresh
-    cache_ttl = model.cache_ttl if model.cache_ttl is not None else settings.cache_default_ttl
+    cache_ttl = (
+        model.cache_ttl if model.cache_ttl is not None else settings.cache_default_ttl
+    )
 
     results = {}
-    cache_metadata = {
-        "cache_status": "miss",
-        "commands": {}
-    }
+    cache_metadata = {"cache_status": "miss", "commands": {}}
 
     needed_commands = []
 
@@ -59,19 +56,15 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
                         "cache_status": "hit",
                         "cached_at": cache_result["cached_at"],
                         "age_seconds": cache_result["age_seconds"],
-                        "ttl": cache_ttl
+                        "ttl": cache_ttl,
                     }
                 else:
                     needed_commands.append(command)
-                    cache_metadata["commands"][command] = {
-                        "cache_status": "miss"
-                    }
+                    cache_metadata["commands"][command] = {"cache_status": "miss"}
             except Exception as e:
                 logger.warning(f"Failed to get cache entry {cache_key}: {e}")
                 needed_commands.append(command)
-                cache_metadata["commands"][command] = {
-                    "cache_status": "error"
-                }
+                cache_metadata["commands"][command] = {"cache_status": "error"}
     else:
         needed_commands = model.commands
 
@@ -83,50 +76,37 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
         cache_metadata["cache_status"] = "partial"
 
     if needed_commands:
-        semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
-        lease_acquired = await semaphore.acquire_lease(job_id)
-        
-        # Handle device busy with time-based retry budget
-        RetryHandler.handle_device_busy(ctx, device_id, lease_acquired, model.max_queue_wait)
-
-        try:
-            # Restore original retry settings now that we have the lease
-            # This ensures other errors (network, auth) get normal retry behavior
-            RetryHandler.restore_original_settings(ctx)
-            
+        async with device_lease(
+            ctx, redis_client, device_id, job_id, model.max_queue_wait
+        ):
             logger.info(
                 f"Job {job_id}: Executing {len(needed_commands)} command(s) on {device_id} "
                 f"[netmiko/{model.device_type}]"
             )
-            
-            async with await NetmikoAdapter.from_model(model, credential_store) as adapter:
+
+            async with await NetmikoAdapter.from_model(
+                model, credential_store
+            ) as adapter:
                 result = await adapter.send_commands(needed_commands)
                 if use_cache:
                     for command, value in result.items():
-                        cache_key = cache_manager.generate_cache_key(model.host, command)
+                        cache_key = cache_manager.generate_cache_key(
+                            model.host, command
+                        )
                         await cache_manager.set(cache_key, value, ttl=cache_ttl)
 
                 results.update(result)
-                
+
             logger.debug(
                 f"Job {job_id}: Successfully executed {len(needed_commands)} command(s) on {device_id}"
             )
-        except (AuthenticationException, PermanentException) as e:
-            # Mark job as non-retryable by setting retries = attempts
-            # This prevents SAQ from retrying authentication failures
-            job = ctx["job"]
-            job.retries = job.attempts
-            logger.error(f"Non-retryable error for {device_id}: {e}")
-            raise
-        finally:
-            await semaphore.release_lease(job_id)
 
     # Create structured result with metadata
     execution_result = CommandExecutionResult(
         data={command: results[command] for command in model.commands},
-        meta={"cache": cache_metadata}
+        meta={"cache": cache_metadata},
     )
-    
+
     # Return as dict for SAQ serialization
     return execution_result.model_dump()
 
@@ -145,13 +125,12 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
 
     use_cache = model.use_cache
     cache_refresh = model.cache_refresh
-    cache_ttl = model.cache_ttl if model.cache_ttl is not None else settings.cache_default_ttl
+    cache_ttl = (
+        model.cache_ttl if model.cache_ttl is not None else settings.cache_default_ttl
+    )
 
     results = {}
-    cache_metadata = {
-        "cache_status": "miss",
-        "commands": {}
-    }
+    cache_metadata = {"cache_status": "miss", "commands": {}}
 
     needed_commands = []
 
@@ -166,19 +145,15 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
                         "cache_status": "hit",
                         "cached_at": cache_result["cached_at"],
                         "age_seconds": cache_result["age_seconds"],
-                        "ttl": cache_ttl
+                        "ttl": cache_ttl,
                     }
                 else:
                     needed_commands.append(command)
-                    cache_metadata["commands"][command] = {
-                        "cache_status": "miss"
-                    }
+                    cache_metadata["commands"][command] = {"cache_status": "miss"}
             except Exception as e:
                 logger.warning(f"Failed to get cache entry {cache_key}: {e}")
                 needed_commands.append(command)
-                cache_metadata["commands"][command] = {
-                    "cache_status": "error"
-                }
+                cache_metadata["commands"][command] = {"cache_status": "error"}
     else:
         needed_commands = model.commands
 
@@ -190,51 +165,36 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
         cache_metadata["cache_status"] = "partial"
 
     if needed_commands:
-        semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
-        lease_acquired = await semaphore.acquire_lease(job_id)
-        
-        # Handle device busy with time-based retry budget
-        RetryHandler.handle_device_busy(ctx, device_id, lease_acquired, model.max_queue_wait)
-
-        try:
-            # Restore original retry settings now that we have the lease
-            # This ensures other errors (network, auth) get normal retry behavior
-            RetryHandler.restore_original_settings(ctx)
-            
+        async with device_lease(
+            ctx, redis_client, device_id, job_id, model.max_queue_wait
+        ):
             logger.info(
                 f"Job {job_id}: Executing {len(needed_commands)} command(s) on {device_id} "
                 f"[scrapli/{model.device_type}]"
             )
-            
+
             async with await ScrapliAsyncAdapter.from_model(
-                    model, credential_store
+                model, credential_store
             ) as adapter:
                 result = await adapter.send_commands(needed_commands)
                 if use_cache:
                     for command, value in result.items():
-                        cache_key = cache_manager.generate_cache_key(model.host, command)
+                        cache_key = cache_manager.generate_cache_key(
+                            model.host, command
+                        )
                         await cache_manager.set(cache_key, value, ttl=cache_ttl)
 
                 results.update(result)
-                
+
             logger.debug(
                 f"Job {job_id}: Successfully executed {len(needed_commands)} command(s) on {device_id}"
             )
-        except (AuthenticationException, PermanentException) as e:
-            # Mark job as non-retryable by setting retries = attempts
-            # This prevents SAQ from retrying authentication failures
-            job = ctx["job"]
-            job.retries = job.attempts
-            logger.error(f"Non-retryable error for {device_id}: {e}")
-            raise
-        finally:
-            await semaphore.release_lease(job_id)
 
     # Create structured result with metadata
     execution_result = CommandExecutionResult(
         data={command: results[command] for command in model.commands},
-        meta={"cache": cache_metadata}
+        meta={"cache": cache_metadata},
     )
-    
+
     # Return as dict for SAQ serialization
     return execution_result.model_dump()

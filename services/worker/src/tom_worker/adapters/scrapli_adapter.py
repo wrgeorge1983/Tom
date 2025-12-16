@@ -13,8 +13,9 @@ from scrapli.driver.core import (
 from scrapli.exceptions import ScrapliAuthenticationFailed
 
 from tom_shared.models import ScrapliSendCommandModel
-from tom_worker.credentials.credentials import SSHCredentials, CredentialStore
+from tom_worker.credentials.credentials import SSHCredentials
 from tom_worker.exceptions import TomException, AuthenticationException
+from tom_worker.Plugins.base import CredentialPlugin
 
 
 valid_async_drivers = {
@@ -81,7 +82,7 @@ class ScrapliAsyncAdapter:
 
     @classmethod
     async def from_model(
-        cls, model: ScrapliSendCommandModel, credential_store: CredentialStore
+        cls, model: ScrapliSendCommandModel, credential_store: CredentialPlugin
     ) -> "ScrapliAsyncAdapter":
         if model.credential.type == "stored":
             credential = await credential_store.get_ssh_credentials(

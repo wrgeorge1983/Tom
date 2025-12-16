@@ -35,9 +35,9 @@ services:
       TOM_WORKER_REDIS_USE_TLS: "true"
       TOM_WORKER_REDIS_TLS_CHECK_HOSTNAME: "true"
       TOM_WORKER_REDIS_TLS_CERT_REQS: none
-      TOM_WORKER_CREDENTIAL_STORE: vault
-      TOM_WORKER_VAULT_URL: http://vault:8200
-      TOM_WORKER_VAULT_TOKEN: myroot
+      TOM_WORKER_CREDENTIAL_PLUGIN: vault
+      TOM_WORKER_PLUGIN_VAULT_URL: http://vault:8200
+      TOM_WORKER_PLUGIN_VAULT_TOKEN: myroot
     volumes:
       - ./inventory:/app/inventory
 

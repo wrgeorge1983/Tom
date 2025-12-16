@@ -1,0 +1,61 @@
+# Tom Smykowski Tutorial Setup
+#
+# This docker-compose brings up Tom configured to use an external Nautobot
+# as the source of truth.
+#
+# Services:
+#   - controller: Tom API server
+#   - worker: Tom workers (3 replicas)
+#   - redis: Shared Redis for Tom queue/cache
+#   - vault: HashiCorp Vault for credentials (dev mode)
+
+services:
+  # =============================================================================
+  # Tom Services
+  # =============================================================================
+  controller:
+    image: ghcr.io/wrgeorge1983/tom-controller:latest
+    environment:
+      TOM_PROJECT_ROOT: /app
+      TOM_CONFIG_FILE: /app/tom_controller_config.yaml
+      TOM_REDIS_HOST: redis
+      TOM_REDIS_PORT: 6379
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./tom_controller_config.yaml:/app/tom_controller_config.yaml
+      - ./templates:/app/templates
+    depends_on:
+      - redis
+
+  worker:
+    image: ghcr.io/wrgeorge1983/tom-worker:latest
+    depends_on:
+      - redis
+      - vault
+    deploy:
+      replicas: 3
+    environment:
+      TOM_WORKER_PROJECT_ROOT: /app
+      TOM_WORKER_REDIS_HOST: redis
+      TOM_WORKER_REDIS_PORT: 6379
+      TOM_WORKER_CREDENTIAL_PLUGIN: vault
+      TOM_WORKER_PLUGIN_VAULT_URL: http://vault:8200
+      TOM_WORKER_PLUGIN_VAULT_TOKEN: myroot
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  vault:
+    image: hashicorp/vault:1.15
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: myroot
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_ADDR: http://vault:8200
+    cap_add:
+      - IPC_LOCK
+    command: ["vault", "server", "-dev"]
