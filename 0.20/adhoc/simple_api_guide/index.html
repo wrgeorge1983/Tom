@@ -1,0 +1,727 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://wrgeorge1983.github.io/Tom/0.20/adhoc/simple_api_guide/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Simple API Guide - Tom Smykowski Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CFira+Code:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#simple-api-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tom Smykowski Documentation" class="md-header__button md-logo" aria-label="Tom Smykowski Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tom Smykowski Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Simple API Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/wrgeorge1983/tom" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wrgeorge1983/tom
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../real/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  What is Tom?
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Adhoc Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tom Smykowski Documentation" class="md-nav__button md-logo" aria-label="Tom Smykowski Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tom Smykowski Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/wrgeorge1983/tom" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wrgeorge1983/tom
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../real/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What is Tom?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adhoc Docs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/wrgeorge1983/tom/edit/master/docs/adhoc/simple_api_guide.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/wrgeorge1983/tom/raw/master/docs/adhoc/simple_api_guide.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="simple-api-guide">Simple API Guide</h1>
+<p>This document explains the main Tom controller HTTP API flows: starting sync/async jobs against inventory devices, controlling caching, and selecting parsing templates. It covers the primary, common paths (not every edge case).</p>
+<h2 id="overview">Overview</h2>
+<ul>
+<li>Tom exposes HTTP endpoints to run commands against inventory devices (synchronously or asynchronously), control caching, and choose parsing templates.</li>
+<li>Authentication: API key header or JWT (configurable).</li>
+</ul>
+<h2 id="authentication">Authentication</h2>
+<ul>
+<li>Modes: <code>none</code>, <code>api_key</code>, <code>jwt</code>, <code>hybrid</code> (configurable in settings).</li>
+<li>API key: send a header (default <code>X-API-Key</code>) with a configured API key (settings <code>api_keys</code> use <code>"key:user"</code> entries).</li>
+<li>Example: <code>curl -H "X-API-Key: mykey" http://tom:8020/api/...</code></li>
+<li>JWT: send a bearer token in <code>Authorization: Bearer &lt;token&gt;</code>; Tom validates tokens against configured OIDC providers.</li>
+</ul>
+<h2 id="job-model">Job model</h2>
+<ul>
+<li>Jobs use the <code>JobResponse</code> structure with fields: <code>job_id</code>, <code>status</code> (<code>NEW|QUEUED|ACTIVE|COMPLETE|FAILED|ABORTED</code>), <code>result</code>, <code>metadata</code>, <code>attempts</code>, <code>error</code>.</li>
+<li>Command outputs are typically in <code>result["data"]</code> and cache info in <code>result["meta"]["cache"]</code>.</li>
+</ul>
+<h2 id="start-a-job-device-via-inventory">Start a job (device via inventory)</h2>
+<h3 id="single-command-sync-or-async">Single command (sync or async)</h3>
+<ul>
+<li>Endpoint: <code>GET /api/device/{device_name}/send_command</code></li>
+<li>Important query params:</li>
+<li><code>command</code> (required)</li>
+<li><code>wait</code> (bool) — <code>true</code> = synchronous (wait for job completion), <code>false</code> = async (returns job info)</li>
+<li><code>use_cache</code> (bool) — allow use of cached results (works with <code>wait=true</code>)</li>
+<li><code>cache_ttl</code> (int seconds) — TTL for cache (works with <code>wait=true</code>)</li>
+<li><code>cache_refresh</code> (bool) — force refresh of cache (works with <code>wait=true</code>)</li>
+<li><code>parse</code> (bool) — parse output (only meaningful with <code>wait=true</code>; for async parsing, use <code>GET /api/job/{job_id}?parse=true</code>)</li>
+<li><code>parser</code> (<code>textfsm</code> or <code>ttp</code>) — parser to use</li>
+<li><code>template</code> (string) — template filename to use for parsing</li>
+<li><code>include_raw</code> (bool) — include raw output along with parsed data</li>
+<li><code>username</code>/<code>password</code> — optional inline credential override (otherwise uses stored <code>credential_id</code> from inventory)</li>
+<li>Behavior:</li>
+<li>If <code>wait=true</code>, API returns parsed or raw output depending on parameters.</li>
+<li>If <code>wait=false</code>, API returns a job object with <code>job_id</code> to poll.</li>
+</ul>
+<h3 id="multiple-commands">Multiple commands</h3>
+<ul>
+<li>Endpoint: <code>POST /api/device/{device_name}/send_commands</code></li>
+<li>Body: JSON object with command configuration</li>
+<li>Two modes:</li>
+<li><strong>Simple mode</strong>: Array of command strings with global settings</li>
+<li><strong>Advanced mode</strong>: Per-command configuration with individual parse settings</li>
+</ul>
+<h4 id="simple-mode">Simple mode</h4>
+<p>Body with array of commands and global defaults:</p>
+<pre><code class="language-json">{
+  &quot;commands&quot;: [&quot;show ip int brief&quot;, &quot;show version&quot;],
+  &quot;wait&quot;: true,
+  &quot;parse&quot;: true,
+  &quot;parser&quot;: &quot;textfsm&quot;
+}
+</code></pre>
+<h4 id="advanced-mode-per-command-control">Advanced mode (per-command control)</h4>
+<p>Body with individual command specifications:</p>
+<pre><code class="language-json">{
+  &quot;commands&quot;: [
+    {
+      &quot;command&quot;: &quot;show version&quot;,
+      &quot;parse&quot;: true,
+      &quot;template&quot;: &quot;custom_version.textfsm&quot;
+    },
+    {
+      &quot;command&quot;: &quot;show ip int brief&quot;,
+      &quot;parse&quot;: true
+    },
+    {
+      &quot;command&quot;: &quot;show running-config&quot;,
+      &quot;parse&quot;: false
+    }
+  ],
+  &quot;wait&quot;: true
+}
+</code></pre>
+<h4 id="request-body-fields">Request body fields</h4>
+<ul>
+<li><code>commands</code>: Array of strings or CommandSpec objects</li>
+<li><code>wait</code> (bool): Wait for job completion</li>
+<li><code>timeout</code> (int): Timeout in seconds when wait=true</li>
+<li><code>parse</code> (bool): Default parse setting for commands</li>
+<li><code>parser</code> ("textfsm" or "ttp"): Default parser</li>
+<li><code>include_raw</code> (bool): Default include raw with parsed</li>
+<li><code>use_cache</code> (bool): Use cache for results</li>
+<li><code>cache_refresh</code> (bool): Force cache refresh</li>
+<li><code>cache_ttl</code> (int): Cache TTL in seconds</li>
+<li><code>username</code>/<code>password</code>: Optional credential override</li>
+</ul>
+<h4 id="commandspec-fields-for-advanced-mode">CommandSpec fields (for advanced mode)</h4>
+<ul>
+<li><code>command</code> (string): The command to execute</li>
+<li><code>parse</code> (bool): Whether to parse this command</li>
+<li><code>parser</code> ("textfsm" or "ttp"): Parser for this command</li>
+<li><code>template</code> (string): Template file for this command</li>
+<li><code>include_raw</code> (bool): Include raw with parsed for this command</li>
+</ul>
+<h3 id="rawdirect-host-endpoints">Raw/Direct host endpoints</h3>
+<ul>
+<li><code>GET /api/raw/send_netmiko_command</code></li>
+<li><code>GET /api/raw/send_scrapli_command</code></li>
+<li>Params: <code>host</code>, <code>device_type</code>, <code>command</code>, <code>port</code>, and either <code>credential_id</code> OR <code>username</code>+<code>password</code>. <code>wait</code> supported.</li>
+</ul>
+<h2 id="async-job-control-status">Async job control / status</h2>
+<ul>
+<li>Check job status / results: <code>GET /api/job/{job_id}</code></li>
+<li>Optional parse query params (<code>parse</code>, <code>parser</code>, <code>template</code>, <code>include_raw</code>) let you request parsing for a completed async job.</li>
+<li><code>JobResponse</code> provides helpers: <code>command_data</code> (command -&gt; output) and <code>cache_metadata</code>.</li>
+</ul>
+<h2 id="inventory">Inventory</h2>
+<ul>
+<li>Get device config: <code>GET /api/inventory/{device_name}</code> -&gt; returns <code>DeviceConfig</code> (host, adapter, adapter_driver, credential_id, port, etc.)</li>
+<li>Export inventory: <code>GET /api/inventory/export</code> (DeviceConfig map) and <code>GET /api/inventory/export/raw</code> (raw nodes)</li>
+<li>Supports filtering (see "Inventory filtering" below)</li>
+<li>List available fields: <code>GET /api/inventory/fields</code> - returns filterable fields for current inventory source</li>
+<li>List named filters: <code>GET /api/inventory/filters</code> - returns available predefined filter names</li>
+</ul>
+<h3 id="inventory-filtering">Inventory filtering</h3>
+<p>Tom supports two filtering modes for inventory export endpoints:</p>
+<h4 id="1-named-filters-predefined">1. Named Filters (Predefined)</h4>
+<p>Use the <code>filter_name</code> query parameter with predefined filter names:
+- <code>switches</code> — Common switch types (Dell, Arista, Cisco)
+- <code>routers</code> — Common router types (Cisco ASR, Juniper MX)
+- <code>arista_exclusion</code> — Arista devices excluding specific models
+- <code>iosxe</code> — Cisco IOS‑XE devices (excludes Nexus, ASA, ISE, ONS)
+- <code>ospf_crawler_filter</code> — Devices used by ospf_crawler (Cisco ASR, 29xx, Juniper MX104)</p>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash">curl -H &quot;X-API-Key: MYKEY&quot; &quot;http://tom:8020/api/inventory/export?filter_name=switches&quot;
+curl -H &quot;X-API-Key: MYKEY&quot; &quot;http://tom:8020/api/inventory/export/raw?filter_name=routers&quot;
+</code></pre>
+<h4 id="2-inline-filters-flexible">2. Inline Filters (Flexible)</h4>
+<p>Use query parameters matching field names with regex patterns. Available fields vary by inventory source:</p>
+<p><strong>SolarWinds fields:</strong> <code>NodeID</code>, <code>IPAddress</code>, <code>Uri</code>, <code>Caption</code>, <code>Description</code>, <code>Status</code>, <code>Vendor</code>, <code>DetailsUrl</code>
+<strong>YAML fields:</strong> <code>Caption</code>, <code>host</code>, <code>adapter</code>, <code>adapter_driver</code>, <code>credential_id</code>, <code>port</code></p>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash"># Filter by vendor and description
+curl &quot;http://tom:8020/api/inventory/export?Vendor=cisco&amp;Description=asr.*&quot;
+
+# Filter by hostname pattern
+curl &quot;http://tom:8020/api/inventory/export?Caption=^router.*&quot;
+
+# Multiple field filters (all must match)
+curl &quot;http://tom:8020/api/inventory/export?Vendor=arista&amp;Description=DCS-7.*&amp;Caption=.*-sw01&quot;
+</code></pre>
+<p><strong>Notes:</strong>
+- If <code>filter_name</code> is provided, it takes precedence over inline filters
+- All filter patterns are case-insensitive regex patterns
+- Multiple field filters use logical AND (all must match)
+- Use <code>GET /api/inventory/fields</code> to discover available fields for your inventory source
+- Invalid regex patterns will return an error</p>
+<h2 id="templates-parsing">Templates &amp; parsing</h2>
+<ul>
+<li>List TextFSM templates: <code>GET /api/templates/textfsm</code></li>
+<li>Test parsing without executing commands: <code>POST /api/parse/test</code></li>
+<li>Submit raw text and query params <code>parser</code>, <code>template</code>, <code>device_type</code>, <code>command</code>, <code>include_raw</code>.</li>
+</ul>
+<h2 id="caching">Caching</h2>
+<ul>
+<li>Controlled per-request (device endpoints) with query params:</li>
+<li><code>use_cache=true</code> — allow returning cached result (effective with <code>wait=true</code>)</li>
+<li><code>cache_ttl=&lt;seconds&gt;</code> — TTL for the cache entry</li>
+<li><code>cache_refresh=true</code> — force bypass/update cache</li>
+<li>When returning full job responses, cache metadata (if present) is attached under <code>_cache</code>.</li>
+</ul>
+<h2 id="parsing-selection">Parsing selection</h2>
+<ul>
+<li>Parsers supported: <code>textfsm</code> (default) and <code>ttp</code>.</li>
+<li>Use <code>template=&lt;template_filename&gt;</code> to pick a template (e.g., <code>cisco_ios_show_ip_int_brief.textfsm</code>).</li>
+<li><code>include_raw=true</code> returns raw text alongside parsed output.</li>
+<li>For multiple commands: Can specify different parsers/templates per command (see "Multiple commands" section above).</li>
+</ul>
+<h2 id="convenience-debug-endpoints">Convenience / debug endpoints</h2>
+<ul>
+<li><code>GET /api/auth/debug</code> — shows resolved auth method and token claims (requires auth)</li>
+<li>OAuth test/development endpoints (may be disabled or restricted to localhost):</li>
+<li><code>POST /api/oauth/token</code> — exchange test auth code for tokens</li>
+<li><code>GET /api/oauth/config</code> — config for test frontend</li>
+<li><code>GET /api/userinfo?access_token=...</code> — fetch userinfo from provider</li>
+</ul>
+<h2 id="examples">Examples</h2>
+<ul>
+<li>Async job (API key header):</li>
+<li><code>curl -H "X-API-Key: MYKEY" "http://tom:8020/api/device/router1/send_command?command=show%20ip%20int%20brief"</code></li>
+<li>
+<p>Response contains <code>job_id</code>; poll <code>GET /api/job/{job_id}</code>.</p>
+</li>
+<li>
+<p>Sync job, parse with TextFSM and template:</p>
+</li>
+<li>
+<p><code>curl -H "X-API-Key: MYKEY" "http://tom:8020/api/device/router1/send_command?command=show%20ip%20int%20brief&amp;wait=true&amp;parse=true&amp;parser=textfsm&amp;template=cisco_ios_show_ip_int_brief.textfsm"</code></p>
+</li>
+<li>
+<p>Force cache refresh and set TTL:</p>
+</li>
+<li>
+<p><code>.../send_command?command=...&amp;wait=true&amp;use_cache=true&amp;cache_refresh=true&amp;cache_ttl=300</code></p>
+</li>
+<li>
+<p>Multiple commands (simple mode):
+  <code>bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": ["show ip int brief", "show version"],
+      "wait": true,
+      "parse": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"</code></p>
+</li>
+<li>
+<p>Multiple commands (per-command parsing):
+  <code>bash
+  curl -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+    -d '{
+      "commands": [
+        {"command": "show version", "parse": true, "template": "custom_version.textfsm"},
+        {"command": "show ip int brief", "parse": true},
+        {"command": "show running-config", "parse": false}
+      ],
+      "wait": true
+    }' \
+    "http://tom:8020/api/device/router1/send_commands"</code></p>
+</li>
+</ul>
+<h2 id="notes-assumptions">Notes / assumptions</h2>
+<ul>
+<li>Inventory devices usually provide stored <code>credential_id</code> entries that Tom uses automatically; per-request overrides are available with <code>username</code>+<code>password</code>.</li>
+<li>Some debug and OAuth test endpoints are intended for local/dev use and may be restricted or disabled by configuration.</li>
+<li>This guide shows the common flows; for adapter-specific behavior, advanced options, or edge cases, see the controller code and config (<code>services/controller/src/tom_controller/api/api.py</code> and <code>services/controller/src/tom_controller/config.py</code>).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/wrgeorge1983/tom" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://networktocode.slack.com/archives/C0A0PER1Y6L" target="_blank" rel="noopener" title="networktocode.slack.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M94.1 315.1c0 25.9-21.2 47.1-47.1 47.1S0 341 0 315.1 21.2 268 47.1 268h47.1v47.1zm23.7 0c0-25.9 21.2-47.1 47.1-47.1s47.1 21.2 47.1 47.1v117.8c0 25.9-21.2 47.1-47.1 47.1s-47.1-21.2-47.1-47.1zm47.1-189c-25.9 0-47.1-21.2-47.1-47.1s21.2-47 47.1-47S212 53.2 212 79.1v47.1h-47.1zm0 23.7c25.9 0 47.1 21.2 47.1 47.1S190.8 244 164.9 244H47.1C21.2 244 0 222.8 0 196.9s21.2-47.1 47.1-47.1zm189 47.1c0-25.9 21.2-47.1 47.1-47.1s47 21.2 47 47.1-21.2 47.1-47.1 47.1h-47.1v-47.1zm-23.7 0c0 25.9-21.2 47.1-47.1 47.1S236 222.8 236 196.9V79.1c0-25.9 21.2-47.1 47.1-47.1s47.1 21.2 47.1 47.1zm-47.1 189c25.9 0 47.1 21.2 47.1 47.1s-21.2 47-47.1 47-47.1-21.2-47.1-47.1v-47.1h47.1zm0-23.7c-25.9 0-47.1-21.2-47.1-47.1s21.2-47.1 47.1-47.1h117.8c25.9 0 47.1 21.2 47.1 47.1s-21.2 47.1-47.1 47.1z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.expand", "navigation.path", "navigation.indexes", "navigation.top", "toc.follow", "toc.integrate", "search.suggest", "search.highlight", "search.share", "content.tabs.link", "content.code.annotation", "content.code.copy", "content.code.select", "content.tooltips", "content.action.edit", "content.action.view"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
