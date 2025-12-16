@@ -24,18 +24,19 @@ inventory_type: netbox
 plugin_netbox_url: "https://netbox.example.com"
 plugin_netbox_token: "your-api-token"
 
-# Credential mapping (choose one)
+# Credential mapping
 plugin_netbox_credential_source: custom_field  # or: config_context
-plugin_netbox_credential_field: credential_id  # custom field name
-plugin_netbox_credential_default: default      # fallback credential ID
+plugin_netbox_credential_field: credential_id  # field name or config context path
+plugin_netbox_default_credential: default      # fallback credential ID
 
-# Adapter/driver - either use defaults for all devices, or specify custom fields
+# Adapter/driver mapping (optional - defaults work for most setups)
+plugin_netbox_adapter_source: custom_field     # or: config_context
+plugin_netbox_adapter_field: ""                # empty = use default
 plugin_netbox_default_adapter: netmiko
-plugin_netbox_default_driver: cisco_ios
 
-# Optional: custom fields on devices to override defaults
-# plugin_netbox_adapter_custom_field: tom_adapter  # e.g., "netmiko" or "scrapli"
-# plugin_netbox_driver_custom_field: tom_driver    # e.g., "cisco_ios"
+plugin_netbox_driver_source: custom_field      # or: config_context
+plugin_netbox_driver_field: ""                 # empty = use default
+plugin_netbox_default_driver: cisco_ios
 
 # Optional: Filter which devices to include
 plugin_netbox_status_filter: ["active"]
@@ -53,37 +54,63 @@ TOM_PLUGIN_NETBOX_CREDENTIAL_SOURCE=custom_field
 TOM_PLUGIN_NETBOX_CREDENTIAL_FIELD=credential_id
 ```
 
-## Credential Mapping
+## Field Mapping
 
-Tom needs to know which credential to use for each device. NetBox doesn't store credentials, so you map devices to credential IDs that exist in your credential store (Vault or YAML).
+Tom needs to know the credential, adapter, and driver for each device. Each field can be sourced independently from either a **custom field** or **config context**.
 
-### Option 1: Custom Field (Recommended)
+### Settings Per Field
 
-Create a custom field in NetBox:
+| Field | Source Setting | Field/Path Setting | Default Setting |
+|-------|----------------|-------------------|-----------------|
+| Credential | `credential_source` | `credential_field` | `default_credential` |
+| Adapter | `adapter_source` | `adapter_field` | `default_adapter` |
+| Driver | `driver_source` | `driver_field` | `default_driver` |
+
+- **Source**: `custom_field` or `config_context`
+- **Field**: Custom field name (e.g., `credential_id`) or config context path (e.g., `tom.credential_id`)
+- **Default**: Fallback value when field is empty or not found
+
+### Option 1: Custom Fields
+
+Create custom fields in NetBox:
 
 1. Go to **Customization > Custom Fields**
-2. Create a new custom field:
-   - Name: `credential_id`
-   - Type: Text
-   - Content Types: dcim > device
-3. Set the credential ID on each device
+2. Create custom fields:
+   - `credential_id` (Text) - required
+   - `tom_adapter` (Text) - optional
+   - `tom_driver` (Text) - optional
+3. Content Types: dcim > device
+4. Set values on each device
 
-Configure Tom to use it:
+Configure Tom:
 
 ```yaml
 plugin_netbox_credential_source: custom_field
 plugin_netbox_credential_field: credential_id
-plugin_netbox_credential_default: default
+plugin_netbox_default_credential: default
+
+plugin_netbox_adapter_source: custom_field
+plugin_netbox_adapter_field: tom_adapter    # or empty to use default
+plugin_netbox_default_adapter: netmiko
+
+plugin_netbox_driver_source: custom_field
+plugin_netbox_driver_field: tom_driver      # or empty to use default
+plugin_netbox_default_driver: cisco_ios
 ```
 
 ### Option 2: Config Context
 
-Use NetBox config context for more complex scenarios:
+Use NetBox config context for all Tom settings (no custom fields required):
 
 ```yaml
 plugin_netbox_credential_source: config_context
-plugin_netbox_credential_context_path: tom.credential_id
-plugin_netbox_credential_default: default
+plugin_netbox_credential_field: tom.credential_id
+
+plugin_netbox_adapter_source: config_context
+plugin_netbox_adapter_field: tom.adapter
+
+plugin_netbox_driver_source: config_context
+plugin_netbox_driver_field: tom.driver
 ```
 
 In NetBox, add config context to devices:
@@ -91,42 +118,39 @@ In NetBox, add config context to devices:
 ```json
 {
   "tom": {
-    "credential_id": "lab_creds"
+    "credential_id": "lab_creds",
+    "adapter": "netmiko",
+    "driver": "cisco_ios"
   }
 }
 ```
 
-The path supports nested keys (e.g., `tom.credentials.ssh`).
+Config context paths support nesting (e.g., `tom.network.credential_id`).
 
-## Adapter and Driver
+### Option 3: Mixed Sources
 
-NetBox doesn't have built-in fields for network automation drivers. You have two options:
-
-### Option 1: Use Defaults (Simple)
-
-If all your devices use the same adapter and driver, just set defaults:
+You can mix sources - for example, credential from custom field, driver from config context:
 
 ```yaml
+plugin_netbox_credential_source: custom_field
+plugin_netbox_credential_field: credential_id
+
+plugin_netbox_driver_source: config_context
+plugin_netbox_driver_field: tom.driver
+```
+
+### Minimal Setup
+
+If all devices use the same adapter/driver, just configure credentials:
+
+```yaml
+plugin_netbox_credential_source: custom_field
+plugin_netbox_credential_field: credential_id
 plugin_netbox_default_adapter: netmiko
 plugin_netbox_default_driver: cisco_ios
 ```
 
-### Option 2: Use Custom Fields (Per-Device)
-
-For mixed environments, create custom fields in NetBox and configure Tom to read them:
-
-1. In NetBox, create custom fields on the Device model (e.g., `tom_adapter`, `tom_driver`)
-2. Set values on your devices
-3. Configure Tom to use them:
-
-```yaml
-plugin_netbox_adapter_custom_field: tom_adapter
-plugin_netbox_driver_custom_field: tom_driver
-
-# Defaults for devices without custom field values
-plugin_netbox_default_adapter: netmiko
-plugin_netbox_default_driver: cisco_ios
-```
+Leave `adapter_field` and `driver_field` empty (or omit them) to use defaults.
 
 ## Device Filtering
 
@@ -167,8 +191,6 @@ Create a custom field for credential mapping:
 - Type: Text
 - Assign to devices
 
-Configure your platforms with netmiko drivers.
-
 Assign primary IPs to devices.
 
 ### 2. Tom Configuration
@@ -181,7 +203,9 @@ plugin_netbox_url: "https://netbox.example.com"
 plugin_netbox_token: "abc123def456"
 plugin_netbox_credential_source: custom_field
 plugin_netbox_credential_field: credential_id
-plugin_netbox_credential_default: default
+plugin_netbox_default_credential: default
+plugin_netbox_default_adapter: netmiko
+plugin_netbox_default_driver: cisco_ios
 plugin_netbox_status_filter: ["active"]
 ```
 
@@ -209,6 +233,27 @@ curl -X POST "http://localhost:8000/api/device/router1/send_command" \
   -d '{"command": "show version", "wait": true}'
 ```
 
+## Settings Reference
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `url` | (required) | NetBox URL |
+| `token` | (required) | API token |
+| `credential_source` | `custom_field` | `custom_field` or `config_context` |
+| `credential_field` | `credential_id` | Field name or config context path |
+| `default_credential` | `default` | Fallback credential ID |
+| `adapter_source` | `custom_field` | `custom_field` or `config_context` |
+| `adapter_field` | `""` | Field name or config context path (empty = use default) |
+| `default_adapter` | `netmiko` | `netmiko` or `scrapli` |
+| `driver_source` | `custom_field` | `custom_field` or `config_context` |
+| `driver_field` | `""` | Field name or config context path (empty = use default) |
+| `default_driver` | `cisco_ios` | Netmiko/Scrapli driver name |
+| `default_port` | `22` | SSH port |
+| `status_filter` | `[]` | Filter by device status |
+| `role_filter` | `[]` | Filter by device role |
+| `location_filter` | `[]` | Filter by location |
+| `tag_filter` | `[]` | Filter by tags |
+
 ## Troubleshooting
 
 ### "400" Errors from NetBox
@@ -221,31 +266,14 @@ Use empty filters to disable filtering and see all devices:
 plugin_netbox_status_filter: []
 ```
 
+### Device Not Using Expected Driver
 
-## Filtering
+Check the order of precedence:
+1. If `driver_field` is set and device has a value, that's used
+2. Otherwise `default_driver` is used
 
-### Config-Level Filters
-
-These filters are applied when querying NetBox and control which devices Tom knows about:
-
-- `plugin_netbox_status_filter`
-- `plugin_netbox_role_filter`
-- `plugin_netbox_location_filter`
-- `plugin_netbox_tag_filter`
-
-### Inline API Filters
-
-When exporting inventory via the API, you can filter on any field in the returned data:
-
-| Field | Description |
-|-------|-------------|
-| `Caption` | Device name |
-| `host` | IP address or hostname |
-| `adapter` | netmiko or scrapli |
-| `adapter_driver` | Platform driver |
-| `credential_id` | Credential reference |
+To debug, export inventory and check what Tom sees:
 
 ```bash
-curl "http://localhost:8000/api/inventory/export?adapter_driver=cisco_ios" \
-  -H "X-API-Key: your-api-key"
+curl "http://localhost:8000/api/inventory/export" -H "X-API-Key: your-key"
 ```

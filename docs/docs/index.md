@@ -15,6 +15,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 
 - [Architecture](real/architecture.md) - How Tom's components work together
 - [Configuration](real/configuration.md) - Config files, environment variables, and validation
+- [Adapters and Drivers](real/drivers.md) - Supported network platforms (Netmiko, Scrapli)
 - [Parsing](real/parsing.md) - TextFSM and TTP parsing
 
 ## Inventory
@@ -23,6 +24,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 - [YAML Inventory](real/inventory-yaml.md) - File-based inventory
 - [NetBox](real/inventory-netbox.md) - NetBox integration
 - [Nautobot](real/inventory-nautobot.md) - Nautobot integration
+    - [Nautobot Device Setup](real/nautobot-device-setup.md) - Configure devices in Nautobot for Tom
 - [SolarWinds](real/inventory-solarwinds.md) - SolarWinds NPM integration
 
 ## Authentication

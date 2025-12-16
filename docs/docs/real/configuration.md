@@ -149,3 +149,7 @@ credential_plugin: "vault"     # vault (recommended), yaml
 ```
 
 See the example config files for all available options.
+
+## Adapters and Drivers
+
+Tom supports two network automation libraries (adapters): **Netmiko** and **Scrapli**. See the [Adapters and Drivers Reference](drivers.md) for the full list of supported platforms.

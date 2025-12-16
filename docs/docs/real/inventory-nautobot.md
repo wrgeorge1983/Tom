@@ -24,20 +24,25 @@ inventory_type: nautobot
 plugin_nautobot_url: "https://nautobot.example.com"
 plugin_nautobot_token: "your-api-token"
 
-# Credential mapping (choose one)
+# Credential mapping
 plugin_nautobot_credential_source: custom_field  # or: config_context
-plugin_nautobot_credential_field: credential_id  # custom field name
-plugin_nautobot_credential_default: default      # fallback credential ID
+plugin_nautobot_credential_field: credential_id  # field name or config context path
+plugin_nautobot_default_credential: default      # fallback credential ID
+
+# Adapter/driver mapping (optional - defaults work for most setups)
+plugin_nautobot_adapter_source: custom_field     # or: config_context
+plugin_nautobot_adapter_field: ""                # empty = use default
+plugin_nautobot_default_adapter: netmiko
+
+plugin_nautobot_driver_source: custom_field      # or: config_context
+plugin_nautobot_driver_field: ""                 # empty = use default
+plugin_nautobot_default_driver: cisco_ios
 
 # Optional: Filter which devices to include
 plugin_nautobot_status_filter: ["Active"]
 plugin_nautobot_role_filter: []
 plugin_nautobot_location_filter: []
 plugin_nautobot_tag_filter: []
-
-# Defaults when platform data is missing
-plugin_nautobot_default_adapter: netmiko
-plugin_nautobot_default_driver: cisco_ios
 ```
 
 Or via environment variables:
@@ -49,69 +54,103 @@ TOM_PLUGIN_NAUTOBOT_CREDENTIAL_SOURCE=custom_field
 TOM_PLUGIN_NAUTOBOT_CREDENTIAL_FIELD=credential_id
 ```
 
-## Credential Mapping
+## Field Mapping
 
-Tom needs to know which credential to use for each device. Nautobot doesn't store device credentials directly, so you map devices to credential IDs that exist in your credential store (Vault or YAML).
+Tom needs to know the credential, adapter, and driver for each device. Each field can be sourced independently from either a **custom field** or **config context**.
 
-### Option 1: Custom Field (Recommended)
+### Settings Per Field
 
-Create a custom field in Nautobot:
+| Field | Source Setting | Field/Path Setting | Default Setting |
+|-------|----------------|-------------------|-----------------|
+| Credential | `credential_source` | `credential_field` | `default_credential` |
+| Adapter | `adapter_source` | `adapter_field` | `default_adapter` |
+| Driver | `driver_source` | `driver_field` | `default_driver` |
+
+- **Source**: `custom_field` or `config_context`
+- **Field**: Custom field name (e.g., `credential_id`) or config context path (e.g., `tom.credential_id`)
+- **Default**: Fallback value when field is empty or not found
+
+### Option 1: Custom Fields
+
+Create custom fields in Nautobot:
 
 1. Go to **Extensibility > Custom Fields**
-2. Create a new custom field:
-   - Name: `credential_id`
-   - Type: Text
-   - Content Types: dcim | device
-3. Set the credential ID on each device
+2. Create custom fields:
+   - `credential_id` (Text) - required
+   - `tom_adapter` (Text) - optional
+   - `tom_driver` (Text) - optional
+3. Content Types: dcim | device
+4. Set values on each device
 
-Configure Tom to use it:
+Configure Tom:
 
 ```yaml
 plugin_nautobot_credential_source: custom_field
 plugin_nautobot_credential_field: credential_id
-plugin_nautobot_credential_default: default
+plugin_nautobot_default_credential: default
+
+plugin_nautobot_adapter_source: custom_field
+plugin_nautobot_adapter_field: tom_adapter    # or empty to use default
+plugin_nautobot_default_adapter: netmiko
+
+plugin_nautobot_driver_source: custom_field
+plugin_nautobot_driver_field: tom_driver      # or empty to use default
+plugin_nautobot_default_driver: cisco_ios
 ```
 
 ### Option 2: Config Context
 
-Use Nautobot config context for more complex scenarios:
+Use Nautobot config context for all Tom settings (no custom fields required):
 
 ```yaml
 plugin_nautobot_credential_source: config_context
-plugin_nautobot_credential_context_path: tom.credential_id
-plugin_nautobot_credential_default: default
+plugin_nautobot_credential_field: tom.credential_id
+
+plugin_nautobot_adapter_source: config_context
+plugin_nautobot_adapter_field: tom.adapter
+
+plugin_nautobot_driver_source: config_context
+plugin_nautobot_driver_field: tom.driver
 ```
 
-In Nautobot, add config context to devices (directly or via config context schema):
+In Nautobot, add config context to devices:
 
 ```json
 {
   "tom": {
-    "credential_id": "lab_creds"
+    "credential_id": "lab_creds",
+    "adapter": "netmiko",
+    "driver": "cisco_ios"
   }
 }
 ```
 
-The path supports nested keys (e.g., `tom.credentials.ssh`).
+Config context paths support nesting (e.g., `tom.network.credential_id`).
 
-## Adapter and Driver
+### Option 3: Mixed Sources
 
-Tom uses Nautobot's built-in `netmiko_device_type` field on the Platform model. If this field is not set, Tom falls back to the configured defaults.
-
-### Nautobot Platform Setup
-
-1. Go to **Devices > Platforms**
-2. Edit each platform
-3. Set the **Network Driver** field (e.g., `cisco_ios`, `arista_eos`)
-
-### Defaults
-
-If a platform doesn't have `netmiko_device_type` set, Tom uses:
+You can mix sources - for example, credential from custom field, driver from config context:
 
 ```yaml
+plugin_nautobot_credential_source: custom_field
+plugin_nautobot_credential_field: credential_id
+
+plugin_nautobot_driver_source: config_context
+plugin_nautobot_driver_field: tom.driver
+```
+
+### Minimal Setup
+
+If all devices use the same adapter/driver, just configure credentials:
+
+```yaml
+plugin_nautobot_credential_source: custom_field
+plugin_nautobot_credential_field: credential_id
 plugin_nautobot_default_adapter: netmiko
 plugin_nautobot_default_driver: cisco_ios
 ```
+
+Leave `adapter_field` and `driver_field` empty (or omit them) to use defaults.
 
 ## Device Filtering
 
@@ -152,8 +191,6 @@ Create a custom field for credential mapping:
 - Type: Text
 - Assign to devices
 
-Configure your platforms with netmiko device types.
-
 Assign primary IPs to devices.
 
 ### 2. Tom Configuration
@@ -166,7 +203,9 @@ plugin_nautobot_url: "https://nautobot.example.com"
 plugin_nautobot_token: "abc123def456"
 plugin_nautobot_credential_source: custom_field
 plugin_nautobot_credential_field: credential_id
-plugin_nautobot_credential_default: default
+plugin_nautobot_default_credential: default
+plugin_nautobot_default_adapter: netmiko
+plugin_nautobot_default_driver: cisco_ios
 plugin_nautobot_status_filter: ["Active"]
 ```
 
@@ -194,6 +233,27 @@ curl -X POST "http://localhost:8000/api/device/router1/send_command" \
   -d '{"command": "show version", "wait": true}'
 ```
 
+## Settings Reference
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `url` | (required) | Nautobot URL |
+| `token` | (required) | API token |
+| `credential_source` | `custom_field` | `custom_field` or `config_context` |
+| `credential_field` | `credential_id` | Field name or config context path |
+| `default_credential` | `default` | Fallback credential ID |
+| `adapter_source` | `custom_field` | `custom_field` or `config_context` |
+| `adapter_field` | `""` | Field name or config context path (empty = use default) |
+| `default_adapter` | `netmiko` | `netmiko` or `scrapli` |
+| `driver_source` | `custom_field` | `custom_field` or `config_context` |
+| `driver_field` | `""` | Field name or config context path (empty = use default) |
+| `default_driver` | `cisco_ios` | Netmiko/Scrapli driver name |
+| `default_port` | `22` | SSH port |
+| `status_filter` | `[]` | Filter by device status |
+| `role_filter` | `[]` | Filter by device role |
+| `location_filter` | `[]` | Filter by location |
+| `tag_filter` | `[]` | Filter by tags |
+
 ## Troubleshooting
 
 ### "400" Errors from Nautobot
@@ -206,30 +266,14 @@ Use empty filters to disable filtering and see all devices:
 plugin_nautobot_status_filter: []
 ```
 
-## Filtering
+### Device Not Using Expected Driver
 
-### Config-Level Filters
+Check the order of precedence:
+1. If `driver_field` is set and device has a value, that's used
+2. Otherwise `default_driver` is used
 
-These filters are applied when querying Nautobot and control which devices Tom knows about:
-
-- `plugin_nautobot_status_filter`
-- `plugin_nautobot_role_filter`
-- `plugin_nautobot_location_filter`
-- `plugin_nautobot_tag_filter`
-
-### Inline API Filters
-
-When exporting inventory via the API, you can filter on any field in the returned data:
-
-| Field | Description |
-|-------|-------------|
-| `Caption` | Device name |
-| `host` | IP address or hostname |
-| `adapter` | netmiko or scrapli |
-| `adapter_driver` | Platform driver |
-| `credential_id` | Credential reference |
+To debug, export inventory and check what Tom sees:
 
 ```bash
-curl "http://localhost:8000/api/inventory/export?adapter_driver=cisco_ios" \
-  -H "X-API-Key: your-api-key"
+curl "http://localhost:8000/api/inventory/export" -H "X-API-Key: your-key"
 ```
