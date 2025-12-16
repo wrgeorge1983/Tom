@@ -1,0 +1,63 @@
+# Tom Controller Configuration for Tutorial
+#
+# This config uses Nautobot as the inventory source.
+# Update the plugin_nautobot_* settings below to point to your Nautobot instance.
+
+# Core Settings
+host: "0.0.0.0"
+port: 8000
+log_level: "info"
+project_root: "/app"
+
+# Redis
+redis_host: "redis"
+redis_port: 6379
+
+# Cache Configuration
+cache_enabled: true
+cache_default_ttl: 300
+cache_max_ttl: 3600
+
+# Authentication - API Key mode for tutorial simplicity
+# IMPORTANT: Replace this key with your own generated key!
+# Generate with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+auth_mode: "api_key"
+api_key_headers: ["X-API-Key"]
+api_keys: ["tutorial-api-key-replace-me:admin"]
+
+# Allow inline credentials for quick testing (not recommended for production)
+allow_inline_credentials: true
+
+# =============================================================================
+# Inventory Configuration - Nautobot
+# =============================================================================
+# UPDATE THESE VALUES to point to your Nautobot instance
+inventory_type: "nautobot"
+
+# Nautobot connection - UPDATE THESE
+plugin_nautobot_url: "https://your-nautobot.example.com"
+plugin_nautobot_token: "your-nautobot-api-token"
+
+# Credential mapping - choose one method:
+#
+# Option 1: Custom Field (recommended)
+#   Create a custom field named "credential_id" on Device objects in Nautobot
+plugin_nautobot_credential_source: "custom_field"
+plugin_nautobot_credential_field: "credential_id"
+plugin_nautobot_default_credential: "default_creds"
+
+# Option 2: Config Context (alternative)
+#   Add config context to devices with structure like: {"tom": {"credential_id": "my_creds"}}
+# plugin_nautobot_credential_source: "config_context"
+# plugin_nautobot_credential_field: "tom.credential_id"
+# plugin_nautobot_default_credential: "default_creds"
+
+# Filter which devices Tom can see (leave empty [] to include all)
+plugin_nautobot_status_filter: ["Active"]
+plugin_nautobot_role_filter: []
+plugin_nautobot_location_filter: []
+plugin_nautobot_tag_filter: []
+
+# Default adapter/driver when platform doesn't specify netmiko_device_type
+plugin_nautobot_default_adapter: "netmiko"
+plugin_nautobot_default_driver: "cisco_ios"

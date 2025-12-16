@@ -1,0 +1,2 @@
+# Override root gitignore to include the example config for the tutorial
+!tom_controller_config.yaml

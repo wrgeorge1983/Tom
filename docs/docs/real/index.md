@@ -78,6 +78,7 @@ if you don't have to pull in all the dependencies required to handle all that ne
 
 - [Getting Started Fast](getting-started-FAST.md) - 5-minute minimal setup
 - [Getting Started Sensibly](getting-started.md) - More complete setup with Vault
+- [Tutorial: Tom with Nautobot](tutorial.md) - Connect Tom to your existing Nautobot instance
 - [Architecture](architecture.md) - How Tom's components work together
 - [Nautobot Device Setup](nautobot-device-setup.md) - Configure devices in Nautobot for Tom
 - [Parsing](parsing.md) - Using TextFSM and TTP parsers

@@ -1,6 +1,6 @@
 # Tom Smykowski Tutorial Setup
 #
-# This docker-compose brings up Tom configured to use an external Nautobot/NetBox
+# This docker-compose brings up Tom configured to use an external Nautobot
 # as the source of truth.
 #
 # Services:
@@ -8,8 +8,6 @@
 #   - worker: Tom workers (3 replicas)
 #   - redis: Shared Redis for Tom queue/cache
 #   - vault: HashiCorp Vault for credentials (dev mode)
-#
-# If you need a local NetBox for testing, uncomment the NetBox section below.
 
 services:
   # =============================================================================
@@ -61,116 +59,3 @@ services:
     cap_add:
       - IPC_LOCK
     command: ["vault", "server", "-dev"]
-
-  # =============================================================================
-  # NetBox Services (OPTIONAL - uncomment if you need a local NetBox)
-  # =============================================================================
-  # If using your own Nautobot/NetBox, leave these commented and update
-  # tom_controller_config.yaml with your instance's URL and token.
-  #
-  # netbox:
-  #   image: netboxcommunity/netbox:latest
-  #   depends_on:
-  #     - postgres
-  #     - netbox-redis
-  #   environment:
-  #     # Database
-  #     DB_HOST: postgres
-  #     DB_NAME: netbox
-  #     DB_USER: netbox
-  #     DB_PASSWORD: netbox
-  #     # Redis
-  #     REDIS_HOST: netbox-redis
-  #     REDIS_PORT: 6379
-  #     REDIS_DATABASE: 0
-  #     REDIS_CACHE_HOST: netbox-redis
-  #     REDIS_CACHE_PORT: 6379
-  #     REDIS_CACHE_DATABASE: 1
-  #     # NetBox settings
-  #     SECRET_KEY: "tutorial-secret-key-change-in-production-abc123def456"
-  #     SUPERUSER_NAME: admin
-  #     SUPERUSER_EMAIL: admin@example.com
-  #     SUPERUSER_PASSWORD: admin
-  #     SUPERUSER_API_TOKEN: "0123456789abcdef0123456789abcdef01234567"
-  #     ALLOWED_HOSTS: "*"
-  #     # Skip email config for tutorial
-  #     EMAIL_FROM: netbox@example.com
-  #     EMAIL_PASSWORD: ""
-  #     EMAIL_PORT: 25
-  #     EMAIL_SERVER: localhost
-  #     EMAIL_SSL_CERTFILE: ""
-  #     EMAIL_SSL_KEYFILE: ""
-  #     EMAIL_TIMEOUT: 5
-  #     EMAIL_USERNAME: netbox
-  #     EMAIL_USE_SSL: "false"
-  #     EMAIL_USE_TLS: "false"
-  #     SKIP_SUPERUSER: "false"
-  #   ports:
-  #     - "8080:8080"
-  #   volumes:
-  #     - netbox-media:/opt/netbox/netbox/media
-  #     - netbox-reports:/opt/netbox/netbox/reports
-  #     - netbox-scripts:/opt/netbox/netbox/scripts
-  #
-  # netbox-worker:
-  #   image: netboxcommunity/netbox:latest
-  #   depends_on:
-  #     - netbox
-  #   environment:
-  #     DB_HOST: postgres
-  #     DB_NAME: netbox
-  #     DB_USER: netbox
-  #     DB_PASSWORD: netbox
-  #     REDIS_HOST: netbox-redis
-  #     REDIS_PORT: 6379
-  #     REDIS_DATABASE: 0
-  #     REDIS_CACHE_HOST: netbox-redis
-  #     REDIS_CACHE_PORT: 6379
-  #     REDIS_CACHE_DATABASE: 1
-  #     SECRET_KEY: "tutorial-secret-key-change-in-production-abc123def456"
-  #   command: /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py rqworker
-  #   volumes:
-  #     - netbox-media:/opt/netbox/netbox/media
-  #     - netbox-reports:/opt/netbox/netbox/reports
-  #     - netbox-scripts:/opt/netbox/netbox/scripts
-  #
-  # netbox-housekeeping:
-  #   image: netboxcommunity/netbox:latest
-  #   depends_on:
-  #     - netbox
-  #   environment:
-  #     DB_HOST: postgres
-  #     DB_NAME: netbox
-  #     DB_PASSWORD: netbox
-  #     DB_USER: netbox
-  #     REDIS_HOST: netbox-redis
-  #     REDIS_PORT: 6379
-  #     REDIS_DATABASE: 0
-  #     REDIS_CACHE_HOST: netbox-redis
-  #     REDIS_CACHE_PORT: 6379
-  #     REDIS_CACHE_DATABASE: 1
-  #     SECRET_KEY: "tutorial-secret-key-change-in-production-abc123def456"
-  #   command: /opt/netbox/housekeeping.sh
-  #   volumes:
-  #     - netbox-media:/opt/netbox/netbox/media
-  #     - netbox-reports:/opt/netbox/netbox/reports
-  #     - netbox-scripts:/opt/netbox/netbox/scripts
-  #
-  # postgres:
-  #   image: postgres:15-alpine
-  #   environment:
-  #     POSTGRES_DB: netbox
-  #     POSTGRES_USER: netbox
-  #     POSTGRES_PASSWORD: netbox
-  #   volumes:
-  #     - postgres-data:/var/lib/postgresql/data
-  #
-  # netbox-redis:
-  #   image: redis:7-alpine
-
-# Uncomment these volumes if using the local NetBox services above
-# volumes:
-#   netbox-media:
-#   netbox-reports:
-#   netbox-scripts:
-#   postgres-data:

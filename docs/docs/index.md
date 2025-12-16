@@ -10,6 +10,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 
 - [Getting Started Sensibly](real/getting-started.md) - Setup with Vault and Redis TLS
 - [Getting Started Irresponsibly Fast](real/getting-started-FAST.md) - 5-minute minimal setup
+- [Tutorial: Tom with Nautobot](real/tutorial.md) - Connect Tom to your existing Nautobot instance
 
 ## Core Concepts
 
