@@ -24,12 +24,22 @@ class TestNautobotSettings:
 
             assert settings.url == "https://nautobot.example.com"
             assert settings.token == "test-token-123"
+            # Credential settings
             assert settings.credential_source == "custom_field"
             assert settings.credential_field == "credential_id"
-            assert settings.credential_default == "default"
-            assert settings.status_filter == []  # Now defaults to empty (no filter)
+            assert settings.default_credential == "default"
+            # Adapter settings
+            assert settings.adapter_source == "custom_field"
+            assert settings.adapter_field == ""
             assert settings.default_adapter == "netmiko"
+            # Driver settings
+            assert settings.driver_source == "custom_field"
+            assert settings.driver_field == ""
             assert settings.default_driver == "cisco_ios"
+            # Port
+            assert settings.default_port == 22
+            # Filters
+            assert settings.status_filter == []
         finally:
             if old_config:
                 os.environ["TOM_CONFIG_FILE"] = old_config
@@ -37,259 +47,318 @@ class TestNautobotSettings:
                 os.environ.pop("TOM_CONFIG_FILE", None)
 
 
-class TestNautobotCredentialExtraction:
-    """Test credential ID extraction from devices."""
+def _create_plugin(settings_overrides: dict):
+    """Helper to create a plugin with mocked pynautobot."""
+    from tom_controller.Plugins.inventory.nautobot import (
+        NautobotSettings,
+        NautobotInventoryPlugin,
+    )
+    from tom_controller.config import Settings
 
-    def test_custom_field_extraction(self):
-        """Extract credential ID from custom field."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
+    nb_settings = NautobotSettings(
+        url="https://nautobot.example.com",
+        token="test-token",
+        **settings_overrides,
+    )
+    main_settings = Settings()  # type: ignore[call-arg]
 
-        # Create mock settings
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-            credential_source="custom_field",
-            credential_field="ssh_cred",
-            credential_default="fallback",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
+    # Mock the pynautobot import
+    mock_pynautobot = MagicMock()
+    mock_nb = MagicMock()
+    mock_pynautobot.api.return_value = mock_nb
 
-        # Mock the pynautobot import
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
+    import sys
 
-        import sys
+    sys.modules["pynautobot"] = mock_pynautobot
 
-        sys.modules["pynautobot"] = mock_pynautobot
+    plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+    return plugin
 
+
+def _cleanup_mock():
+    """Remove mock from sys.modules."""
+    import sys
+
+    if "pynautobot" in sys.modules:
+        del sys.modules["pynautobot"]
+
+
+class TestCredentialExtraction:
+    """Test credential_id extraction from different sources."""
+
+    def test_from_custom_field(self):
+        """Extract credential from custom field."""
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin(
+                {
+                    "credential_source": "custom_field",
+                    "credential_field": "my_cred_field",
+                    "default_credential": "fallback",
+                }
+            )
 
-            # Mock device with custom field
             device = Mock()
-            device.custom_fields = {"ssh_cred": "datacenter_creds"}
+            device.custom_fields = {"my_cred_field": "prod_creds"}
 
-            cred_id = plugin._get_credential_id(device)
-            assert cred_id == "datacenter_creds"
+            assert plugin._get_credential_id(device) == "prod_creds"
+        finally:
+            _cleanup_mock()
 
-            # Test fallback to default when field doesn't exist
+    def test_from_config_context(self):
+        """Extract credential from config context."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "credential_source": "config_context",
+                    "credential_field": "credential_id",
+                    "default_credential": "fallback",
+                }
+            )
+
+            device = Mock()
             device.custom_fields = {}
-            cred_id = plugin._get_credential_id(device)
-            assert cred_id == "fallback"
+            device.config_context = {"credential_id": "ctx_creds"}
 
-            # Test fallback to default when field exists but is None
-            device.custom_fields = {"ssh_cred": None}
-            cred_id = plugin._get_credential_id(device)
-            assert cred_id == "fallback"
-
-            # Test fallback to default when field exists but is empty string
-            device.custom_fields = {"ssh_cred": ""}
-            cred_id = plugin._get_credential_id(device)
-            assert cred_id == "fallback"
+            assert plugin._get_credential_id(device) == "ctx_creds"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
 
-    def test_config_context_extraction(self):
-        """Extract credential ID from config context."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
-
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-            credential_source="config_context",
-            credential_context_path="credential_id",
-            credential_default="fallback",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
-
-        # Mock pynautobot
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
-
-        import sys
-
-        sys.modules["pynautobot"] = mock_pynautobot
-
+    def test_from_config_context_nested_path(self):
+        """Extract credential from nested config context path."""
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin(
+                {
+                    "credential_source": "config_context",
+                    "credential_field": "tom.network.credential_id",
+                    "default_credential": "fallback",
+                }
+            )
 
-            # Mock device with simple config context
             device = Mock()
-            device.config_context = {"credential_id": "branch_creds"}
+            device.custom_fields = {}
+            device.config_context = {
+                "tom": {"network": {"credential_id": "nested_creds"}}
+            }
 
-            cred_id = plugin._get_credential_id(device)
-            assert cred_id == "branch_creds"
+            assert plugin._get_credential_id(device) == "nested_creds"
+        finally:
+            _cleanup_mock()
 
-            # Test fallback to default
+    def test_fallback_to_default(self):
+        """Use default when field not found."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "credential_source": "custom_field",
+                    "credential_field": "missing_field",
+                    "default_credential": "fallback_cred",
+                }
+            )
+
+            device = Mock()
+            device.custom_fields = {}
+
+            assert plugin._get_credential_id(device) == "fallback_cred"
+        finally:
+            _cleanup_mock()
+
+
+class TestAdapterExtraction:
+    """Test adapter extraction from different sources."""
+
+    def test_from_custom_field(self):
+        """Extract adapter from custom field."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "adapter_source": "custom_field",
+                    "adapter_field": "tom_adapter",
+                    "default_adapter": "netmiko",
+                }
+            )
+
+            device = Mock()
+            device.custom_fields = {"tom_adapter": "scrapli"}
             device.config_context = {}
-            cred_id = plugin._get_credential_id(device)
-            assert cred_id == "fallback"
+
+            assert plugin._get_adapter(device) == "scrapli"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
 
-    def test_config_context_nested_path(self):
-        """Extract credential ID from nested config context path."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
-
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-            credential_source="config_context",
-            credential_context_path="tom.credentials.ssh",
-            credential_default="fallback",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
-
-        # Mock pynautobot
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
-
-        import sys
-
-        sys.modules["pynautobot"] = mock_pynautobot
-
+    def test_from_config_context(self):
+        """Extract adapter from config context."""
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin(
+                {
+                    "adapter_source": "config_context",
+                    "adapter_field": "tom.adapter",
+                    "default_adapter": "netmiko",
+                }
+            )
 
-            # Mock device with nested config context
             device = Mock()
-            device.config_context = {"tom": {"credentials": {"ssh": "nested_creds"}}}
+            device.custom_fields = {}
+            device.config_context = {"tom": {"adapter": "scrapli"}}
 
-            cred_id = plugin._get_credential_id(device)
-            assert cred_id == "nested_creds"
+            assert plugin._get_adapter(device) == "scrapli"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
 
-
-class TestPlatformDriverMapping:
-    """Test platform to adapter/driver mapping."""
-
-    def test_netmiko_device_type_preferred(self):
-        """Use netmiko_device_type when available."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
-
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
-
-        # Mock pynautobot
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
-
-        import sys
-
-        sys.modules["pynautobot"] = mock_pynautobot
-
+    def test_fallback_to_default_when_field_empty(self):
+        """Use default adapter when field is not configured."""
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin(
+                {
+                    "adapter_source": "custom_field",
+                    "adapter_field": "",  # Empty = use default
+                    "default_adapter": "netmiko",
+                }
+            )
 
-            # Mock device with platform that has netmiko_device_type
             device = Mock()
-            device.platform = Mock()
-            device.platform.netmiko_device_type = "cisco_ios"
-            device.platform.napalm_driver = "ios"
+            device.custom_fields = {}
+            device.config_context = {}
 
-            adapter, driver = plugin._determine_adapter_and_driver(device)
-            assert adapter == "netmiko"  # Uses default adapter
-            assert driver == "cisco_ios"  # Uses platform's netmiko_device_type
+            assert plugin._get_adapter(device) == "netmiko"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
 
-    def test_scrapli_default_adapter(self):
-        """Use scrapli when set as default adapter."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
-
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-            default_adapter="scrapli",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
-
-        # Mock pynautobot
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
-
-        import sys
-
-        sys.modules["pynautobot"] = mock_pynautobot
-
+    def test_invalid_adapter_falls_back_to_default(self):
+        """Invalid adapter value falls back to default."""
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin(
+                {
+                    "adapter_source": "custom_field",
+                    "adapter_field": "tom_adapter",
+                    "default_adapter": "netmiko",
+                }
+            )
 
-            # Mock device with platform
             device = Mock()
-            device.platform = Mock()
-            device.platform.netmiko_device_type = "cisco_iosxe"
+            device.custom_fields = {"tom_adapter": "invalid_adapter"}
+            device.config_context = {}
 
-            adapter, driver = plugin._determine_adapter_and_driver(device)
-            assert adapter == "scrapli"  # Uses configured default adapter
-            assert driver == "cisco_iosxe"  # Uses platform driver
+            assert plugin._get_adapter(device) == "netmiko"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
 
-    def test_fallback_when_no_platform(self):
-        """Use default adapter/driver when device has no platform."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
 
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
+class TestDriverExtraction:
+    """Test driver extraction from different sources."""
 
-        # Mock pynautobot
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
-
-        import sys
-
-        sys.modules["pynautobot"] = mock_pynautobot
-
+    def test_from_custom_field(self):
+        """Extract driver from custom field."""
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin(
+                {
+                    "driver_source": "custom_field",
+                    "driver_field": "tom_driver",
+                    "default_driver": "cisco_ios",
+                }
+            )
 
-            # Mock device with no platform
             device = Mock()
-            device.platform = None
+            device.custom_fields = {"tom_driver": "arista_eos"}
+            device.config_context = {}
 
-            adapter, driver = plugin._determine_adapter_and_driver(device)
-            assert adapter == "netmiko"
-            assert driver == "cisco_ios"
+            assert plugin._get_driver(device) == "arista_eos"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
+
+    def test_from_config_context(self):
+        """Extract driver from config context."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "driver_source": "config_context",
+                    "driver_field": "tom.driver",
+                    "default_driver": "cisco_ios",
+                }
+            )
+
+            device = Mock()
+            device.custom_fields = {}
+            device.config_context = {"tom": {"driver": "juniper_junos"}}
+
+            assert plugin._get_driver(device) == "juniper_junos"
+        finally:
+            _cleanup_mock()
+
+    def test_fallback_to_default(self):
+        """Use default driver when field not found."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "driver_source": "custom_field",
+                    "driver_field": "missing_field",
+                    "default_driver": "cisco_ios",
+                }
+            )
+
+            device = Mock()
+            device.custom_fields = {}
+            device.config_context = {}
+
+            assert plugin._get_driver(device) == "cisco_ios"
+        finally:
+            _cleanup_mock()
+
+
+class TestMixedSources:
+    """Test using different sources for different fields."""
+
+    def test_credential_from_custom_field_driver_from_config_context(self):
+        """Credential from custom field, driver from config context."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "credential_source": "custom_field",
+                    "credential_field": "cred_id",
+                    "default_credential": "default",
+                    "driver_source": "config_context",
+                    "driver_field": "tom.driver",
+                    "default_driver": "cisco_ios",
+                }
+            )
+
+            device = Mock()
+            device.custom_fields = {"cred_id": "my_creds"}
+            device.config_context = {"tom": {"driver": "arista_eos"}}
+
+            assert plugin._get_credential_id(device) == "my_creds"
+            assert plugin._get_driver(device) == "arista_eos"
+        finally:
+            _cleanup_mock()
+
+    def test_all_from_config_context(self):
+        """All fields from config context."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "credential_source": "config_context",
+                    "credential_field": "tom.credential_id",
+                    "adapter_source": "config_context",
+                    "adapter_field": "tom.adapter",
+                    "driver_source": "config_context",
+                    "driver_field": "tom.driver",
+                }
+            )
+
+            device = Mock()
+            device.custom_fields = {}
+            device.config_context = {
+                "tom": {
+                    "credential_id": "ctx_creds",
+                    "adapter": "scrapli",
+                    "driver": "cisco_nxos",
+                }
+            }
+
+            assert plugin._get_credential_id(device) == "ctx_creds"
+            assert plugin._get_adapter(device) == "scrapli"
+            assert plugin._get_driver(device) == "cisco_nxos"
+        finally:
+            _cleanup_mock()
 
 
 class TestIPExtraction:
@@ -297,31 +366,9 @@ class TestIPExtraction:
 
     def test_primary_ip4(self):
         """Extract IPv4 address and strip prefix."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
-
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
-
-        # Mock pynautobot
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
-
-        import sys
-
-        sys.modules["pynautobot"] = mock_pynautobot
-
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin({})
 
-            # Mock device with IPv4
             device = Mock()
             device.name = "router1"
             device.primary_ip4 = Mock()
@@ -331,35 +378,13 @@ class TestIPExtraction:
             host = plugin._get_host_ip(device)
             assert host == "192.168.1.1"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
 
     def test_fallback_to_name(self):
         """Fall back to device name when no primary IP."""
-        from tom_controller.Plugins.inventory.nautobot import (
-            NautobotSettings,
-            NautobotInventoryPlugin,
-        )
-        from tom_controller.config import Settings
-
-        nb_settings = NautobotSettings(
-            url="https://nautobot.example.com",
-            token="test-token",
-        )
-        main_settings = Settings()  # type: ignore[call-arg]
-
-        # Mock pynautobot
-        mock_pynautobot = MagicMock()
-        mock_nb = MagicMock()
-        mock_pynautobot.api.return_value = mock_nb
-
-        import sys
-
-        sys.modules["pynautobot"] = mock_pynautobot
-
         try:
-            plugin = NautobotInventoryPlugin(nb_settings, main_settings)
+            plugin = _create_plugin({})
 
-            # Mock device with no IP
             device = Mock()
             device.name = "router-with-no-ip"
             device.primary_ip4 = None
@@ -368,4 +393,53 @@ class TestIPExtraction:
             host = plugin._get_host_ip(device)
             assert host == "router-with-no-ip"
         finally:
-            del sys.modules["pynautobot"]
+            _cleanup_mock()
+
+
+class TestNeedsConfigContext:
+    """Test _needs_config_context helper."""
+
+    def test_no_config_context_needed(self):
+        """No config context needed when all sources are custom_field."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "credential_source": "custom_field",
+                    "adapter_source": "custom_field",
+                    "driver_source": "custom_field",
+                }
+            )
+
+            assert plugin._needs_config_context() is False
+        finally:
+            _cleanup_mock()
+
+    def test_config_context_needed_for_credential(self):
+        """Config context needed when credential uses it."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "credential_source": "config_context",
+                    "adapter_source": "custom_field",
+                    "driver_source": "custom_field",
+                }
+            )
+
+            assert plugin._needs_config_context() is True
+        finally:
+            _cleanup_mock()
+
+    def test_config_context_needed_for_driver(self):
+        """Config context needed when driver uses it."""
+        try:
+            plugin = _create_plugin(
+                {
+                    "credential_source": "custom_field",
+                    "adapter_source": "custom_field",
+                    "driver_source": "config_context",
+                }
+            )
+
+            assert plugin._needs_config_context() is True
+        finally:
+            _cleanup_mock()
