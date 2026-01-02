@@ -12,6 +12,7 @@ This tutorial setup demonstrates Tom Smykowski integrated with your existing Nau
 ## Prerequisites
 
 - Docker and Docker Compose
+- Python 3.13+ and [uv](https://docs.astral.sh/uv)
 - An existing Nautobot instance with devices configured
 - Network devices accessible via SSH from the Docker host
 - API token for your Nautobot instance
@@ -86,7 +87,6 @@ curl -X POST "http://localhost:8000/api/device/your-device-name/send_command" \
 ```
 
 ## Architecture
-
 ```
                ┌─────────────┐
                │  Nautobot   │

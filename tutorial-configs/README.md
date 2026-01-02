@@ -12,6 +12,7 @@ This tutorial setup demonstrates Tom Smykowski integrated with your existing Nau
 ## Prerequisites
 
 - Docker and Docker Compose
+- Python 3.13+ and [uv](https://docs.astral.sh/uv)
 - An existing Nautobot instance with devices configured
 - Network devices accessible via SSH from the Docker host
 - API token for your Nautobot instance
@@ -86,25 +87,23 @@ curl -X POST "http://localhost:8000/api/device/your-device-name/send_command" \
 ```
 
 ## Architecture
-
 ```
-                                    ┌─────────────┐
-                                    │  Nautobot   │
-                                    │  (Your SoT) │
-                                    │  (external) │
-                                    └──────┬──────┘
-                                           │ inventory
-                                           │ queries
-┌─────────┐     ┌─────────────┐     ┌──────┴──────┐     ┌─────────┐
-│ Client  │────►│ Controller  │────►│    Redis    │◄────│ Workers │
-│         │     │   :8000     │     │   (queue)   │     │  (x3)   │
+               ┌─────────────┐
+               │  Nautobot   │
+               │  (Your SoT) │
+               │  (external) │
+               └──────┬──────┘
+                      │ inventory
+                      │ queries
+┌─────────┐     ┌─────┴───────┐     ┌─────────────┐     ┌─────────┐
+│ Client  │────►│ Controller  │────►│    Redis    │─────│ Workers │
+│         │     │             │     │   (queue)   │     │  (x3)   │
 └─────────┘     └─────────────┘     └─────────────┘     └────┬────┘
-                                                              │
-                                    ┌─────────────┐           │
-                                    │    Vault    │◄──────────┘
-                                    │ (credentials)│    credentials
-                                    │   :8200     │
-                                    └─────────────┘
+                                                             │credentials
+                                                      ┌─────────────┐
+                                                      │    Vault    │
+                                                      │(credentials)│   
+                                                      └─────────────┘
 ```
 
 ## Services and Ports
