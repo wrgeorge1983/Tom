@@ -84,7 +84,7 @@ is stable and usable in production, but the API will evolve based on feedback an
 
 ## Architecture
 
-Tom fits into the [NAF Automation Framework](https://reference.networkautomation.forum/Framework/Framework/#the-architecture) as a "Network Automation Broker" - see the [architecture docs](https://wrgeorge1983.github.io/Tom/real/architecture/) for details.
+Tom fits into the [NAF Automation Framework](https://reference.networkautomation.forum/Framework/Framework/#the-architecture) as a "Network Automation Broker" - see the [architecture docs](https://wrgeorge1983.github.io/Tom/latest/real/architecture/) for details.
 
 A simplified diagram of what happens when you make a request:
 ```mermaid
@@ -104,17 +104,17 @@ sequenceDiagram
     T ->> T: parse if needed
     T -->> C: final response 
 ```
-More detailed architecture diagrams and descriptions are available at [wrgeorge1983.github.io/Tom/real/architecture/](https://wrgeorge1983.github.io/Tom/real/architecture/)
+More detailed architecture diagrams and descriptions are available at [wrgeorge1983.github.io/Tom/latest/real/architecture/](https://wrgeorge1983.github.io/Tom/latest/real/architecture/)
 
 ## Documentation
 
 Full documentation is available at **[wrgeorge1983.github.io/Tom](https://wrgeorge1983.github.io/Tom/)** (and also built and deployed with the 'docs'
 container in 'docker-compose.yml')
 
-- [Getting Started Fast](https://wrgeorge1983.github.io/Tom/real/getting-started-FAST/) - 5-minute minimal setup
-- [Getting Started Sensibly](https://wrgeorge1983.github.io/Tom/real/getting-started/) - More complete setup with Vault
-- [Architecture](https://wrgeorge1983.github.io/Tom/real/architecture/) - How Tom's components work together
-- [Parsing Guide](https://wrgeorge1983.github.io/Tom/real/parsing/) - TextFSM and TTP parsing
+- [Getting Started Fast](https://wrgeorge1983.github.io/Tom/latest/real/getting-started-FAST/) - 5-minute minimal setup
+- [Getting Started Sensibly](https://wrgeorge1983.github.io/Tom/latest/real/getting-started/) - More complete setup with Vault
+- [Architecture](https://wrgeorge1983.github.io/Tom/latest/real/architecture/) - How Tom's components work together
+- [Parsing Guide](https://wrgeorge1983.github.io/Tom/latest/real/parsing/) - TextFSM and TTP parsing
 
 Additional references:
 - [Roadmap](./ROADMAP.md) - Development roadmap and completed features
