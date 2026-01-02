@@ -259,12 +259,20 @@ async def get_userinfo(
 
 
 # Include sub-routers
-from tom_controller.api import raw, device, inventory, templates, oauth_test
+from tom_controller.api import (
+    raw,
+    device,
+    inventory,
+    templates,
+    oauth_test,
+    credentials,
+)
 
 api_router.include_router(raw.router)
 api_router.include_router(device.router)
 api_router.include_router(inventory.router)
 api_router.include_router(templates.router)
+api_router.include_router(credentials.router)
 
 # OAuth test router is separate (unauthenticated)
 oauth_test_router = oauth_test.router

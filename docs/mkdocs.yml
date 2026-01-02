@@ -1,7 +1,7 @@
 site_name: Tom Smykowski Documentation
 site_url: https://wrgeorge1983.github.io/Tom/
-repo_url: https://github.com/wrgeorge1983/tom
-repo_name: wrgeorge1983/tom
+repo_url: https://github.com/wrgeorge1983/Tom
+repo_name: wrgeorge1983/Tom
 
 theme:
   name: material
@@ -51,9 +51,9 @@ theme:
     - content.code.copy  # Copy button on code blocks
     - content.code.select  # Select button on code blocks
     - content.tooltips  # Improved tooltips
-    - content.action.edit  # Edit page button
     - content.action.view  # View source button
 
+edit_uri: blob/main/docs/docs/
 docs_dir: docs
 
 

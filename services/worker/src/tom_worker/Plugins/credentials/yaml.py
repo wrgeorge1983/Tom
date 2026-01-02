@@ -164,3 +164,14 @@ class YamlCredentialPlugin(CredentialPlugin):
             username=cred_entry["username"],
             password=cred_entry["password"],
         )
+
+    async def list_credentials(self) -> list[str]:
+        """List all available credential IDs from the YAML file.
+
+        :return: List of credential identifiers
+        :raises TomException: If listing fails
+        """
+        if self._data is None:
+            self._data = self._load_credentials()
+
+        return list(self._data.keys())

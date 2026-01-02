@@ -12,7 +12,7 @@ credential_plugin: "vault"
 
 plugin_vault_url: "https://vault.example.com:8200"
 plugin_vault_verify_ssl: true
-plugin_vault_credential_path_prefix: "credentials"
+# optional: plugin_vault_credential_path_prefix: "credentials"
 
 # Authentication - choose ONE method:
 
@@ -29,6 +29,7 @@ Or via environment variables:
 ```bash
 TOM_WORKER_CREDENTIAL_PLUGIN=vault
 TOM_WORKER_PLUGIN_VAULT_URL=https://vault.example.com:8200
+# optional: TOM_WORKER_PLUGIN_VAULT_CREDENTIAL_PATH_PREFIX=credentials
 TOM_WORKER_PLUGIN_VAULT_TOKEN=hvs.xxxxxxxxxxxxx
 # or for AppRole:
 TOM_WORKER_PLUGIN_VAULT_ROLE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx

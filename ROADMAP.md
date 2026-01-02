@@ -99,14 +99,24 @@
   - Plugin discovery, dependency checking, and validation
   - Prefixed plugin settings (`plugin_<name>_*`)
 
+### v0.19.0
+- Configuration validation utilities for controller and worker
+  - Typo detection with fuzzy-match suggestions
+  - Unused plugin settings warnings
+  - Missing required value detection
+
+### v0.20.0
+- Per-field source configuration for Nautobot/NetBox inventory plugins
+  - Map inventory fields to custom fields or standard attributes
+  - Flexible schema support for different NetBox/Nautobot configurations
+
+### v0.21.0
+- Vault plugin automatic token re-authentication using AppRole credentials
+
 ## Future Work
 
 ### Reliability
 - Worker health monitoring
-- Expose Controller and Worker metrics (for e.g. Prometheus)
-
-### Inventory
-- Configuration-driven field mapping for custom schemas
 
 ### Parsing & Templating
 - Jinja2 templating for command generation
@@ -116,7 +126,6 @@
 - Credential plugin: AWS Secrets Manager
 - Credential plugin: Nautobot Secrets
 - Plugin system for device adapters
-- Config validation tool (`tom validate-config`) to detect typos and unused keys across main and plugin settings
 
 ### User-Context Credentials
 - Pass OAuth/JWT identity through to workers

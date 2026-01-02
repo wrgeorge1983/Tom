@@ -22,6 +22,11 @@ dependencies = [
 [project.scripts]
 tom-worker-validate = "tom_worker.validate:main"
 
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.42.19",
+]
+
 [tool.uv.sources]
 tom-shared = { path = "../../shared", editable = true }
 

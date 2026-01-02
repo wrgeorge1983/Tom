@@ -197,6 +197,43 @@ class VaultClient:
         except KeyError:
             raise TomException(f"Invalid secret data structure from Vault: {data}")
 
+    async def list_secrets(self, path: str, _retried: bool = False) -> list[str]:
+        """List secrets at a path in Vault KV v2.
+
+        :param path: Secret path (without 'secret/metadata/' prefix)
+        :param _retried: Internal flag to prevent infinite retry loops
+        :return: List of secret names (folders end with '/')
+        :raises TomException: If listing fails
+        """
+        url = f"{self.addr}/v1/secret/metadata/{path}"
+
+        async with httpx.AsyncClient(verify=self.verify_ssl) as client:
+            response = await client.request("LIST", url, headers=self.headers)
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                # No secrets at this path - return empty list
+                return []
+
+            # Handle 403 - likely token expiration
+            if e.response.status_code == 403 and not _retried:
+                if await self._reauthenticate():
+                    return await self.list_secrets(path, _retried=True)
+
+            raise TomException(f"Failed to list secrets at {path}: {e}") from e
+
+        try:
+            data = response.json()
+        except JSONDecodeError:
+            raise TomException(f"Invalid JSON response from Vault: {response.text}")
+
+        try:
+            return data["data"]["keys"]
+        except KeyError:
+            raise TomException(f"Invalid list response structure from Vault: {data}")
+
     @classmethod
     async def from_settings(cls, settings: VaultCredentialSettings) -> "VaultClient":
         """Create VaultClient from settings, handling authentication.
@@ -325,3 +362,20 @@ class VaultCredentialPlugin(CredentialPlugin):
             username=cred_data["username"],
             password=cred_data["password"],
         )
+
+    async def list_credentials(self) -> list[str]:
+        """List all available credential IDs from Vault.
+
+        :return: List of credential identifiers
+        :raises TomException: If listing fails
+        """
+        if self._client is None:
+            self._client = await VaultClient.from_settings(self.settings)
+
+        try:
+            keys = await self._client.list_secrets(self.settings.credential_path_prefix)
+        except TomException as e:
+            raise TomException(f"Failed to list credentials from Vault: {e}") from e
+
+        # Filter out folders (ending with '/') and return only credential names
+        return [k for k in keys if not k.endswith("/")]

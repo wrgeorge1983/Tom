@@ -11,7 +11,12 @@ import saq, saq.types
 from tom_shared.cache import CacheManager
 
 from tom_worker.exceptions import TomException
-from tom_worker.jobs import foo, send_commands_netmiko, send_commands_scrapli
+from tom_worker.jobs import (
+    foo,
+    send_commands_netmiko,
+    send_commands_scrapli,
+    list_credentials,
+)
 from tom_worker.monitoring import heartbeat_task
 from tom_worker.Plugins.base import CredentialPluginManager
 from .config import settings
@@ -202,7 +207,7 @@ async def main():
 
     worker = saq.Worker(
         queue,
-        functions=[foo, send_commands_netmiko, send_commands_scrapli],
+        functions=[foo, send_commands_netmiko, send_commands_scrapli, list_credentials],
         startup=worker_setup,
         before_process=before_job_process,
         after_process=after_job_process,
