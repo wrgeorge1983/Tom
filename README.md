@@ -5,7 +5,7 @@
 
 # Tom Smykowski
 
-**[Online Documentation](https://wrgeorge1983.github.io/Tom/)** | **[Getting Started Sensibly](https://wrgeorge1983.github.io/Tom/real/getting-started/)** | **[Getting Started Irresponsibly Fast](https://wrgeorge1983.github.io/Tom/real/getting-started-FAST/)** | **[Slack](https://networktocode.slack.com/archives/C0A0PER1Y6L)**
+**[Online Documentation](https://wrgeorge1983.github.io/Tom/)** | **[Getting Started Sensibly](https://wrgeorge1983.github.io/Tom/latest/real/getting-started/)** | **[Getting Started Irresponsibly Fast](https://wrgeorge1983.github.io/Tom/latest/real/getting-started-FAST/)** | **[Slack](https://networktocode.slack.com/archives/C0A0PER1Y6L)**
 
 Tom Smykowski is your Network Automation Broker: He takes the network state FROM 
 your equipment and gives it TO your developers. He deals with your damn equipment,
