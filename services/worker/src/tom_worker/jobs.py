@@ -21,6 +21,24 @@ async def foo(*args, **kwargs):
     }
 
 
+async def list_credentials(ctx: saq.types.Context):
+    """List all available credential IDs from the configured credential store.
+
+    :param ctx: SAQ context containing credential_store
+    :return: Dictionary with list of credential IDs
+    """
+    assert "credential_store" in ctx, "Missing credential store in context."
+    credential_store = ctx["credential_store"]
+
+    job_id = ctx["job"].id
+    logger.info(f"Job {job_id}: Listing credentials")
+
+    credentials = await credential_store.list_credentials()
+
+    logger.info(f"Job {job_id}: Found {len(credentials)} credential(s)")
+    return {"credentials": credentials}
+
+
 async def send_commands_netmiko(ctx: saq.types.Context, json: str):
     assert "credential_store" in ctx, "Missing credential store in context."
     settings: Settings = ctx["settings"]

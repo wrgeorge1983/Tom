@@ -1,0 +1,20 @@
+# Tom Smykowski - FAST Quick Start Configuration
+# Minimum config to work with docker-compose
+
+host: "0.0.0.0"
+port: 8000
+log_level: "info"
+
+redis_host: "redis"
+redis_port: 6379
+
+cache_enabled: true
+cache_default_ttl: 300
+
+allow_inline_credentials: true
+auth_mode: "api_key"
+api_key_headers: ["X-API-Key"]
+api_keys: ["REPLACE_ME_WITH_YOUR_API_KEY:admin"]
+
+inventory_type: "yaml"
+plugin_yaml_inventory_file: "inventory/inventory.yml"

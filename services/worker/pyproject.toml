@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tom-worker"
-version = "0.20.0"
+version = "0.22.0"
 description = "Tom Smykowski Device Worker Node"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -21,6 +21,11 @@ dependencies = [
 
 [project.scripts]
 tom-worker-validate = "tom_worker.validate:main"
+
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.42.19",
+]
 
 [tool.uv.sources]
 tom-shared = { path = "../../shared", editable = true }

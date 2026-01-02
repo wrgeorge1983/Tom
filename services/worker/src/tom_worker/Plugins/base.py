@@ -153,7 +153,8 @@ class CredentialPlugin(ABC):
     3. Set 'settings_class' class attribute (subclass of PluginSettings, or None)
     4. Implement __init__(plugin_settings, main_settings)
     5. Implement get_ssh_credentials(credential_id)
-    6. Implement validate()
+    6. Implement list_credentials()
+    7. Implement validate()
     """
 
     name: str
@@ -183,6 +184,15 @@ class CredentialPlugin(ABC):
         pass
 
     @abstractmethod
+    async def list_credentials(self) -> list[str]:
+        """List all available credential IDs.
+
+        :return: List of credential identifiers
+        :raises TomException: If listing fails
+        """
+        pass
+
+    @abstractmethod
     async def validate(self) -> None:
         """Validate that the plugin is ready to serve credentials.
 
@@ -204,7 +214,7 @@ class CredentialPluginManager:
     """
 
     # Known credential plugins - add new ones here (vault is recommended/default)
-    KNOWN_PLUGINS = ["vault", "yaml"]
+    KNOWN_PLUGINS = ["vault", "yaml", "aws_secrets_manager"]
 
     def __init__(self):
         self._loaded_plugin: type[CredentialPlugin] | None = None

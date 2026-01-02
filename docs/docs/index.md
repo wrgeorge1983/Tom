@@ -37,6 +37,7 @@ Welcome to the official documentation for Tom Smykowski, your Network Automation
 ## Credentials
 
 - [Vault Credentials](real/vault-credentials.md) - HashiCorp Vault integration (default, recommended)
+- [AWS Secrets Manager](real/aws-credentials.md) - AWS Secrets Manager integration
 - [YAML Credentials](real/yaml-credentials.md) - File-based credential store (development only)
 
 ## Getting Help

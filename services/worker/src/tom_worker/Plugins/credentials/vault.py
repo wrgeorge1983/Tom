@@ -78,6 +78,32 @@ class VaultClient:
         self.headers = {"X-Vault-Token": token}
         self.verify_ssl = verify_ssl
 
+        # Store AppRole credentials for re-authentication on token expiry
+        self._role_id: str | None = None
+        self._secret_id: str | None = None
+
+    def set_approle_credentials(self, role_id: str, secret_id: str) -> None:
+        """Store AppRole credentials for re-authentication on token expiry."""
+        self._role_id = role_id
+        self._secret_id = secret_id
+
+    async def _reauthenticate(self) -> bool:
+        """Re-authenticate using stored AppRole credentials.
+
+        Returns True if successful, False if no credentials available.
+        Raises TomException if authentication fails.
+        """
+        if not self._role_id or not self._secret_id:
+            return False
+
+        logger.info("Vault token expired, re-authenticating with AppRole")
+        self.token = await self.authenticate_with_approle(
+            self._role_id, self._secret_id
+        )
+        self.headers = {"X-Vault-Token": self.token}
+        logger.info("Vault re-authentication successful")
+        return True
+
     async def authenticate_with_approle(self, role_id: str, secret_id: str) -> str:
         """Authenticate using AppRole and return a token.
 
@@ -133,10 +159,11 @@ class VaultClient:
                 raise TomException(f"Invalid Vault token: {e}")
             raise TomException(f"Vault token validation failed: {e}")
 
-    async def read_secret(self, path: str) -> VaultCreds:
+    async def read_secret(self, path: str, _retried: bool = False) -> VaultCreds:
         """Read a secret from Vault KV v2.
 
         :param path: Secret path (without 'secret/data/' prefix)
+        :param _retried: Internal flag to prevent infinite retry loops
         :return: Secret data dictionary
         :raises TomException: If secret cannot be read
         """
@@ -150,6 +177,14 @@ class VaultClient:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise TomException(f"Secret not found at path: {path}")
+
+            # Handle 403 - likely token expiration
+            if e.response.status_code == 403 and not _retried:
+                if await self._reauthenticate():
+                    # Retry once with new token
+                    return await self.read_secret(path, _retried=True)
+
+            # Either not a 403, already retried, or no AppRole creds available
             raise TomException(f"Failed to read secret at {path}: {e}") from e
 
         try:
@@ -161,6 +196,43 @@ class VaultClient:
             return data["data"]["data"]
         except KeyError:
             raise TomException(f"Invalid secret data structure from Vault: {data}")
+
+    async def list_secrets(self, path: str, _retried: bool = False) -> list[str]:
+        """List secrets at a path in Vault KV v2.
+
+        :param path: Secret path (without 'secret/metadata/' prefix)
+        :param _retried: Internal flag to prevent infinite retry loops
+        :return: List of secret names (folders end with '/')
+        :raises TomException: If listing fails
+        """
+        url = f"{self.addr}/v1/secret/metadata/{path}"
+
+        async with httpx.AsyncClient(verify=self.verify_ssl) as client:
+            response = await client.request("LIST", url, headers=self.headers)
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                # No secrets at this path - return empty list
+                return []
+
+            # Handle 403 - likely token expiration
+            if e.response.status_code == 403 and not _retried:
+                if await self._reauthenticate():
+                    return await self.list_secrets(path, _retried=True)
+
+            raise TomException(f"Failed to list secrets at {path}: {e}") from e
+
+        try:
+            data = response.json()
+        except JSONDecodeError:
+            raise TomException(f"Invalid JSON response from Vault: {response.text}")
+
+        try:
+            return data["data"]["keys"]
+        except KeyError:
+            raise TomException(f"Invalid list response structure from Vault: {data}")
 
     @classmethod
     async def from_settings(cls, settings: VaultCredentialSettings) -> "VaultClient":
@@ -182,7 +254,10 @@ class VaultClient:
             token = await temp_client.authenticate_with_approle(
                 settings.role_id, settings.secret_id
             )
-            return cls(vault_addr, token, verify_ssl)
+            client = cls(vault_addr, token, verify_ssl)
+            # Store credentials for re-authentication on token expiry
+            client.set_approle_credentials(settings.role_id, settings.secret_id)
+            return client
         elif settings.token:
             # Direct token authentication
             return cls(vault_addr, settings.token, verify_ssl)
@@ -287,3 +362,20 @@ class VaultCredentialPlugin(CredentialPlugin):
             username=cred_data["username"],
             password=cred_data["password"],
         )
+
+    async def list_credentials(self) -> list[str]:
+        """List all available credential IDs from Vault.
+
+        :return: List of credential identifiers
+        :raises TomException: If listing fails
+        """
+        if self._client is None:
+            self._client = await VaultClient.from_settings(self.settings)
+
+        try:
+            keys = await self._client.list_secrets(self.settings.credential_path_prefix)
+        except TomException as e:
+            raise TomException(f"Failed to list credentials from Vault: {e}") from e
+
+        # Filter out folders (ending with '/') and return only credential names
+        return [k for k in keys if not k.endswith("/")]
