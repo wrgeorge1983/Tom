@@ -65,7 +65,7 @@ From the repo root directory, store credentials that match the `credential_id` v
 ```bash
 # Store credentials for your devices
 uv run credload.py put default_creds -u admin -p your-device-password
-uv run credload.py put cisco_creds -u cisco -p cisco-password
+uv run credload.py put context_configs -u cisco -p cisco-password
 # etc.
 ```
 
@@ -75,6 +75,9 @@ uv run credload.py put cisco_creds -u cisco -p cisco-password
 # List inventory from Nautobot
 curl "http://localhost:8000/api/inventory/export" \
   -H "X-API-Key: your-generated-key-here"
+
+curl "http://localhost:8000/api/credentials" \
+  -H "X-API-KEY: your-generated-key-here"
 
 # Send a command to a device (use a device name from your Nautobot)
 curl -X POST "http://localhost:8000/api/device/your-device-name/send_command" \

@@ -40,17 +40,17 @@ plugin_nautobot_token: "your-nautobot-api-token"
 
 # Credential mapping - choose one method:
 #
-# Option 1: Custom Field (recommended)
+# Option 1: Custom Field (alternative)
 #   Create a custom field named "credential_id" on Device objects in Nautobot
-plugin_nautobot_credential_source: "custom_field"
-plugin_nautobot_credential_field: "credential_id"
-plugin_nautobot_default_credential: "default_creds"
-
-# Option 2: Config Context (alternative)
-#   Add config context to devices with structure like: {"tom": {"credential_id": "my_creds"}}
-# plugin_nautobot_credential_source: "config_context"
-# plugin_nautobot_credential_field: "tom.credential_id"
+# plugin_nautobot_credential_source: "custom_field"
+# plugin_nautobot_credential_field: "credential_id"
 # plugin_nautobot_default_credential: "default_creds"
+
+# Option 2: Config Context (recommended)
+#   Add config context to devices with structure like: {"tom": {"credential_id": "my_creds"}}
+plugin_nautobot_credential_source: "config_context"
+plugin_nautobot_credential_field: "tom.credential_id"
+plugin_nautobot_default_credential: "default_creds"
 
 # Filter which devices Tom can see (leave empty [] to include all)
 plugin_nautobot_status_filter: ["Active"]

@@ -223,6 +223,32 @@ def create_app():
         openapi_schema["info"]["x-logo"] = {
             "url": "static/Tom-BlkWhiteTrans_1000x1000.png"
         }
+
+        # Add security schemes for Swagger UI "Authorize" button
+        openapi_schema["components"] = openapi_schema.get("components", {})
+        openapi_schema["components"]["securitySchemes"] = {
+            "ApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": settings.api_key_headers[0]
+                if settings.api_key_headers
+                else "X-API-Key",
+                "description": "API Key authentication. Enter your API key.",
+            },
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT Bearer token authentication.",
+            },
+        }
+
+        # Apply security globally to all endpoints
+        openapi_schema["security"] = [
+            {"ApiKeyAuth": []},
+            {"BearerAuth": []},
+        ]
+
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 
