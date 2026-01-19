@@ -410,6 +410,7 @@
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>Docker and Docker Compose</li>
+<li>Python 3.13+ and <a href="https://docs.astral.sh/uv">uv</a></li>
 <li>An existing Nautobot instance with devices configured</li>
 <li>Network devices accessible via SSH from the Docker host</li>
 <li>API token for your Nautobot instance</li>
@@ -442,13 +443,16 @@ docker compose up -d
 <p>From the repo root directory, store credentials that match the <code>credential_id</code> values on your Nautobot devices:</p>
 <pre><code class="language-bash"># Store credentials for your devices
 uv run credload.py put default_creds -u admin -p your-device-password
-uv run credload.py put cisco_creds -u cisco -p cisco-password
+uv run credload.py put context_configs -u cisco -p cisco-password
 # etc.
 </code></pre>
 <h3 id="5-test-tom">5. Test Tom</h3>
 <pre><code class="language-bash"># List inventory from Nautobot
 curl &quot;http://localhost:8000/api/inventory/export&quot; \
   -H &quot;X-API-Key: your-generated-key-here&quot;
+
+curl &quot;http://localhost:8000/api/credentials&quot; \
+  -H &quot;X-API-KEY: your-generated-key-here&quot;
 
 # Send a command to a device (use a device name from your Nautobot)
 curl -X POST &quot;http://localhost:8000/api/device/your-device-name/send_command&quot; \
