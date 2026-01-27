@@ -25,6 +25,7 @@ dependencies = [
     "textfsm>=1.1.3",
     "tom-shared",
     "ttp>=0.9.5",
+    "ttp-templates>=0.3.7",
     "uvicorn>=0.33.0",
 ]
 

@@ -1517,6 +1517,7 @@ dependencies = [
     { name = "textfsm" },
     { name = "tom-shared" },
     { name = "ttp" },
+    { name = "ttp-templates" },
     { name = "uvicorn" },
 ]
 
@@ -1552,6 +1553,7 @@ requires-dist = [
     { name = "textfsm", specifier = ">=1.1.3" },
     { name = "tom-shared", editable = "../../shared" },
     { name = "ttp", specifier = ">=0.9.5" },
+    { name = "ttp-templates", specifier = ">=0.3.7" },
     { name = "uvicorn", specifier = ">=0.33.0" },
 ]
 
@@ -1595,6 +1597,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/83/e6/9169d35574be82df2a0cdd2546f4f83d0d30964cf0043fc9784df855b024/ttp-0.10.0.tar.gz", hash = "sha256:40f1ca61ee1431f5b1ab5326fb55f852a04749e9574792d45455b62c5e7ac97b", size = 64665, upload-time = "2025-11-02T08:47:50.329Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/c3/60abb45bd8eb973997f133eb76949523478d35dfc551a0dbd8906b6a8075/ttp-0.10.0-py3-none-any.whl", hash = "sha256:9985e0ca414e85d41493a6291a924624b9a08c48c78d2d01477cc60ba2a347c1", size = 84287, upload-time = "2025-11-02T08:47:48.656Z" },
+]
+
+[[package]]
+name = "ttp-templates"
+version = "0.3.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4f/24/3980b51a98a061790d1a900b8b0f7a786d543436ac2e08c6aba2c2f43aff/ttp_templates-0.3.7.tar.gz", hash = "sha256:f9103041a3683a0cb3811609ad990f679beadfc9a92c3e3fa05d6037414ad2bf", size = 43233, upload-time = "2024-11-07T09:41:52.155Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/8e/53b0d67a394ff742dbfda62543a1c48c0f32ea630acce6ccadeb09194344/ttp_templates-0.3.7-py3-none-any.whl", hash = "sha256:2328304fb4c957ee60db6f301143e8a4556b22a12b3e2f30511e8ef97fc78f7e", size = 76514, upload-time = "2024-11-07T09:41:50.359Z" },
 ]
 
 [[package]]

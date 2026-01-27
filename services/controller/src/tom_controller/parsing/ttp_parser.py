@@ -2,13 +2,17 @@ import csv
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ttp import ttp
+import ttp_templates
 
 from tom_controller.exceptions import TomParsingException, TomTemplateNotFoundException
 
 logger = logging.getLogger(__name__)
+
+# Get the path to ttp_templates package
+TTP_TEMPLATES_DIR = Path(ttp_templates.__file__).parent / "platform"
 
 
 class TTPParser:
@@ -37,7 +41,7 @@ class TTPParser:
 
         # Mode 1: Explicit template name
         if template_name:
-            template_path = self._find_template(template_name)
+            template_path, source = self._find_template(template_name)
 
             if not template_path:
                 raise TomTemplateNotFoundException(
@@ -47,8 +51,8 @@ class TTPParser:
             with open(template_path) as f:
                 template_content = f.read()
 
-            matched_template = template_name
-            template_source = "explicit"
+            matched_template = template_path.name
+            template_source = source or "explicit"
 
             try:
                 parser = ttp(data=raw_output, template=template_content)
@@ -67,24 +71,22 @@ class TTPParser:
             except Exception as e:
                 raise TomParsingException(f"TTP parsing failed: {e}") from e
 
-        # Mode 3: Auto-discovery via custom index
+        # Mode 3: Auto-discovery via custom index or ttp_templates
         elif platform and command:
-            template_path = self._lookup_template_from_index(
+            template_path, template_source, matched_template = self.discover_template(
                 platform=platform, command=command, hostname=hostname
             )
 
             if not template_path:
                 raise TomTemplateNotFoundException(
-                    f"No template found in index for platform={platform}, command={command}"
+                    f"No template found for platform={platform}, command={command}"
                 )
 
             with open(template_path) as f:
                 template_content = f.read()
 
-            matched_template = template_path.name
-            template_source = "custom"
             logger.info(
-                f"Using TTP template from index: {matched_template} for {platform}/{command}"
+                f"Using TTP template ({template_source}): {matched_template} for {platform}/{command}"
             )
 
             try:
@@ -111,24 +113,59 @@ class TTPParser:
 
         return response
 
-    def _find_template(self, template_name: str) -> Optional[Path]:
-        if not template_name.endswith(".ttp"):
-            template_name += ".ttp"
+    def _find_template(
+        self, template_name: str
+    ) -> Tuple[Optional[Path], Optional[str]]:
+        """Find template file, checking custom dir first, then ttp_templates package.
 
+        Args:
+            template_name: Name of template file
+
+        Returns:
+            Tuple of (path, source) where source is "custom" or "ttp_templates"
+            Returns (None, None) if not found
+        """
+        # Handle both .ttp and .txt extensions (ttp_templates uses .txt)
+        base_name = template_name
+        if template_name.endswith(".ttp"):
+            base_name = template_name[:-4]
+        elif template_name.endswith(".txt"):
+            base_name = template_name[:-4]
+
+        # Check custom templates first (.ttp extension)
         if self.custom_template_dir:
-            custom_path = self.custom_template_dir / template_name
+            custom_path = self.custom_template_dir / f"{base_name}.ttp"
             if custom_path.exists():
                 logger.debug(f"Using custom template: {custom_path}")
-                return custom_path
+                return custom_path, "custom"
 
-        return None
+        # Fall back to ttp_templates package (.txt extension)
+        if TTP_TEMPLATES_DIR.exists():
+            ttp_templates_path = TTP_TEMPLATES_DIR / f"{base_name}.txt"
+            if ttp_templates_path.exists():
+                logger.debug(f"Using ttp_templates: {ttp_templates_path}")
+                return ttp_templates_path, "ttp_templates"
+
+        return None, None
 
     def list_templates(self) -> Dict[str, List[str]]:
-        templates = {"custom": []}
+        """List all available templates.
 
+        Returns:
+            Dict with 'custom' and 'ttp_templates' template lists
+        """
+        templates: Dict[str, List[str]] = {"custom": [], "ttp_templates": []}
+
+        # List custom templates
         if self.custom_template_dir and self.custom_template_dir.exists():
             templates["custom"] = sorted(
                 [f.name for f in self.custom_template_dir.glob("*.ttp")]
+            )
+
+        # List ttp_templates package templates
+        if TTP_TEMPLATES_DIR.exists():
+            templates["ttp_templates"] = sorted(
+                [f.name for f in TTP_TEMPLATES_DIR.glob("*.txt")]
             )
 
         return templates
@@ -177,8 +214,8 @@ class TTPParser:
 
     def _lookup_template_from_index(
         self, platform: str, command: str, hostname: Optional[str] = None
-    ) -> Optional[Path]:
-        """Look up a template from the index based on platform, command, and hostname.
+    ) -> Tuple[Optional[Path], Optional[str]]:
+        """Look up a template from the custom index based on platform, command, and hostname.
 
         Args:
             platform: Device platform (e.g., 'cisco_ios')
@@ -186,11 +223,12 @@ class TTPParser:
             hostname: Device hostname for hostname-based matching (optional)
 
         Returns:
-            Path to template file if found, None otherwise
+            Tuple of (path, source) where source is "custom"
+            Returns (None, None) if not found
         """
         entries = self._load_index()
         if not entries:
-            return None
+            return None, None
 
         hostname = hostname or ".*"
 
@@ -216,12 +254,12 @@ class TTPParser:
                 if not template_name:
                     continue
 
-                template_path = self._find_template(template_name)
+                template_path, source = self._find_template(template_name)
                 if template_path and template_path.exists():
                     logger.debug(
                         f"Index matched: {template_name} for {platform}/{command}"
                     )
-                    return template_path
+                    return template_path, source
                 else:
                     logger.warning(f"Template in index not found: {template_name}")
 
@@ -229,4 +267,73 @@ class TTPParser:
                 logger.warning(f"Invalid regex in index entry: {e}")
                 continue
 
-        return None
+        return None, None
+
+    def _lookup_ttp_templates(
+        self, platform: str, command: str
+    ) -> Tuple[Optional[Path], Optional[str]]:
+        """Look up a template from the ttp_templates package.
+
+        Uses the same naming convention as ntc-templates:
+        {platform}_{command_with_underscores}.txt
+
+        Args:
+            platform: Device platform (e.g., 'cisco_ios')
+            command: Command that was run (e.g., 'show ip arp')
+
+        Returns:
+            Tuple of (path, source) where source is "ttp_templates"
+            Returns (None, None) if not found
+        """
+        if not TTP_TEMPLATES_DIR.exists():
+            return None, None
+
+        # Build template name following ttp_templates convention
+        # Command: "show ip arp" -> "show_ip_arp"
+        # Pipe: "show run | sec interface" -> "show_run_pipe_sec_interface"
+        normalized_command = command.lower()
+        normalized_command = normalized_command.replace(" | ", "_pipe_")
+        normalized_command = normalized_command.replace("|", "_pipe_")
+        normalized_command = normalized_command.replace(" ", "_")
+        normalized_command = normalized_command.replace("-", "_")
+
+        template_name = f"{platform}_{normalized_command}.txt"
+        template_path = TTP_TEMPLATES_DIR / template_name
+
+        if template_path.exists():
+            logger.debug(f"Found ttp_templates template: {template_path}")
+            return template_path, "ttp_templates"
+
+        return None, None
+
+    def discover_template(
+        self, platform: str, command: str, hostname: Optional[str] = None
+    ) -> Tuple[Optional[Path], Optional[str], Optional[str]]:
+        """Discover which template to use for given platform/command.
+
+        Checks custom index first, then ttp_templates package.
+
+        Args:
+            platform: Device platform (e.g., 'cisco_ios')
+            command: Command to match (e.g., 'show version')
+            hostname: Device hostname for matching (default: '.*')
+
+        Returns:
+            Tuple of (template_path, source, template_name)
+            Returns (None, None, None) if no match found
+        """
+        # 1. Check custom index first
+        template_path, source = self._lookup_template_from_index(
+            platform=platform, command=command, hostname=hostname
+        )
+        if template_path:
+            return template_path, source, template_path.name
+
+        # 2. Fall back to ttp_templates package
+        template_path, source = self._lookup_ttp_templates(
+            platform=platform, command=command
+        )
+        if template_path:
+            return template_path, source, template_path.name
+
+        return None, None, None

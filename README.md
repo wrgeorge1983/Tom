@@ -70,8 +70,8 @@ is stable and usable in production, but the API will evolve based on feedback an
 - **Multi-Transport Support** - Netmiko and Scrapli adapters
 
 ### Parsing & Templating
-- **TextFSM Parsing** - 900+ built-in templates via ntc-templates
-- **TTP Parsing** - Flexible template-based parsing
+- **TextFSM Parsing** - 900+ built-in templates via [ntc-templates](https://github.com/networktocode/ntc-templates)
+- **TTP Parsing** - Flexible template-based parsing with [ttp-templates](https://github.com/dmulyalin/ttp_templates) built-in
 - **Auto-Discovery** - Automatic template selection based on platform and command
 - **Custom Template Index** - Register custom templates for auto-discovery
 

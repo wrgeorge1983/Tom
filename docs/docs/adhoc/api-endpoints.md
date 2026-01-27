@@ -498,9 +498,12 @@ GET /api/templates/ttp
 **Returns:**
 ```json
 {
-  "custom": ["my_ttp_template.ttp"]
+  "custom": ["my_custom_template.ttp"],
+  "ttp_templates": ["cisco_ios_show_ip_arp.txt", "cisco_ios_show_ip_ospf_database_router.txt", "..."]
 }
 ```
+
+**Note:** `ttp_templates` contains templates from the [ttp-templates](https://github.com/dmulyalin/ttp_templates) package (similar to ntc-templates for TextFSM).
 
 #### Get Template Contents
 

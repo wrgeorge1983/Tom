@@ -52,14 +52,17 @@ class TestListTTPTemplates:
         assert "custom" in result
         assert "test_template.ttp" in result["custom"]
 
-    def test_list_ttp_templates_empty(self, tmp_path):
-        """Test listing TTP templates when directory is empty."""
+    def test_list_ttp_templates_empty_custom(self, tmp_path):
+        """Test listing TTP templates when custom directory is empty."""
         ttp_dir = tmp_path / "ttp"
         ttp_dir.mkdir()
         parser = TTPParser(custom_template_dir=ttp_dir)
         result = parser.list_templates()
 
-        assert result == {"custom": []}
+        # Custom should be empty, but ttp_templates package should have templates
+        assert result["custom"] == []
+        assert "ttp_templates" in result
+        assert len(result["ttp_templates"]) > 0  # ttp_templates package has templates
 
 
 class TestGetTemplate:
@@ -87,9 +90,10 @@ class TestGetTemplate:
         """Test retrieving a TTP template."""
         ttp_dir = test_template_dir / "ttp"
         parser = TTPParser(custom_template_dir=ttp_dir)
-        template_path = parser._find_template("test_template.ttp")
+        template_path, source = parser._find_template("test_template.ttp")
 
         assert template_path is not None
+        assert source == "custom"
         assert template_path.exists()
         content = template_path.read_text()
         assert "<group" in content

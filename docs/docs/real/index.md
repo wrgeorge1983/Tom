@@ -17,7 +17,7 @@ The network automation ecosystem offers a substantial toolbox—transport driver
 Tom serves as a centralized broker that handles:
 
 - **Transport and Drivers**: Integration with Netmiko, Scrapli, and other ways of directly interacting with your equipment
-- **Parsing**: Support for TextFSM, TTP, and other parsing engines with 900+ built-in templates (courtesy of the [NTC Templates repo](https://github.com/networktocode/ntc-templates))
+- **Parsing**: Support for TextFSM and TTP parsing engines with 900+ built-in TextFSM templates ([ntc-templates](https://github.com/networktocode/ntc-templates)) and 19 TTP templates ([ttp-templates](https://github.com/dmulyalin/ttp_templates))
 - **Inventory Management**: Plugin-based system supporting Nautobot, NetBox, and SolarWinds NPM (and also YAML files if your really must)
 - **Security**: HashiCorp Vault integration for credentials, JWT/OAuth2 authentication for users
 - **Queue Management**: Asynchronous job processing with per-device concurrency control

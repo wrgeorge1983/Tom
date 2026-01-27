@@ -24,8 +24,8 @@ This returns structured JSON instead of raw text.
 
 Tom supports two parsing engines:
 
-- **TextFSM** (default) - Regex-based, works with NTC Templates library
-- **TTP** - Template Text Parser, more readable template syntax. Includes an (empty!) library that allows template lookup equivalent to TextFSM for templates you add yourself.
+- **TextFSM** (default) - Regex-based, includes 900+ templates from [ntc-templates](https://github.com/networktocode/ntc-templates)
+- **TTP** - Template Text Parser, more readable template syntax. Includes 19 templates from [ttp-templates](https://github.com/dmulyalin/ttp_templates) plus support for custom templates with auto-discovery.
 
 Specify with the `parser` field:
 
@@ -41,9 +41,12 @@ Specify with the `parser` field:
 
 ## 
 
-## Built-in Template Library
+## Built-in Template Libraries
 
-Tom includes the [NTC Templates](https://github.com/networktocode/ntc-templates) open source library - over 900 TextFSM templates covering common commands across Cisco, Arista, Juniper, and many other platforms.
+Tom includes two template libraries:
+
+- **TextFSM**: [ntc-templates](https://github.com/networktocode/ntc-templates) - over 900 templates covering common commands across Cisco, Arista, Juniper, and many other platforms
+- **TTP**: [ttp-templates](https://github.com/dmulyalin/ttp_templates) - 19 templates for Cisco IOS/XR, Arista, Huawei, and Juniper
 
 ### Listing Available Templates
 
@@ -74,7 +77,7 @@ curl -X POST "http://localhost:8000/api/device/router1/send_command" \
 
 If no matching template is found, parsing fails with an error.
 
-This feature is natively part of TextFSM, and Tom has an equivalent library implemented for TTP as well.
+Both TextFSM (via ntc-templates) and TTP (via ttp-templates) support automatic template discovery based on platform and command.
 
 ## Using Custom Templates
 

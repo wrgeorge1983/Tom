@@ -57,7 +57,7 @@ Extended the template inspection/management capabilities to allow users to list,
 
 ### 5. TTP Template Listing
 
-**Decision:** The TTP listing endpoint only returns `{"custom": [...]}` since TTP has no equivalent to ntc-templates.
+**Decision:** The TTP listing endpoint returns `{"custom": [...], "ttp_templates": [...]}` including templates from the [ttp-templates](https://github.com/dmulyalin/ttp_templates) package.
 
 ## API Details
 

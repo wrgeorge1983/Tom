@@ -158,15 +158,15 @@ async def match_template(
     # Check TTP templates
     if parser is None or parser == "ttp":
         ttp_parser = TTPParser(custom_template_dir=Path(settings.ttp_template_dir))
-        ttp_template_path = ttp_parser._lookup_template_from_index(
+        ttp_template_path, ttp_source, ttp_template_name = ttp_parser.discover_template(
             platform=resolved_device_type,
             command=command,
         )
-        if ttp_template_path:
+        if ttp_template_path and ttp_source and ttp_template_name:
             matches.append(
                 TemplateMatch(
-                    template_name=ttp_template_path.name,
-                    source="custom",
+                    template_name=ttp_template_name,
+                    source=ttp_source,
                     parser="ttp",
                 )
             )
@@ -260,7 +260,7 @@ async def get_template(
     elif parser_type == "ttp":
         template_dir = Path(settings.ttp_template_dir)
         parser = TTPParser(custom_template_dir=template_dir)
-        template_path = parser._find_template(template_name)
+        template_path, source = parser._find_template(template_name)
 
         if not template_path:
             raise TomNotFoundException(f"Template not found: {template_name}")
@@ -269,7 +269,7 @@ async def get_template(
         return TemplateContent(
             name=template_path.name,
             parser="ttp",
-            source="custom",
+            source=source or "custom",
             content=content,
         )
 

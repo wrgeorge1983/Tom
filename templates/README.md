@@ -105,7 +105,9 @@ special_version.ttp, router-[0-9]+, cisco_ios, show version
 - `Platform`: Device platform from inventory (e.g., `cisco_ios`, `arista_eos`)
 - `Command`: Regex to match the command
 
-**Note:** Unlike TextFSM, TTP has no built-in templates, so the custom index is the only way to enable auto-discovery for TTP parsing.
+**Lookup Order:**
+1. Custom templates in `ttp/index` (checked first)
+2. ttp-templates built-in library (19 templates - automatic fallback)
 
 **API call with auto-discovery:**
 ```
@@ -117,7 +119,6 @@ Tom will automatically select the best template based on device platform and com
 
 To see all available templates:
 ```
-GET /api/templates/textfsm
+GET /api/templates/textfsm   # Returns custom + ntc-templates
+GET /api/templates/ttp       # Returns custom + ttp-templates
 ```
-
-This will return custom templates and built-in ntc-templates.
