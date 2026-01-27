@@ -756,9 +756,11 @@ inventory-based endpoints.</p>
 </code></pre>
 <p><strong>Returns:</strong></p>
 <pre><code class="language-json">{
-  &quot;custom&quot;: [&quot;my_ttp_template.ttp&quot;]
+  &quot;custom&quot;: [&quot;my_custom_template.ttp&quot;],
+  &quot;ttp_templates&quot;: [&quot;cisco_ios_show_ip_arp.txt&quot;, &quot;cisco_ios_show_ip_ospf_database_router.txt&quot;, &quot;...&quot;]
 }
 </code></pre>
+<p><strong>Note:</strong> <code>ttp_templates</code> contains templates from the <a href="https://github.com/dmulyalin/ttp_templates">ttp-templates</a> package (similar to ntc-templates for TextFSM).</p>
 <h4 id="get-template-contents">Get Template Contents</h4>
 <pre><code>GET /api/templates/{parser}/{template_name}
 </code></pre>

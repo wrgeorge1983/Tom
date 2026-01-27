@@ -416,8 +416,8 @@
 <h2 id="choosing-a-parser">Choosing a Parser</h2>
 <p>Tom supports two parsing engines:</p>
 <ul>
-<li><strong>TextFSM</strong> (default) - Regex-based, works with NTC Templates library</li>
-<li><strong>TTP</strong> - Template Text Parser, more readable template syntax. Includes an (empty!) library that allows template lookup equivalent to TextFSM for templates you add yourself.</li>
+<li><strong>TextFSM</strong> (default) - Regex-based, includes 900+ templates from <a href="https://github.com/networktocode/ntc-templates">ntc-templates</a></li>
+<li><strong>TTP</strong> - Template Text Parser, more readable template syntax. Includes 19 templates from <a href="https://github.com/dmulyalin/ttp_templates">ttp-templates</a> plus support for custom templates with auto-discovery.</li>
 </ul>
 <p>Specify with the <code>parser</code> field:</p>
 <pre><code class="language-json">{
@@ -429,8 +429,12 @@
 }
 </code></pre>
 <h2 id="_1"></h2>
-<h2 id="built-in-template-library">Built-in Template Library</h2>
-<p>Tom includes the <a href="https://github.com/networktocode/ntc-templates">NTC Templates</a> open source library - over 900 TextFSM templates covering common commands across Cisco, Arista, Juniper, and many other platforms.</p>
+<h2 id="built-in-template-libraries">Built-in Template Libraries</h2>
+<p>Tom includes two template libraries:</p>
+<ul>
+<li><strong>TextFSM</strong>: <a href="https://github.com/networktocode/ntc-templates">ntc-templates</a> - over 900 templates covering common commands across Cisco, Arista, Juniper, and many other platforms</li>
+<li><strong>TTP</strong>: <a href="https://github.com/dmulyalin/ttp_templates">ttp-templates</a> - 19 templates for Cisco IOS/XR, Arista, Huawei, and Juniper</li>
+</ul>
 <h3 id="listing-available-templates">Listing Available Templates</h3>
 <pre><code class="language-bash">curl &quot;http://localhost:8000/api/templates/textfsm&quot; \
   -H &quot;X-API-Key: your-api-key&quot;
@@ -452,7 +456,7 @@
   }'
 </code></pre>
 <p>If no matching template is found, parsing fails with an error.</p>
-<p>This feature is natively part of TextFSM, and Tom has an equivalent library implemented for TTP as well.</p>
+<p>Both TextFSM (via ntc-templates) and TTP (via ttp-templates) support automatic template discovery based on platform and command.</p>
 <h2 id="using-custom-templates">Using Custom Templates</h2>
 <p>To add your own templates:</p>
 <ol>

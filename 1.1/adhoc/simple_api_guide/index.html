@@ -615,7 +615,9 @@ curl &quot;http://tom:8020/api/inventory/export?Vendor=arista&amp;Description=DC
 <li>List TextFSM templates: <code>GET /api/templates/textfsm</code></li>
 <li>List TTP templates: <code>GET /api/templates/ttp</code></li>
 </ul>
-<p>Both return <code>{"custom": [...], "ntc": [...]}</code> (TTP only has <code>custom</code>).</p>
+<p>Both return dictionaries with template sources:
+- TextFSM: <code>{"custom": [...], "ntc": [...]}</code> - includes ntc-templates
+- TTP: <code>{"custom": [...], "ttp_templates": [...]}</code> - includes ttp-templates package</p>
 <h3 id="finding-matching-templates">Finding matching templates</h3>
 <ul>
 <li>Find matching template: <code>GET /api/templates/match</code></li>
