@@ -51,7 +51,21 @@ async def job(
     parser: str = Query("textfsm", description="Parser to use"),
     template: Optional[str] = Query(None, description="Template name for parsing"),
     include_raw: bool = Query(False, description="Include raw output with parsed"),
-) -> Optional[JobResponse | dict]:
+) -> Optional[JobResponse]:
+    """Get job status and results by job ID.
+
+    Returns a consistent JobResponse envelope containing:
+    - job_id: Unique identifier for the job
+    - status: Job status (QUEUED, COMPLETE, FAILED, etc.)
+    - result: When complete, contains {"data": {...}, "meta": {...}}
+    - attempts: Number of execution attempts
+    - error: Error message if failed
+
+    When parse=true and the job is complete, the command output in result.data
+    will be the parsed structured data instead of raw text.
+
+    Returns None if the job is not found.
+    """
     queue: saq.Queue = request.app.state.queue
     job_response = await JobResponse.from_job_id(job_id, queue)
 
@@ -85,12 +99,10 @@ async def job(
     if parse and job_response.status == "COMPLETE" and job_response.result:
         settings = request.app.state.settings
 
-        # Extract device_type and commands from metadata
+        # Extract device_type from metadata
         device_type = None
-        commands = None
         if job_response.metadata:
             device_type = job_response.metadata.get("device_type")
-            commands = job_response.metadata.get("commands", [])
 
         # Parse each command result
         parsed_results = {}
@@ -109,19 +121,8 @@ async def job(
                     )
                 else:
                     parsed_results[command] = raw_output
-        else:
-            # Single result, not a dict
-            parsed_results = parse_output(
-                raw_output=str(job_response.result),
-                settings=settings,
-                device_type=device_type,
-                command=commands[0] if commands else None,
-                template=template,
-                include_raw=include_raw,
-                parser_type=parser,
-            )
 
-        return parsed_results
+        return job_response.with_parsed_result(parsed_results)
 
     return job_response
 

@@ -3,6 +3,11 @@ from pathlib import Path
 
 from tom_controller.parsing import parse_output, TextFSMParser
 from tom_controller.parsing.ttp_parser import TTPParser
+from tom_controller.exceptions import (
+    TomParsingException,
+    TomTemplateNotFoundException,
+    TomValidationException,
+)
 
 
 @pytest.fixture
@@ -57,23 +62,19 @@ class TestTextFSMParser:
 
     def test_parse_with_missing_template(self, sample_output, test_template_dir):
         parser = TextFSMParser(custom_template_dir=test_template_dir)
-        result = parser.parse(
-            raw_output=sample_output,
-            template_name="nonexistent_template.textfsm",
-            include_raw=True,
-        )
-
-        assert "error" in result
-        assert "Template not found" in result["error"]
-        assert result["raw"] == sample_output
+        with pytest.raises(TomTemplateNotFoundException) as exc_info:
+            parser.parse(
+                raw_output=sample_output,
+                template_name="nonexistent_template.textfsm",
+                include_raw=True,
+            )
+        assert "Template not found" in str(exc_info.value)
 
     def test_parse_without_template_or_platform(self, sample_output, test_template_dir):
         parser = TextFSMParser(custom_template_dir=test_template_dir)
-        result = parser.parse(raw_output=sample_output, include_raw=True)
-
-        assert "error" in result
-        assert "template_name OR (platform + command) required" in result["error"]
-        assert result["raw"] == sample_output
+        with pytest.raises(TomParsingException) as exc_info:
+            parser.parse(raw_output=sample_output, include_raw=True)
+        assert "template_name OR (platform + command) required" in str(exc_info.value)
 
     def test_parse_with_auto_discovery(self):
         sample_cisco_ios_output = """Interface              IP-Address      OK? Method Status                Protocol
@@ -117,15 +118,14 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
         settings.textfsm_template_dir = "/tmp/textfsm"
         settings.ttp_template_dir = "/tmp/ttp"
 
-        result = parse_output(
-            raw_output=sample_output,
-            settings=settings,
-            template="test.textfsm",
-            parser_type="unsupported_parser",
-        )
-
-        assert "error" in result
-        assert "not supported" in result["error"]
+        with pytest.raises(TomValidationException) as exc_info:
+            parse_output(
+                raw_output=sample_output,
+                settings=settings,
+                template="test.textfsm",
+                parser_type="unsupported_parser",
+            )
+        assert "not supported" in str(exc_info.value)
 
     def test_list_templates(self, test_template_dir):
         parser = TextFSMParser(custom_template_dir=test_template_dir)
@@ -301,40 +301,38 @@ Loopback0              192.168.1.1     YES NVRAM  up                    up"""
 
     def test_parse_with_missing_template(self, sample_output, test_template_dir):
         parser = TTPParser(custom_template_dir=test_template_dir)
-        result = parser.parse(
-            raw_output=sample_output, template_name="nonexistent.ttp", include_raw=True
-        )
-
-        assert "error" in result
-        assert "Template not found" in result["error"]
-        assert result["raw"] == sample_output
+        with pytest.raises(TomTemplateNotFoundException) as exc_info:
+            parser.parse(
+                raw_output=sample_output,
+                template_name="nonexistent.ttp",
+                include_raw=True,
+            )
+        assert "Template not found" in str(exc_info.value)
 
     def test_parse_without_any_input(self, sample_output):
         parser = TTPParser()
-        result = parser.parse(raw_output=sample_output, include_raw=True)
+        with pytest.raises(TomParsingException) as exc_info:
+            parser.parse(raw_output=sample_output, include_raw=True)
+        assert "required" in str(exc_info.value)
 
-        assert "error" in result
-        assert "required" in result["error"]
-
-    def test_parse_output_function_ttp(self, sample_output):
+    def test_parse_output_function_ttp(self, sample_output, test_template_dir):
+        """Test TTP parsing with inline template string."""
         from unittest.mock import MagicMock
 
         settings = MagicMock()
         settings.textfsm_template_dir = "/tmp/textfsm"
-        settings.ttp_template_dir = "/tmp/ttp"
+        settings.ttp_template_dir = str(test_template_dir.parent / "ttp")
 
-        template = """<group name="interfaces">
-{{ interface }} {{ ip_address }} YES {{ method }} {{ status }} {{ protocol }}
-</group>"""
-
+        # Use a file-based template instead of inline string
+        # (parse_output expects template to be a filename, not content)
         result = parse_output(
             raw_output=sample_output,
             settings=settings,
-            template=template,
+            template="test_show_ip_int_brief.ttp",
             parser_type="ttp",
         )
 
-        assert "parsed" in result or "error" in result
+        assert "parsed" in result
 
     def test_list_templates(self, test_template_dir):
         parser = TTPParser(custom_template_dir=test_template_dir)
@@ -383,10 +381,9 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
 
         parser = TTPParser(custom_template_dir=tmp_path)
 
-        # Test: No match in index should return error
-        result = parser.parse(
-            raw_output="some output", platform="cisco_ios", command="show version"
-        )
-
-        assert "error" in result
-        assert "No template found" in result["error"]
+        # Test: No match in index should raise exception
+        with pytest.raises(TomTemplateNotFoundException) as exc_info:
+            parser.parse(
+                raw_output="some output", platform="cisco_ios", command="show version"
+            )
+        assert "No template found" in str(exc_info.value)

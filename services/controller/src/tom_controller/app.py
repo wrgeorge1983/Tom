@@ -22,6 +22,8 @@ from tom_controller.exceptions import (
     TomAuthorizationException,
     TomNotFoundException,
     TomValidationException,
+    TomParsingException,
+    TomTemplateNotFoundException,
 )
 
 
@@ -314,6 +316,22 @@ def create_app():
         logging.warning(f"Validation error: {exc}")
         return JSONResponse(
             status_code=400, content={"error": "Bad Request", "detail": str(exc)}
+        )
+
+    @app.exception_handler(TomTemplateNotFoundException)
+    async def template_not_found_exception_handler(
+        request: Request, exc: TomTemplateNotFoundException
+    ):
+        logging.warning(f"Template not found: {exc}")
+        return JSONResponse(
+            status_code=404, content={"error": "Template Not Found", "detail": str(exc)}
+        )
+
+    @app.exception_handler(TomParsingException)
+    async def parsing_exception_handler(request: Request, exc: TomParsingException):
+        logging.warning(f"Parsing error: {exc}")
+        return JSONResponse(
+            status_code=422, content={"error": "Parsing Failed", "detail": str(exc)}
         )
 
     @app.exception_handler(TomException)

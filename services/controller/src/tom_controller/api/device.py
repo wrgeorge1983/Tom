@@ -1,8 +1,10 @@
 import logging
-from typing import Optional
+from dataclasses import dataclass
+from typing import List, Optional, Union
 
 import saq
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
+from fastapi.responses import PlainTextResponse
 from starlette.requests import Request
 
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
@@ -13,13 +15,13 @@ from tom_controller.api.models import (
     JobResponse,
     SendCommandRequest,
     SendCommandsRequest,
+    CommandSpec,
 )
 from tom_controller.exceptions import (
     TomNotFoundException,
     TomException,
-    TomValidationException,
 )
-from tom_controller.inventory.inventory import InventoryStore
+from tom_controller.inventory.inventory import InventoryStore, DeviceConfig
 from tom_controller.parsing import parse_output
 
 logger = logging.getLogger(__name__)
@@ -27,239 +29,248 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["device"])
 
 
-@router.get("/device/{device_name}/send_command", deprecated=True)
-async def send_inventory_command_get(
-    request: Request,
+# -----------------------------------------------------------------------------
+# Helper functions for response handling
+# -----------------------------------------------------------------------------
+
+
+def _extract_error_message(error: str | None) -> str:
+    """Extract a clean error message from a traceback string."""
+    if not error:
+        return "Command execution failed"
+    error_lines = error.strip().split("\n")
+    if error_lines:
+        return error_lines[-1]
+    return "Command execution failed"
+
+
+def _error_response(
+    message: str, status_code: int, raw_output: bool
+) -> Union[PlainTextResponse, None]:
+    """Return PlainTextResponse if raw_output mode, otherwise return None to signal raise."""
+    if raw_output:
+        return PlainTextResponse(content=message, status_code=status_code)
+    return None
+
+
+def _raise_or_plain(
+    message: str,
+    status_code: int,
+    raw_output: bool,
+    exception_class: type = TomException,
+) -> PlainTextResponse:
+    """Either raise an exception or return a PlainTextResponse based on raw_output mode."""
+    if raw_output:
+        return PlainTextResponse(content=message, status_code=status_code)
+    raise exception_class(message)
+
+
+# -----------------------------------------------------------------------------
+# Job execution helper
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class JobExecutionParams:
+    """Parameters for executing a command job."""
+
+    queue: saq.Queue
+    device_config: DeviceConfig
+    commands: List[str]
+    credential: Union[StoredCredential, InlineSSHCredential]
+    use_cache: bool
+    cache_refresh: bool
+    cache_ttl: Optional[int]
+    wait: bool
+    timeout: int
+    retries: int = 3
+    max_queue_wait: int = 300
+
+
+async def _execute_device_job(
+    params: JobExecutionParams,
     device_name: str,
-    command: str,
-    inventory_store: InventoryStore = Depends(get_inventory_store),
-    wait: bool = False,
-    rawOutput: bool = Query(
-        False, description="Return raw output directly. Only works with wait=True"
-    ),
-    parse: bool = Query(
-        False,
-        description="Parse output using specified parser. Only works with wait=True",
-    ),
-    parser: str = Query("textfsm", description="Parser to use ('textfsm' or 'ttp')"),
-    template: Optional[str] = Query(
-        None, description="Template name (e.g., 'cisco_ios_show_ip_int_brief.textfsm')"
-    ),
-    include_raw: bool = Query(
-        False, description="Include raw output along with parsed (when parse=True)"
-    ),
-    timeout: int = 10,
-    # Optional Inline SSH Credentials
-    username: Optional[str] = Query(
-        None,
-        description="Override username (requires password). Uses inventory "
-        "credential if not provided.",
-    ),
-    password: Optional[str] = Query(
-        None,
-        description="Override password (requires username). Uses inventory "
-        "credential if not provided.",
-    ),
-    use_cache: bool = Query(
-        False, description="This job is eligible for caching. Only works with wait=True"
-    ),
-    cache_ttl: Optional[int] = Query(
-        None, description="Cache TTL in seconds. Only works with wait=True"
-    ),
-    cache_refresh: bool = Query(
-        False, description="Force refresh cached result. Only works with wait=True"
-    ),
-) -> JobResponse | str | dict:
-    logger.info(f"Device command request: {device_name} - {command[:50]}...")
-    device_config = inventory_store.get_device_config(device_name)
-    if device_config is None:
-        raise TomNotFoundException(f"Device '{device_name}' not found in inventory")
+    raw_output: bool,
+) -> Union[JobResponse, PlainTextResponse]:
+    """Execute a job on a device, handling adapter selection and error responses.
 
-    if username is not None and password is not None:
-        credential = InlineSSHCredential(username=username, password=password)
+    Returns JobResponse on success, or PlainTextResponse for errors in raw_output mode.
+    Raises TomException for errors when not in raw_output mode.
+    """
+    adapter = params.device_config.adapter
+
+    kwargs = {
+        "host": params.device_config.host,
+        "device_type": params.device_config.adapter_driver,
+        "commands": params.commands,
+        "credential": params.credential,
+        "port": params.device_config.port,
+        "use_cache": params.use_cache,
+        "cache_refresh": params.cache_refresh,
+        "cache_ttl": params.cache_ttl,
+        "max_queue_wait": params.max_queue_wait,
+    }
+
+    if adapter == "netmiko":
+        args = NetmikoSendCommandModel(**kwargs)
+        job_function = "send_commands_netmiko"
+    elif adapter == "scrapli":
+        args = ScrapliSendCommandModel(**kwargs)
+        job_function = "send_commands_scrapli"
     else:
-        credential = StoredCredential(credential_id=device_config.credential_id)
-
-    commands = [command]
-    queue: saq.Queue = request.app.state.queue
-
-    if device_config.adapter == "netmiko":
-        args = NetmikoSendCommandModel(
-            host=device_config.host,
-            device_type=device_config.adapter_driver,
-            commands=commands,
-            credential=credential,
-            port=device_config.port,
-            use_cache=use_cache,
-            cache_refresh=cache_refresh,
-            cache_ttl=cache_ttl,
+        return _raise_or_plain(
+            f"Unknown adapter type: {adapter}",
+            500,
+            raw_output,
         )
-        try:
-            response = await enqueue_job(
-                queue, "send_commands_netmiko", args, wait=wait, timeout=timeout
-            )
-        except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
 
-    elif device_config.adapter == "scrapli":
-        args = ScrapliSendCommandModel(
-            host=device_config.host,
-            device_type=device_config.adapter_driver,
-            commands=commands,
-            credential=credential,
-            port=device_config.port,
-            use_cache=use_cache,
-            cache_refresh=cache_refresh,
-            cache_ttl=cache_ttl,
+    try:
+        response = await enqueue_job(
+            params.queue,
+            job_function,
+            args,
+            wait=params.wait,
+            timeout=params.timeout,
+            retries=params.retries,
+            max_queue_wait=params.max_queue_wait,
         )
-        try:
-            response = await enqueue_job(
-                queue, "send_commands_scrapli", args, wait=wait, timeout=timeout
-            )
-        except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
-
-    else:
-        raise TomException(f"Unknown device type {type(device_config)}")
-
-    if wait:
-        # Log the result status
-        if response.status == "FAILED":
-            logger.error(
-                f"Device command FAILED for {device_name}: {response.error[:200] if response.error else 'Unknown error'}"
-            )
-        elif response.status == "COMPLETE":
-            logger.info(
-                f"Device command completed for {device_name} after {response.attempts} attempt(s)"
-            )
-
-        # Handle parsing if requested
-        if parse and not rawOutput:
-            if parser not in ["textfsm", "ttp"]:
-                raise TomValidationException(
-                    f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'"
-                )
-
-            raw_output = response.get_command_output(command) or ""
-
-            # Parse the output using shared function
-
-            parsed_result = parse_output(
-                raw_output=raw_output,
-                settings=request.app.state.settings,
-                device_type=device_config.adapter_driver,
-                command=command,
-                template=template,
-                include_raw=include_raw,
-                parser_type=parser,
-            )
-
-            return parsed_result
-
-        elif rawOutput:
-            output = response.get_command_output(command)
-            if output is None:
-                return ""  # Return empty string instead of None
-            return output
-
-    # If there's cache metadata and we're returning the full response, include it
-    if isinstance(response, JobResponse) and response.cache_metadata:
-        # Add cache metadata to the response for visibility
-        response_dict = response.model_dump()
-        response_dict["_cache"] = response.cache_metadata
-        return response_dict
+    except Exception as e:
+        return _raise_or_plain(
+            f"Failed to enqueue job for {device_name}: {e}",
+            500,
+            raw_output,
+        )
 
     return response
 
 
-@router.post("/device/{device_name}/send_command")
+def _handle_job_completion_logging(
+    response: JobResponse, device_name: str, command_desc: str
+) -> None:
+    """Log job completion status."""
+    if response.status == "FAILED":
+        logger.error(
+            f"Device {command_desc} FAILED for {device_name}: "
+            f"{response.error[:200] if response.error else 'Unknown error'}"
+        )
+    elif response.status == "COMPLETE":
+        logger.info(
+            f"Device {command_desc} completed for {device_name} after "
+            f"{response.attempts} attempt(s)"
+        )
+
+
+def _format_raw_output_single(response: JobResponse, command: str) -> PlainTextResponse:
+    """Format response as plain text for a single command."""
+    output = response.get_command_output(command)
+    return PlainTextResponse(content=output or "")
+
+
+def _format_raw_output_multi(
+    response: JobResponse, commands: List[str]
+) -> PlainTextResponse:
+    """Format response as plain text for multiple commands."""
+    command_data = response.command_data
+    if command_data:
+        outputs = []
+        for cmd in commands:
+            output = command_data.get(cmd, "")
+            outputs.append(f"### {cmd} ###\n{output}")
+        return PlainTextResponse(content="\n\n".join(outputs))
+    return PlainTextResponse(content="")
+
+
+# -----------------------------------------------------------------------------
+# API Endpoints
+# -----------------------------------------------------------------------------
+
+
+@router.post("/device/{device_name}/send_command", response_model=None)
 async def send_inventory_command(
     request: Request,
     device_name: str,
     body: SendCommandRequest,
     inventory_store: InventoryStore = Depends(get_inventory_store),
-) -> JobResponse | str | dict:
-    """Send a single command to a device from inventory."""
+) -> Union[JobResponse, PlainTextResponse]:
+    """Send a single command to a device from inventory.
+
+    By default, returns a JobResponse envelope containing:
+    - job_id: Unique identifier for the job
+    - status: Job status (QUEUED, COMPLETE, FAILED, etc.)
+    - result: When complete, contains {"data": {...}, "meta": {...}}
+    - attempts: Number of execution attempts
+    - error: Error message if failed
+
+    When wait=true and parse=true, the command output in result.data will be
+    the parsed structured data instead of raw text.
+
+    **Raw Output Mode** (raw_output=true):
+    Opts out of the JobResponse envelope entirely. Returns plain text
+    (text/plain) with just the device output. Requires wait=true.
+    Errors return appropriate HTTP status codes with plain text messages:
+    - 404: Device not found
+    - 500: Queue/adapter errors
+    - 502: Device command execution failed
+    """
     logger.info(f"Device command request: {device_name} - {body.command[:50]}...")
+
+    # Get device config
     device_config = inventory_store.get_device_config(device_name)
     if device_config is None:
-        raise TomNotFoundException(f"Device '{device_name}' not found in inventory")
+        return _raise_or_plain(
+            f"Device '{device_name}' not found in inventory",
+            404,
+            body.raw_output,
+            TomNotFoundException,
+        )
 
+    # Build credential
     if body.username is not None and body.password is not None:
-        credential = InlineSSHCredential(username=body.username, password=body.password)
+        credential: Union[StoredCredential, InlineSSHCredential] = InlineSSHCredential(
+            username=body.username, password=body.password
+        )
     else:
         credential = StoredCredential(credential_id=device_config.credential_id)
 
-    commands = [body.command]
-    queue: saq.Queue = request.app.state.queue
+    # Execute job
+    params = JobExecutionParams(
+        queue=request.app.state.queue,
+        device_config=device_config,
+        commands=[body.command],
+        credential=credential,
+        use_cache=body.use_cache,
+        cache_refresh=body.cache_refresh,
+        cache_ttl=body.cache_ttl,
+        wait=body.wait,
+        timeout=body.timeout,
+    )
 
-    if device_config.adapter == "netmiko":
-        args = NetmikoSendCommandModel(
-            host=device_config.host,
-            device_type=device_config.adapter_driver,
-            commands=commands,
-            credential=credential,
-            port=device_config.port,
-            use_cache=body.use_cache,
-            cache_refresh=body.cache_refresh,
-            cache_ttl=body.cache_ttl,
-        )
-        try:
-            response = await enqueue_job(
-                queue,
-                "send_commands_netmiko",
-                args,
-                wait=body.wait,
-                timeout=body.timeout,
-            )
-        except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
+    result = await _execute_device_job(params, device_name, body.raw_output)
 
-    elif device_config.adapter == "scrapli":
-        args = ScrapliSendCommandModel(
-            host=device_config.host,
-            device_type=device_config.adapter_driver,
-            commands=commands,
-            credential=credential,
-            port=device_config.port,
-            use_cache=body.use_cache,
-            cache_refresh=body.cache_refresh,
-            cache_ttl=body.cache_ttl,
-        )
-        try:
-            response = await enqueue_job(
-                queue,
-                "send_commands_scrapli",
-                args,
-                wait=body.wait,
-                timeout=body.timeout,
-            )
-        except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
+    # If we got a PlainTextResponse (error in raw_output mode), return it
+    if isinstance(result, PlainTextResponse):
+        return result
 
-    else:
-        raise TomException(f"Unknown adapter type: {device_config.adapter}")
+    response = result
 
+    # Handle completed job
     if body.wait:
-        # Log the result status
-        if response.status == "FAILED":
-            logger.error(
-                f"Device command FAILED for {device_name}: {response.error[:200] if response.error else 'Unknown error'}"
-            )
-        elif response.status == "COMPLETE":
-            logger.info(
-                f"Device command completed for {device_name} after {response.attempts} attempt(s)"
+        _handle_job_completion_logging(response, device_name, "command")
+
+        # Check for failure in raw_output mode
+        if response.status == "FAILED" and body.raw_output:
+            return PlainTextResponse(
+                content=_extract_error_message(response.error),
+                status_code=502,
             )
 
-        # Handle parsing if requested
-        if body.parse:
-            if body.parser not in ["textfsm", "ttp"]:
-                raise TomValidationException(
-                    f"Parser '{body.parser}' not supported. Use 'textfsm' or 'ttp'"
-                )
+        # Raw output mode - return plain text
+        if body.raw_output:
+            return _format_raw_output_single(response, body.command)
 
+        # Parse mode - parse and wrap in JobResponse
+        if body.parse and response.status == "COMPLETE":
             raw_output = response.get_command_output(body.command) or ""
-
             parsed_result = parse_output(
                 raw_output=raw_output,
                 settings=request.app.state.settings,
@@ -269,26 +280,35 @@ async def send_inventory_command(
                 include_raw=body.include_raw,
                 parser_type=body.parser,
             )
-
-            return parsed_result
-
-    # If there's cache metadata and we're returning the full response, include it
-    if isinstance(response, JobResponse) and response.cache_metadata:
-        response_dict = response.model_dump()
-        response_dict["_cache"] = response.cache_metadata
-        return response_dict
+            return response.with_parsed_result({body.command: parsed_result})
 
     return response
 
 
-@router.post("/device/{device_name}/send_commands")
+@router.post("/device/{device_name}/send_commands", response_model=None)
 async def send_inventory_commands(
     request: Request,
     device_name: str,
     body: SendCommandsRequest,
     inventory_store: InventoryStore = Depends(get_inventory_store),
-) -> JobResponse | dict:
+) -> Union[JobResponse, PlainTextResponse]:
     """Send multiple commands to a device with per-command parsing configuration.
+
+    By default, returns a JobResponse envelope containing:
+    - job_id: Unique identifier for the job
+    - status: Job status (QUEUED, COMPLETE, FAILED, etc.)
+    - result: When complete, contains {"data": {...}, "meta": {...}}
+    - attempts: Number of execution attempts
+    - error: Error message if failed
+
+    **Raw Output Mode** (raw_output=true):
+    Opts out of the JobResponse envelope entirely. Returns plain text
+    (text/plain) with all command outputs concatenated (separated by newlines).
+    Requires wait=true. Errors return appropriate HTTP status codes with
+    plain text messages:
+    - 404: Device not found
+    - 500: Queue/adapter errors
+    - 502: Device command execution failed
 
     This endpoint supports both simple and advanced command execution:
 
@@ -326,106 +346,102 @@ async def send_inventory_commands(
             "wait": true
         }
         ```
+
+        Raw output mode:
+        ```json
+        {
+            "commands": ["show version", "show ip int brief"],
+            "wait": true,
+            "raw_output": true
+        }
+        ```
     """
+    # Get device config
     device_config = inventory_store.get_device_config(device_name)
     if device_config is None:
-        raise TomNotFoundException(f"Device '{device_name}' not found in inventory")
+        return _raise_or_plain(
+            f"Device '{device_name}' not found in inventory",
+            404,
+            body.raw_output,
+            TomNotFoundException,
+        )
 
-    # Handle credentials
+    # Build credential
     if body.username is not None and body.password is not None:
-        credential = InlineSSHCredential(username=body.username, password=body.password)
+        credential: Union[StoredCredential, InlineSSHCredential] = InlineSSHCredential(
+            username=body.username, password=body.password
+        )
     else:
         credential = StoredCredential(credential_id=device_config.credential_id)
 
-    queue: saq.Queue = request.app.state.queue
-
-    # Get normalized commands (all as CommandSpec objects)
+    # Normalize commands
     normalized_commands = body.get_normalized_commands()
-
-    # Extract just the command strings for execution
     command_strings = [cmd.command for cmd in normalized_commands]
-
-    # Store command specs for parsing later
     command_specs_map = {cmd.command: cmd for cmd in normalized_commands}
 
-    kwargs = {
-        "host": device_config.host,
-        "device_type": device_config.adapter_driver,
-        "commands": command_strings,
-        "credential": credential,
-        "port": device_config.port,
-        "use_cache": body.use_cache,
-        "cache_refresh": body.cache_refresh,
-        "cache_ttl": body.cache_ttl,
-        "max_queue_wait": body.max_queue_wait,
-    }
+    # Execute job
+    params = JobExecutionParams(
+        queue=request.app.state.queue,
+        device_config=device_config,
+        commands=command_strings,
+        credential=credential,
+        use_cache=body.use_cache,
+        cache_refresh=body.cache_refresh,
+        cache_ttl=body.cache_ttl,
+        wait=body.wait,
+        timeout=body.timeout,
+        retries=body.retries,
+        max_queue_wait=body.max_queue_wait,
+    )
 
-    if device_config.adapter == "netmiko":
-        args = NetmikoSendCommandModel(**kwargs)
-        try:
-            response = await enqueue_job(
-                queue,
-                "send_commands_netmiko",
-                args,
-                wait=body.wait,
-                timeout=body.timeout,
-                retries=body.retries,
-                max_queue_wait=body.max_queue_wait,
-            )
-        except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
+    result = await _execute_device_job(params, device_name, body.raw_output)
 
-    elif device_config.adapter == "scrapli":
-        args = ScrapliSendCommandModel(**kwargs)
-        try:
-            response = await enqueue_job(
-                queue,
-                "send_commands_scrapli",
-                args,
-                wait=body.wait,
-                timeout=body.timeout,
-                retries=body.retries,
-                max_queue_wait=body.max_queue_wait,
-            )
-        except Exception as e:
-            raise TomException(f"Failed to enqueue job for {device_name}: {e}") from e
+    # If we got a PlainTextResponse (error in raw_output mode), return it
+    if isinstance(result, PlainTextResponse):
+        return result
 
-    else:
-        raise TomException(f"Unknown device type {type(device_config)}")
+    response = result
 
-    # Handle parsing if requested and waiting
+    # Handle completed job
     if body.wait:
-        # Check if any commands require parsing
-        commands_to_parse = [cmd for cmd in normalized_commands if cmd.parse]
+        _handle_job_completion_logging(response, device_name, "commands")
 
-        if commands_to_parse and response.status == "COMPLETE":
-            parsed_results = {}
-            command_data = response.command_data
+        # Check for failure in raw_output mode
+        if response.status == "FAILED" and body.raw_output:
+            return PlainTextResponse(
+                content=_extract_error_message(response.error),
+                status_code=502,
+            )
 
-            if command_data:
-                for command_str, raw_output in command_data.items():
-                    cmd_spec = command_specs_map.get(command_str)
+        # Raw output mode - return concatenated plain text
+        if body.raw_output:
+            return _format_raw_output_multi(response, command_strings)
 
-                    if cmd_spec and cmd_spec.parse and isinstance(raw_output, str):
-                        # Parse this specific command with its own settings
-                        parsed_results[command_str] = parse_output(
-                            raw_output=raw_output,
-                            settings=request.app.state.settings,
-                            device_type=device_config.adapter_driver,
-                            command=command_str,
-                            template=cmd_spec.template,
-                            include_raw=cmd_spec.include_raw or False,
-                            parser_type=cmd_spec.parser or "textfsm",
-                        )
-                    else:
-                        # Return raw output for commands that don't need parsing
-                        parsed_results[command_str] = raw_output
+        # Parse mode - parse requested commands and wrap in JobResponse
+        if response.status == "COMPLETE":
+            commands_to_parse = [cmd for cmd in normalized_commands if cmd.parse]
 
-            # Include cache metadata if present
-            result = {"data": parsed_results}
-            if response.cache_metadata:
-                result["_cache"] = response.cache_metadata
+            if commands_to_parse:
+                parsed_results = {}
+                command_data = response.command_data
 
-            return result
+                if command_data:
+                    for command_str, raw_output in command_data.items():
+                        cmd_spec = command_specs_map.get(command_str)
+
+                        if cmd_spec and cmd_spec.parse and isinstance(raw_output, str):
+                            parsed_results[command_str] = parse_output(
+                                raw_output=raw_output,
+                                settings=request.app.state.settings,
+                                device_type=device_config.adapter_driver,
+                                command=command_str,
+                                template=cmd_spec.template,
+                                include_raw=cmd_spec.include_raw or False,
+                                parser_type=cmd_spec.parser or "textfsm",
+                            )
+                        else:
+                            parsed_results[command_str] = raw_output
+
+                return response.with_parsed_result(parsed_results)
 
     return response

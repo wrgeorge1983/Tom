@@ -12,7 +12,7 @@ services:
     env_file:
       - docker.env
     ports:
-      - "8000:8000"
+      - "8001:8000"
 #    restart: always
     volumes:
       - ./inventory:/app/inventory

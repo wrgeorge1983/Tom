@@ -7,6 +7,25 @@ from tom_shared.models import CommandExecutionResult
 
 
 class JobResponse(BaseModel):
+    """Response wrapper for all job-based operations.
+
+    This provides a consistent envelope for all job responses, whether the job
+    is queued (wait=false) or completed (wait=true), and whether output is
+    raw or parsed.
+
+    The result field structure when job is COMPLETE:
+    {
+        "data": {
+            "command1": <output>,  # string if raw, list/dict if parsed
+            "command2": <output>,
+            ...
+        },
+        "meta": {
+            "cache": {...}  # cache metadata if available
+        }
+    }
+    """
+
     job_id: str
     status: Literal[
         "NEW", "QUEUED", "ACTIVE", "COMPLETE", "FAILED", "ABORTED", "ABORTING"
@@ -71,12 +90,49 @@ class JobResponse(BaseModel):
             return data.get(command)
         return None
 
+    def with_parsed_result(self, parsed_data: Dict[str, Any]) -> "JobResponse":
+        """Return a new JobResponse with parsed data in the result.
+
+        This replaces the raw command output in result.data with parsed output,
+        preserving all other job metadata (job_id, status, attempts, etc.)
+        and result metadata (cache info, etc.)
+
+        Args:
+            parsed_data: Dict mapping command -> parsed output
+
+        Returns:
+            New JobResponse with parsed data in result.data
+        """
+        # Preserve existing meta if present
+        meta = {}
+        if isinstance(self.result, dict) and "meta" in self.result:
+            meta = self.result["meta"]
+
+        new_result = {"data": parsed_data, "meta": meta}
+
+        return JobResponse(
+            job_id=self.job_id,
+            status=self.status,
+            result=new_result,
+            group=self.group,
+            metadata=self.metadata,
+            attempts=self.attempts,
+            error=self.error,
+        )
+
 
 class SendCommandRequest(BaseModel):
     """Request body for sending a single command to a device."""
 
     command: str = Field(..., description="The command to execute")
     wait: bool = Field(False, description="Wait for job completion")
+    raw_output: bool = Field(
+        False,
+        description="Return raw command output as plain text. This opts out of the "
+        "standard JobResponse envelope - you get just the raw device output as "
+        "text/plain. Requires wait=True. Errors return appropriate HTTP status "
+        "codes with plain text error messages. Mutually exclusive with parse.",
+    )
     parse: bool = Field(False, description="Parse output using specified parser")
     parser: Literal["textfsm", "ttp"] = Field("textfsm", description="Parser to use")
     template: Optional[str] = Field(
@@ -106,6 +162,26 @@ class RawCommandRequest(BaseModel):
     command: str = Field(..., description="The command to execute")
     port: int = Field(22, description="SSH port")
     wait: bool = Field(False, description="Wait for job completion")
+    timeout: int = Field(10, description="Timeout in seconds")
+    # Output mode
+    raw_output: bool = Field(
+        False,
+        description="Return raw command output as plain text. This opts out of the "
+        "standard JobResponse envelope - you get just the raw device output as "
+        "text/plain. Requires wait=True. Errors return appropriate HTTP status "
+        "codes with plain text error messages. Mutually exclusive with parse.",
+    )
+    # Parsing options
+    parse: bool = Field(False, description="Parse output using specified parser")
+    parser: Literal["textfsm", "ttp"] = Field("textfsm", description="Parser to use")
+    template: Optional[str] = Field(
+        None, description="Explicit template name for parsing"
+    )
+    include_raw: bool = Field(False, description="Include raw output along with parsed")
+    # Caching options
+    use_cache: bool = Field(False, description="Use cache for command results")
+    cache_ttl: Optional[int] = Field(None, description="Cache TTL in seconds")
+    cache_refresh: bool = Field(False, description="Force refresh cache")
     # Credentials - must provide either credential_id or username+password
     credential_id: Optional[str] = Field(None, description="Stored credential ID")
     username: Optional[str] = Field(
@@ -143,6 +219,14 @@ class SendCommandsRequest(BaseModel):
         "or CommandSpec objects for per-command configuration",
     )
     # Global defaults that can be overridden per command
+    raw_output: bool = Field(
+        False,
+        description="Return raw command output as plain text. This opts out of the "
+        "standard JobResponse envelope - you get the raw device output for all "
+        "commands concatenated as text/plain. Requires wait=True. Errors return "
+        "appropriate HTTP status codes with plain text error messages. Mutually "
+        "exclusive with parse.",
+    )
     parse: bool = Field(False, description="Default: whether to parse command outputs")
     parser: Literal["textfsm", "ttp"] = Field(
         "textfsm", description="Default parser to use"
