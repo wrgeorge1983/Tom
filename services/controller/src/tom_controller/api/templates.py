@@ -71,6 +71,17 @@ class TemplateDeleteResponse(BaseModel):
     deleted: bool
 
 
+class ParseTestRequest(BaseModel):
+    """Request to test parsing raw output."""
+
+    raw_output: str
+    parser: Literal["textfsm", "ttp"] = "textfsm"
+    template: Optional[str] = None
+    device_type: Optional[str] = None
+    command: Optional[str] = None
+    include_raw: bool = False
+
+
 @router.get("/templates/textfsm")
 async def list_textfsm_templates(request: Request):
     """List all available TextFSM templates."""
@@ -170,39 +181,35 @@ async def match_template(
 @router.post("/parse/test")
 async def test_parse(
     request: Request,
-    raw_output: str,
-    parser: str = Query("textfsm", description="Parser to use ('textfsm' or 'ttp')"),
-    template: Optional[str] = Query(
-        None, description="Template name (e.g., 'my_template.textfsm')"
-    ),
-    device_type: Optional[str] = Query(
-        None, description="Device type for auto-discovery (e.g., 'cisco_ios')"
-    ),
-    command: Optional[str] = Query(
-        None, description="Command for auto-discovery (e.g., 'show ip int brief')"
-    ),
-    include_raw: bool = Query(False, description="Include raw output in response"),
+    body: ParseTestRequest,
 ):
     """Test parsing endpoint - parse raw text with a specified template.
 
     This is a convenience endpoint for testing templates without executing commands.
+
+    You must provide either:
+    - `template`: Explicit template name (e.g., "cisco_ios_show_version.textfsm")
+    - `device_type` + `command`: For automatic template discovery
+
+    Example request:
+    ```json
+    {
+      "raw_output": "Cisco IOS Software, Version 15.1...",
+      "parser": "textfsm",
+      "template": "cisco_ios_show_version.textfsm"
+    }
+    ```
     """
-
-    if parser not in ["textfsm", "ttp"]:
-        raise TomValidationException(
-            f"Parser '{parser}' not supported. Use 'textfsm' or 'ttp'"
-        )
-
     settings = request.app.state.settings
 
     return parse_output(
-        raw_output=raw_output,
+        raw_output=body.raw_output,
         settings=settings,
-        device_type=device_type,
-        command=command,
-        template=template,
-        include_raw=include_raw,
-        parser_type=parser,
+        device_type=body.device_type,
+        command=body.command,
+        template=body.template,
+        include_raw=body.include_raw,
+        parser_type=body.parser,
     )
 
 

@@ -1,6 +1,8 @@
 # Tom Smykowski API Endpoints
 
-This document describes the available API endpoints for the Tom Smykowski network automation broker service.
+This document is the comprehensive API reference for Tom Smykowski. It covers every endpoint and parameter.
+
+**See also:** [Simple API Guide](simple_api_guide.md) for a tutorial-style introduction with examples and common workflows.
 
 ## Base URL
 
@@ -632,16 +634,31 @@ POST /api/parse/test
 
 Test parsing without executing commands.
 
+**Request Body:**
+```json
+{
+  "raw_output": "Cisco IOS Software, Version 15.1...",
+  "parser": "textfsm",
+  "template": "cisco_ios_show_version.textfsm",
+  "device_type": "cisco_ios",
+  "command": "show version",
+  "include_raw": false
+}
+```
+
 **Parameters:**
-- `parser` (string): Parser to use ("textfsm" or "ttp")
-- `template` (string): Template filename
-- `device_type` (string, optional): Device type for template auto-discovery
-- `command` (string, optional): Command for template auto-discovery
-- `include_raw` (bool, optional): Include raw output in response
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `raw_output` | string | required | Raw text output to parse |
+| `parser` | string | "textfsm" | Parser to use ("textfsm" or "ttp") |
+| `template` | string | null | Explicit template filename |
+| `device_type` | string | null | Device type for template auto-discovery |
+| `command` | string | null | Command for template auto-discovery |
+| `include_raw` | bool | false | Include raw output in response |
 
-**Request Body:** Raw text output to parse
+**Note:** You must provide either `template` OR (`device_type` + `command`) for template discovery.
 
-**Returns:** Parsed result
+**Returns:** Parsed result with metadata
 
 ### Metrics
 

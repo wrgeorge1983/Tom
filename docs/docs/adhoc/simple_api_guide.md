@@ -1,6 +1,8 @@
 # Simple API Guide
 
-This document explains the main Tom controller HTTP API flows: starting sync/async jobs against inventory devices, controlling caching, and selecting parsing templates. It covers the primary, common paths (not every edge case).
+This document explains the main Tom controller HTTP API flows with examples. It covers the primary, common paths (not every edge case).
+
+**See also:** [API Endpoints Reference](api-endpoints.md) for the comprehensive reference covering every endpoint and parameter.
 
 ## Overview
 - Tom exposes HTTP endpoints to run commands against inventory devices (synchronously or asynchronously), control caching, and choose parsing templates.
@@ -236,14 +238,49 @@ curl "http://tom:8020/api/inventory/export?Vendor=arista&Description=DCS-7.*&Cap
 - Invalid regex patterns will return an error
 
 ## Templates & parsing
+
+### Listing templates
 - List TextFSM templates: `GET /api/templates/textfsm`
+- List TTP templates: `GET /api/templates/ttp`
+
+Both return `{"custom": [...], "ntc": [...]}` (TTP only has `custom`).
+
+### Finding matching templates
 - Find matching template: `GET /api/templates/match`
   - Query params: `command` (required), plus either `device_type` or `device` (inventory lookup), and optionally `parser` (`textfsm` or `ttp`).
   - Returns which template(s) would be used to parse that command, including template name, source (`custom` or `ntc-templates`), and parser type.
   - Example: `GET /api/templates/match?device_type=cisco_ios&command=show+version`
   - Example with inventory device: `GET /api/templates/match?device=router1&command=show+ip+int+brief`
+
+### Viewing template contents
+- Get template: `GET /api/templates/{parser}/{template_name}`
+  - Example: `GET /api/templates/textfsm/cisco_ios_show_version`
+  - Returns template name, parser, source, and full content.
+
+### Creating custom templates
+- Create template: `POST /api/templates/{parser}`
+  - Request body: `{"name": "my_template.textfsm", "content": "...", "overwrite": false}`
+  - Templates are validated before saving (syntax errors returned as warnings).
+  - Set `overwrite: true` to replace an existing template.
+
+### Deleting custom templates
+- Delete template: `DELETE /api/templates/{parser}/{template_name}`
+  - Only custom templates can be deleted (not ntc-templates).
+
+### Testing parsing
 - Test parsing without executing commands: `POST /api/parse/test`
-  - Submit raw text and query params `parser`, `template`, `device_type`, `command`, `include_raw`.
+
+Request body:
+```json
+{
+  "raw_output": "raw device output here...",
+  "parser": "textfsm",
+  "template": "cisco_ios_show_version.textfsm",
+  "include_raw": false
+}
+```
+
+You can also use `device_type` + `command` instead of `template` for auto-discovery.
 
 ## Caching
 - Controlled per-request (device endpoints) with request body fields:
