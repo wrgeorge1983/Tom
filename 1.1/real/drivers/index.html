@@ -1,0 +1,1188 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://wrgeorge1983.github.io/Tom/1.1/real/drivers/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Adapters and Drivers Reference - Tom Smykowski Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CFira+Code:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adapters-and-drivers-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tom Smykowski Documentation" class="md-header__button md-logo" aria-label="Tom Smykowski Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tom Smykowski Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Adapters and Drivers Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/wrgeorge1983/Tom" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wrgeorge1983/Tom
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  What is Tom?
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../adhoc/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Adhoc Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tom Smykowski Documentation" class="md-nav__button md-logo" aria-label="Tom Smykowski Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tom Smykowski Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/wrgeorge1983/Tom" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    wrgeorge1983/Tom
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What is Tom?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adhoc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adhoc Docs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+    
+      
+    
+    <a href="https://github.com/wrgeorge1983/Tom/raw/main/docs/docs/real/drivers.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="adapters-and-drivers-reference">Adapters and Drivers Reference</h1>
+<p>Tom supports two network automation libraries (adapters): <strong>Netmiko</strong> and <strong>Scrapli</strong>. The drivers available depend on what these libraries support - Tom just passes the driver name through to them.</p>
+<h2 id="listing-drivers">Listing Drivers</h2>
+<p>To get the current list of available drivers from your installed version:</p>
+<pre><code class="language-bash">cd services/worker
+uv run python -m tom_worker.adapters.main
+</code></pre>
+<h2 id="reference-supported-drivers">Reference: Supported Drivers</h2>
+<p>The following lists are exported from Netmiko and Scrapli for convenience. For the authoritative and up-to-date list, use the command above or consult the respective library documentation:</p>
+<ul>
+<li><a href="https://github.com/ktbyers/netmiko/blob/develop/PLATFORMS.md">Netmiko Platforms</a></li>
+<li><a href="https://github.com/carlmontanari/scrapli">Scrapli</a> - See their documentation for supported platforms</li>
+</ul>
+<h2 id="scrapli-drivers">Scrapli Drivers</h2>
+<p>Scrapli is async and generally faster, but supports fewer platforms:</p>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Platform</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>arista_eos</code></td>
+<td>Arista EOS</td>
+</tr>
+<tr>
+<td><code>cisco_iosxe</code></td>
+<td>Cisco IOS-XE</td>
+</tr>
+<tr>
+<td><code>cisco_iosxr</code></td>
+<td>Cisco IOS-XR</td>
+</tr>
+<tr>
+<td><code>cisco_nxos</code></td>
+<td>Cisco NX-OS</td>
+</tr>
+<tr>
+<td><code>juniper_junos</code></td>
+<td>Juniper Junos</td>
+</tr>
+</tbody>
+</table>
+<h2 id="netmiko-drivers">Netmiko Drivers</h2>
+<p>Netmiko supports a wide range of platforms:</p>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Platform</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a10</code></td>
+<td>A10</td>
+</tr>
+<tr>
+<td><code>accedian</code></td>
+<td>Accedian</td>
+</tr>
+<tr>
+<td><code>adtran_os</code></td>
+<td>Adtran OS</td>
+</tr>
+<tr>
+<td><code>adva_fsp150f2</code></td>
+<td>ADVA FSP 150F2</td>
+</tr>
+<tr>
+<td><code>adva_fsp150f3</code></td>
+<td>ADVA FSP 150F3</td>
+</tr>
+<tr>
+<td><code>alaxala_ax26s</code></td>
+<td>AlaxalA AX26S</td>
+</tr>
+<tr>
+<td><code>alaxala_ax36s</code></td>
+<td>AlaxalA AX36S</td>
+</tr>
+<tr>
+<td><code>alcatel_aos</code></td>
+<td>Alcatel AOS</td>
+</tr>
+<tr>
+<td><code>alcatel_sros</code></td>
+<td>Alcatel SR OS</td>
+</tr>
+<tr>
+<td><code>allied_telesis_awplus</code></td>
+<td>Allied Telesis AW+</td>
+</tr>
+<tr>
+<td><code>apresia_aeos</code></td>
+<td>Apresia AEOS</td>
+</tr>
+<tr>
+<td><code>arista_eos</code></td>
+<td>Arista EOS</td>
+</tr>
+<tr>
+<td><code>arris_cer</code></td>
+<td>Arris CER</td>
+</tr>
+<tr>
+<td><code>aruba_aoscx</code></td>
+<td>Aruba AOS-CX</td>
+</tr>
+<tr>
+<td><code>aruba_os</code></td>
+<td>Aruba OS</td>
+</tr>
+<tr>
+<td><code>aruba_osswitch</code></td>
+<td>Aruba OS Switch</td>
+</tr>
+<tr>
+<td><code>aruba_procurve</code></td>
+<td>Aruba ProCurve</td>
+</tr>
+<tr>
+<td><code>asterfusion_asternos</code></td>
+<td>Asterfusion AsternOS</td>
+</tr>
+<tr>
+<td><code>audiocode_66</code></td>
+<td>AudioCodes 66</td>
+</tr>
+<tr>
+<td><code>audiocode_72</code></td>
+<td>AudioCodes 72</td>
+</tr>
+<tr>
+<td><code>audiocode_shell</code></td>
+<td>AudioCodes Shell</td>
+</tr>
+<tr>
+<td><code>avaya_ers</code></td>
+<td>Avaya ERS</td>
+</tr>
+<tr>
+<td><code>avaya_vsp</code></td>
+<td>Avaya VSP</td>
+</tr>
+<tr>
+<td><code>bintec_boss</code></td>
+<td>BinTec BOSS</td>
+</tr>
+<tr>
+<td><code>broadcom_icos</code></td>
+<td>Broadcom ICOS</td>
+</tr>
+<tr>
+<td><code>brocade_fastiron</code></td>
+<td>Brocade FastIron</td>
+</tr>
+<tr>
+<td><code>brocade_fos</code></td>
+<td>Brocade FOS</td>
+</tr>
+<tr>
+<td><code>brocade_netiron</code></td>
+<td>Brocade NetIron</td>
+</tr>
+<tr>
+<td><code>brocade_nos</code></td>
+<td>Brocade NOS</td>
+</tr>
+<tr>
+<td><code>brocade_vdx</code></td>
+<td>Brocade VDX</td>
+</tr>
+<tr>
+<td><code>brocade_vyos</code></td>
+<td>Brocade VyOS</td>
+</tr>
+<tr>
+<td><code>calix_b6</code></td>
+<td>Calix B6</td>
+</tr>
+<tr>
+<td><code>casa_cmts</code></td>
+<td>Casa CMTS</td>
+</tr>
+<tr>
+<td><code>cdot_cros</code></td>
+<td>CDOT CROS</td>
+</tr>
+<tr>
+<td><code>centec_os</code></td>
+<td>Centec OS</td>
+</tr>
+<tr>
+<td><code>checkpoint_gaia</code></td>
+<td>Check Point GAiA</td>
+</tr>
+<tr>
+<td><code>ciena_saos</code></td>
+<td>Ciena SAOS</td>
+</tr>
+<tr>
+<td><code>ciena_saos10</code></td>
+<td>Ciena SAOS 10</td>
+</tr>
+<tr>
+<td><code>ciena_waveserver</code></td>
+<td>Ciena Waveserver</td>
+</tr>
+<tr>
+<td><code>cisco_apic</code></td>
+<td>Cisco APIC</td>
+</tr>
+<tr>
+<td><code>cisco_asa</code></td>
+<td>Cisco ASA</td>
+</tr>
+<tr>
+<td><code>cisco_ftd</code></td>
+<td>Cisco FTD</td>
+</tr>
+<tr>
+<td><code>cisco_ios</code></td>
+<td>Cisco IOS</td>
+</tr>
+<tr>
+<td><code>cisco_nxos</code></td>
+<td>Cisco NX-OS</td>
+</tr>
+<tr>
+<td><code>cisco_s200</code></td>
+<td>Cisco S200</td>
+</tr>
+<tr>
+<td><code>cisco_s300</code></td>
+<td>Cisco S300</td>
+</tr>
+<tr>
+<td><code>cisco_tp</code></td>
+<td>Cisco TelePresence</td>
+</tr>
+<tr>
+<td><code>cisco_viptela</code></td>
+<td>Cisco Viptela</td>
+</tr>
+<tr>
+<td><code>cisco_wlc</code></td>
+<td>Cisco WLC</td>
+</tr>
+<tr>
+<td><code>cisco_xe</code></td>
+<td>Cisco IOS-XE</td>
+</tr>
+<tr>
+<td><code>cisco_xr</code></td>
+<td>Cisco IOS-XR</td>
+</tr>
+<tr>
+<td><code>cloudgenix_ion</code></td>
+<td>CloudGenix ION</td>
+</tr>
+<tr>
+<td><code>corelight_linux</code></td>
+<td>Corelight Linux</td>
+</tr>
+<tr>
+<td><code>coriant</code></td>
+<td>Coriant</td>
+</tr>
+<tr>
+<td><code>cumulus_linux</code></td>
+<td>Cumulus Linux</td>
+</tr>
+<tr>
+<td><code>dell_dnos9</code></td>
+<td>Dell DNOS9</td>
+</tr>
+<tr>
+<td><code>dell_force10</code></td>
+<td>Dell Force10</td>
+</tr>
+<tr>
+<td><code>dell_isilon</code></td>
+<td>Dell Isilon</td>
+</tr>
+<tr>
+<td><code>dell_os10</code></td>
+<td>Dell OS10</td>
+</tr>
+<tr>
+<td><code>dell_os6</code></td>
+<td>Dell OS6</td>
+</tr>
+<tr>
+<td><code>dell_os9</code></td>
+<td>Dell OS9</td>
+</tr>
+<tr>
+<td><code>dell_powerconnect</code></td>
+<td>Dell PowerConnect</td>
+</tr>
+<tr>
+<td><code>dell_sonic</code></td>
+<td>Dell SONiC</td>
+</tr>
+<tr>
+<td><code>digi_transport</code></td>
+<td>Digi Transport</td>
+</tr>
+<tr>
+<td><code>dlink_ds</code></td>
+<td>D-Link DS</td>
+</tr>
+<tr>
+<td><code>edgecore_sonic</code></td>
+<td>Edgecore SONiC</td>
+</tr>
+<tr>
+<td><code>ekinops_ek360</code></td>
+<td>Ekinops EK360</td>
+</tr>
+<tr>
+<td><code>eltex</code></td>
+<td>Eltex</td>
+</tr>
+<tr>
+<td><code>eltex_esr</code></td>
+<td>Eltex ESR</td>
+</tr>
+<tr>
+<td><code>endace</code></td>
+<td>Endace</td>
+</tr>
+<tr>
+<td><code>enterasys</code></td>
+<td>Enterasys</td>
+</tr>
+<tr>
+<td><code>ericsson_ipos</code></td>
+<td>Ericsson IPOS</td>
+</tr>
+<tr>
+<td><code>ericsson_mltn63</code></td>
+<td>Ericsson MLTN63</td>
+</tr>
+<tr>
+<td><code>ericsson_mltn66</code></td>
+<td>Ericsson MLTN66</td>
+</tr>
+<tr>
+<td><code>extreme</code></td>
+<td>Extreme</td>
+</tr>
+<tr>
+<td><code>extreme_ers</code></td>
+<td>Extreme ERS</td>
+</tr>
+<tr>
+<td><code>extreme_exos</code></td>
+<td>Extreme EXOS</td>
+</tr>
+<tr>
+<td><code>extreme_netiron</code></td>
+<td>Extreme NetIron</td>
+</tr>
+<tr>
+<td><code>extreme_nos</code></td>
+<td>Extreme NOS</td>
+</tr>
+<tr>
+<td><code>extreme_slx</code></td>
+<td>Extreme SLX</td>
+</tr>
+<tr>
+<td><code>extreme_tierra</code></td>
+<td>Extreme Tierra</td>
+</tr>
+<tr>
+<td><code>extreme_vdx</code></td>
+<td>Extreme VDX</td>
+</tr>
+<tr>
+<td><code>extreme_vsp</code></td>
+<td>Extreme VSP</td>
+</tr>
+<tr>
+<td><code>extreme_wing</code></td>
+<td>Extreme Wing</td>
+</tr>
+<tr>
+<td><code>f5_linux</code></td>
+<td>F5 Linux</td>
+</tr>
+<tr>
+<td><code>f5_ltm</code></td>
+<td>F5 LTM</td>
+</tr>
+<tr>
+<td><code>f5_tmsh</code></td>
+<td>F5 TMSH</td>
+</tr>
+<tr>
+<td><code>fiberstore_fsos</code></td>
+<td>Fiberstore FSOS</td>
+</tr>
+<tr>
+<td><code>fiberstore_fsosv2</code></td>
+<td>Fiberstore FSOS v2</td>
+</tr>
+<tr>
+<td><code>fiberstore_networkos</code></td>
+<td>Fiberstore NetworkOS</td>
+</tr>
+<tr>
+<td><code>flexvnf</code></td>
+<td>FlexVNF</td>
+</tr>
+<tr>
+<td><code>fortinet</code></td>
+<td>Fortinet</td>
+</tr>
+<tr>
+<td><code>garderos_grs</code></td>
+<td>Garderos GRS</td>
+</tr>
+<tr>
+<td><code>generic</code></td>
+<td>Generic</td>
+</tr>
+<tr>
+<td><code>generic_termserver</code></td>
+<td>Generic Terminal Server</td>
+</tr>
+<tr>
+<td><code>h3c_comware</code></td>
+<td>H3C Comware</td>
+</tr>
+<tr>
+<td><code>hillstone_stoneos</code></td>
+<td>Hillstone StoneOS</td>
+</tr>
+<tr>
+<td><code>hp_comware</code></td>
+<td>HP Comware</td>
+</tr>
+<tr>
+<td><code>hp_procurve</code></td>
+<td>HP ProCurve</td>
+</tr>
+<tr>
+<td><code>huawei</code></td>
+<td>Huawei</td>
+</tr>
+<tr>
+<td><code>huawei_olt</code></td>
+<td>Huawei OLT</td>
+</tr>
+<tr>
+<td><code>huawei_smartax</code></td>
+<td>Huawei SmartAX</td>
+</tr>
+<tr>
+<td><code>huawei_smartaxmmi</code></td>
+<td>Huawei SmartAX MMI</td>
+</tr>
+<tr>
+<td><code>huawei_vrp</code></td>
+<td>Huawei VRP</td>
+</tr>
+<tr>
+<td><code>huawei_vrpv8</code></td>
+<td>Huawei VRP v8</td>
+</tr>
+<tr>
+<td><code>infinera_packet</code></td>
+<td>Infinera Packet</td>
+</tr>
+<tr>
+<td><code>ipinfusion_ocnos</code></td>
+<td>IP Infusion OcNOS</td>
+</tr>
+<tr>
+<td><code>juniper</code></td>
+<td>Juniper</td>
+</tr>
+<tr>
+<td><code>juniper_junos</code></td>
+<td>Juniper Junos</td>
+</tr>
+<tr>
+<td><code>juniper_screenos</code></td>
+<td>Juniper ScreenOS</td>
+</tr>
+<tr>
+<td><code>keymile</code></td>
+<td>Keymile</td>
+</tr>
+<tr>
+<td><code>keymile_nos</code></td>
+<td>Keymile NOS</td>
+</tr>
+<tr>
+<td><code>lancom_lcossx4</code></td>
+<td>LANCOM LCOS SX4</td>
+</tr>
+<tr>
+<td><code>linux</code></td>
+<td>Linux</td>
+</tr>
+<tr>
+<td><code>maipu</code></td>
+<td>Maipu</td>
+</tr>
+<tr>
+<td><code>mellanox</code></td>
+<td>Mellanox</td>
+</tr>
+<tr>
+<td><code>mellanox_mlnxos</code></td>
+<td>Mellanox MLNX-OS</td>
+</tr>
+<tr>
+<td><code>mikrotik_routeros</code></td>
+<td>MikroTik RouterOS</td>
+</tr>
+<tr>
+<td><code>mikrotik_switchos</code></td>
+<td>MikroTik SwitchOS</td>
+</tr>
+<tr>
+<td><code>mrv_lx</code></td>
+<td>MRV LX</td>
+</tr>
+<tr>
+<td><code>mrv_optiswitch</code></td>
+<td>MRV OptiSwitch</td>
+</tr>
+<tr>
+<td><code>nec_ix</code></td>
+<td>NEC IX</td>
+</tr>
+<tr>
+<td><code>netapp_cdot</code></td>
+<td>NetApp cDOT</td>
+</tr>
+<tr>
+<td><code>netgear_prosafe</code></td>
+<td>Netgear ProSafe</td>
+</tr>
+<tr>
+<td><code>netscaler</code></td>
+<td>NetScaler</td>
+</tr>
+<tr>
+<td><code>nokia_srl</code></td>
+<td>Nokia SR Linux</td>
+</tr>
+<tr>
+<td><code>nokia_sros</code></td>
+<td>Nokia SR OS</td>
+</tr>
+<tr>
+<td><code>oneaccess_oneos</code></td>
+<td>OneAccess OneOS</td>
+</tr>
+<tr>
+<td><code>ovs_linux</code></td>
+<td>OVS Linux</td>
+</tr>
+<tr>
+<td><code>paloalto_panos</code></td>
+<td>Palo Alto PAN-OS</td>
+</tr>
+<tr>
+<td><code>pluribus</code></td>
+<td>Pluribus</td>
+</tr>
+<tr>
+<td><code>quanta_mesh</code></td>
+<td>Quanta Mesh</td>
+</tr>
+<tr>
+<td><code>rad_etx</code></td>
+<td>RAD ETX</td>
+</tr>
+<tr>
+<td><code>raisecom_roap</code></td>
+<td>Raisecom ROAP</td>
+</tr>
+<tr>
+<td><code>ruckus_fastiron</code></td>
+<td>Ruckus FastIron</td>
+</tr>
+<tr>
+<td><code>ruijie_os</code></td>
+<td>Ruijie OS</td>
+</tr>
+<tr>
+<td><code>silverpeak_vxoa</code></td>
+<td>Silver Peak VX-OA</td>
+</tr>
+<tr>
+<td><code>sixwind_os</code></td>
+<td>6WIND OS</td>
+</tr>
+<tr>
+<td><code>sophos_sfos</code></td>
+<td>Sophos SFOS</td>
+</tr>
+<tr>
+<td><code>supermicro_smis</code></td>
+<td>Supermicro SMIS</td>
+</tr>
+<tr>
+<td><code>telcosystems_binos</code></td>
+<td>Telco Systems binOS</td>
+</tr>
+<tr>
+<td><code>teldat_cit</code></td>
+<td>Teldat CIT</td>
+</tr>
+<tr>
+<td><code>tplink_jetstream</code></td>
+<td>TP-Link JetStream</td>
+</tr>
+<tr>
+<td><code>ubiquiti_edge</code></td>
+<td>Ubiquiti Edge</td>
+</tr>
+<tr>
+<td><code>ubiquiti_edgerouter</code></td>
+<td>Ubiquiti EdgeRouter</td>
+</tr>
+<tr>
+<td><code>ubiquiti_edgeswitch</code></td>
+<td>Ubiquiti EdgeSwitch</td>
+</tr>
+<tr>
+<td><code>ubiquiti_unifiswitch</code></td>
+<td>Ubiquiti UniFi Switch</td>
+</tr>
+<tr>
+<td><code>vertiv_mph</code></td>
+<td>Vertiv MPH</td>
+</tr>
+<tr>
+<td><code>vyatta_vyos</code></td>
+<td>Vyatta VyOS</td>
+</tr>
+<tr>
+<td><code>vyos</code></td>
+<td>VyOS</td>
+</tr>
+<tr>
+<td><code>watchguard_fireware</code></td>
+<td>WatchGuard Fireware</td>
+</tr>
+<tr>
+<td><code>yamaha</code></td>
+<td>Yamaha</td>
+</tr>
+<tr>
+<td><code>zte_zxros</code></td>
+<td>ZTE ZXROS</td>
+</tr>
+<tr>
+<td><code>zyxel_os</code></td>
+<td>Zyxel OS</td>
+</tr>
+</tbody>
+</table>
+<h2 id="driver-naming-differences">Driver Naming Differences</h2>
+<p>Note that some drivers have different names between adapters:</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Netmiko</th>
+<th>Scrapli</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cisco IOS-XE</td>
+<td><code>cisco_xe</code></td>
+<td><code>cisco_iosxe</code></td>
+</tr>
+<tr>
+<td>Cisco IOS-XR</td>
+<td><code>cisco_xr</code></td>
+<td><code>cisco_iosxr</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/wrgeorge1983/tom" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://networktocode.slack.com/archives/C0A0PER1Y6L" target="_blank" rel="noopener" title="networktocode.slack.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M94.1 315.1c0 25.9-21.2 47.1-47.1 47.1S0 341 0 315.1 21.2 268 47.1 268h47.1v47.1zm23.7 0c0-25.9 21.2-47.1 47.1-47.1s47.1 21.2 47.1 47.1v117.8c0 25.9-21.2 47.1-47.1 47.1s-47.1-21.2-47.1-47.1zm47.1-189c-25.9 0-47.1-21.2-47.1-47.1s21.2-47 47.1-47S212 53.2 212 79.1v47.1h-47.1zm0 23.7c25.9 0 47.1 21.2 47.1 47.1S190.8 244 164.9 244H47.1C21.2 244 0 222.8 0 196.9s21.2-47.1 47.1-47.1zm189 47.1c0-25.9 21.2-47.1 47.1-47.1s47 21.2 47 47.1-21.2 47.1-47.1 47.1h-47.1v-47.1zm-23.7 0c0 25.9-21.2 47.1-47.1 47.1S236 222.8 236 196.9V79.1c0-25.9 21.2-47.1 47.1-47.1s47.1 21.2 47.1 47.1zm-47.1 189c25.9 0 47.1 21.2 47.1 47.1s-21.2 47-47.1 47-47.1-21.2-47.1-47.1v-47.1h47.1zm0-23.7c-25.9 0-47.1-21.2-47.1-47.1s21.2-47.1 47.1-47.1h117.8c25.9 0 47.1 21.2 47.1 47.1s-21.2 47.1-47.1 47.1z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.expand", "navigation.path", "navigation.indexes", "navigation.top", "toc.follow", "toc.integrate", "search.suggest", "search.highlight", "search.share", "content.tabs.link", "content.code.annotation", "content.code.copy", "content.code.select", "content.tooltips", "content.action.view"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
