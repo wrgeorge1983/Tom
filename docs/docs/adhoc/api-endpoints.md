@@ -479,7 +479,123 @@ GET /api/monitoring/stats/summary
 GET /api/templates/textfsm
 ```
 
-**Returns:** List of available TextFSM template names
+**Returns:**
+```json
+{
+  "custom": ["my_custom_template.textfsm"],
+  "ntc": ["cisco_ios_show_version.textfsm", "..."]
+}
+```
+
+#### List TTP Templates
+
+```
+GET /api/templates/ttp
+```
+
+**Returns:**
+```json
+{
+  "custom": ["my_ttp_template.ttp"]
+}
+```
+
+#### Get Template Contents
+
+```
+GET /api/templates/{parser}/{template_name}
+```
+
+Retrieve the contents of a specific template.
+
+**Path Parameters:**
+- `parser` (string): Parser type ("textfsm" or "ttp")
+- `template_name` (string): Template filename (extension optional)
+
+**Returns:**
+```json
+{
+  "name": "cisco_ios_show_version.textfsm",
+  "parser": "textfsm",
+  "source": "ntc",
+  "content": "Value VERSION (\\S+)\\nValue HOSTNAME (\\S+)\\n\\nStart\\n  ^.*Version ${VERSION}.*"
+}
+```
+
+**Notes:**
+- For TextFSM, `source` is "custom" or "ntc"
+- For TTP, `source` is always "custom"
+
+#### Create Custom Template
+
+```
+POST /api/templates/{parser}
+```
+
+Create or upload a new custom template.
+
+**Path Parameters:**
+- `parser` (string): Parser type ("textfsm" or "ttp")
+
+**Request Body:**
+```json
+{
+  "name": "my_template.textfsm",
+  "content": "Value HOSTNAME (\\S+)\\n\\nStart\\n  ^Hostname: ${HOSTNAME}",
+  "overwrite": false
+}
+```
+
+**Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `name` | string | required | Template filename (extension added if missing) |
+| `content` | string | required | Template content |
+| `overwrite` | bool | false | Replace existing template if it exists |
+
+**Returns:**
+```json
+{
+  "name": "my_template.textfsm",
+  "parser": "textfsm",
+  "created": true,
+  "validation_warnings": null
+}
+```
+
+**Validation:**
+- TextFSM templates are compiled to check syntax before saving
+- TTP templates are instantiated to catch initialization errors
+- Templates are still created even if validation warnings are returned
+
+**Errors:**
+- 400: Template already exists (when `overwrite=false`)
+- 400: Invalid template name (contains path separators or `..`)
+- 500: Cannot create template directory or write file
+
+#### Delete Custom Template
+
+```
+DELETE /api/templates/{parser}/{template_name}
+```
+
+Delete a custom template. Only custom templates can be deleted; ntc-templates cannot be removed.
+
+**Path Parameters:**
+- `parser` (string): Parser type ("textfsm" or "ttp")
+- `template_name` (string): Template filename
+
+**Returns:**
+```json
+{
+  "name": "my_template.textfsm",
+  "deleted": true
+}
+```
+
+**Errors:**
+- 400: Cannot delete ntc-template
+- 404: Template not found
 
 #### Find Matching Template
 

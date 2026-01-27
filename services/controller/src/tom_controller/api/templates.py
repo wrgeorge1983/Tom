@@ -1,13 +1,23 @@
+import logging
+from io import StringIO
 from pathlib import Path
 from typing import Literal, Optional, List
 
+import textfsm
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from starlette.requests import Request
+from ttp import ttp
 
-from tom_controller.exceptions import TomNotFoundException, TomValidationException
+from tom_controller.exceptions import (
+    TomNotFoundException,
+    TomValidationException,
+    TomException,
+)
 from tom_controller.inventory.inventory import InventoryService
 from tom_controller.parsing import TextFSMParser, TTPParser, parse_output
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["templates"])
 
@@ -26,6 +36,39 @@ class TemplateMatchResponse(BaseModel):
     device_type: str
     command: str
     matches: List[TemplateMatch]
+
+
+class TemplateContent(BaseModel):
+    """Full template information including content."""
+
+    name: str
+    parser: Literal["textfsm", "ttp"]
+    source: str  # "custom", "ntc" (textfsm only)
+    content: str
+
+
+class TemplateCreateRequest(BaseModel):
+    """Request to create a new template."""
+
+    name: str
+    content: str
+    overwrite: bool = False
+
+
+class TemplateCreateResponse(BaseModel):
+    """Response after creating a template."""
+
+    name: str
+    parser: Literal["textfsm", "ttp"]
+    created: bool
+    validation_warnings: Optional[List[str]] = None
+
+
+class TemplateDeleteResponse(BaseModel):
+    """Response after deleting a template."""
+
+    name: str
+    deleted: bool
 
 
 @router.get("/templates/textfsm")
@@ -92,7 +135,7 @@ async def match_template(
             platform=resolved_device_type,
             command=command,
         )
-        if template_name:
+        if template_name and source:
             matches.append(
                 TemplateMatch(
                     template_name=template_name,
@@ -161,3 +204,211 @@ async def test_parse(
         include_raw=include_raw,
         parser_type=parser,
     )
+
+
+@router.get("/templates/ttp")
+async def list_ttp_templates(request: Request):
+    """List all available TTP templates."""
+    settings = request.app.state.settings
+    template_dir = Path(settings.ttp_template_dir)
+    parser = TTPParser(custom_template_dir=template_dir)
+    return parser.list_templates()
+
+
+@router.get("/templates/{parser_type}/{template_name}")
+async def get_template(
+    request: Request,
+    parser_type: Literal["textfsm", "ttp"],
+    template_name: str,
+) -> TemplateContent:
+    """Get the contents of a specific template.
+
+    For TextFSM templates, both custom and ntc-templates can be retrieved.
+    For TTP templates, only custom templates are available.
+    """
+    settings = request.app.state.settings
+
+    if parser_type == "textfsm":
+        template_dir = Path(settings.textfsm_template_dir)
+        parser = TextFSMParser(custom_template_dir=template_dir)
+        template_path = parser._find_template(template_name)
+
+        if not template_path:
+            raise TomNotFoundException(f"Template not found: {template_name}")
+
+        # Determine source
+        if template_path.parent == template_dir:
+            source = "custom"
+        else:
+            source = "ntc"
+
+        content = template_path.read_text()
+        return TemplateContent(
+            name=template_path.name,
+            parser="textfsm",
+            source=source,
+            content=content,
+        )
+
+    elif parser_type == "ttp":
+        template_dir = Path(settings.ttp_template_dir)
+        parser = TTPParser(custom_template_dir=template_dir)
+        template_path = parser._find_template(template_name)
+
+        if not template_path:
+            raise TomNotFoundException(f"Template not found: {template_name}")
+
+        content = template_path.read_text()
+        return TemplateContent(
+            name=template_path.name,
+            parser="ttp",
+            source="custom",
+            content=content,
+        )
+
+    else:
+        raise TomValidationException(
+            f"Parser type '{parser_type}' not supported. Use 'textfsm' or 'ttp'"
+        )
+
+
+@router.post("/templates/{parser_type}")
+async def create_template(
+    request: Request,
+    parser_type: Literal["textfsm", "ttp"],
+    body: TemplateCreateRequest,
+) -> TemplateCreateResponse:
+    """Create a new custom template.
+
+    Templates are validated before saving:
+    - TextFSM templates are compiled to check syntax
+    - TTP templates are instantiated to catch any initialization errors
+
+    If validation fails, the template is still created but warnings are returned.
+    """
+    settings = request.app.state.settings
+    validation_warnings: List[str] = []
+
+    # Determine template directory and validate extension
+    if parser_type == "textfsm":
+        template_dir = Path(settings.textfsm_template_dir)
+        expected_ext = ".textfsm"
+    elif parser_type == "ttp":
+        template_dir = Path(settings.ttp_template_dir)
+        expected_ext = ".ttp"
+    else:
+        raise TomValidationException(
+            f"Parser type '{parser_type}' not supported. Use 'textfsm' or 'ttp'"
+        )
+
+    # Normalize template name
+    template_name = body.name
+    if not template_name.endswith(expected_ext):
+        template_name += expected_ext
+
+    # Security: prevent path traversal
+    if "/" in template_name or "\\" in template_name or ".." in template_name:
+        raise TomValidationException(
+            "Template name cannot contain path separators or '..'"
+        )
+
+    template_path = template_dir / template_name
+
+    # Check if template already exists
+    if template_path.exists() and not body.overwrite:
+        raise TomValidationException(
+            f"Template '{template_name}' already exists. Set overwrite=true to replace."
+        )
+
+    # Validate template syntax
+    if parser_type == "textfsm":
+        try:
+            fsm = textfsm.TextFSM(StringIO(body.content))
+            logger.debug(f"TextFSM template validated, fields: {fsm.header}")
+        except textfsm.TextFSMTemplateError as e:
+            validation_warnings.append(f"TextFSM syntax error: {e}")
+        except Exception as e:
+            validation_warnings.append(f"Unexpected validation error: {e}")
+    else:  # ttp
+        try:
+            parser = ttp(template=body.content)
+            # TTP doesn't raise on most syntax errors, but try to catch what we can
+        except Exception as e:
+            validation_warnings.append(f"TTP initialization error: {e}")
+
+    # Ensure directory exists
+    try:
+        template_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise TomException(f"Cannot create template directory: {e}")
+
+    # Write template
+    try:
+        template_path.write_text(body.content)
+    except OSError as e:
+        raise TomException(f"Cannot write template file: {e}")
+
+    return TemplateCreateResponse(
+        name=template_name,
+        parser=parser_type,
+        created=True,
+        validation_warnings=validation_warnings if validation_warnings else None,
+    )
+
+
+@router.delete("/templates/{parser_type}/{template_name}")
+async def delete_template(
+    request: Request,
+    parser_type: Literal["textfsm", "ttp"],
+    template_name: str,
+) -> TemplateDeleteResponse:
+    """Delete a custom template.
+
+    Only custom templates can be deleted. Attempting to delete an ntc-template
+    will return a 403 error.
+    """
+    settings = request.app.state.settings
+
+    # Determine template directory
+    if parser_type == "textfsm":
+        template_dir = Path(settings.textfsm_template_dir)
+        expected_ext = ".textfsm"
+    elif parser_type == "ttp":
+        template_dir = Path(settings.ttp_template_dir)
+        expected_ext = ".ttp"
+    else:
+        raise TomValidationException(
+            f"Parser type '{parser_type}' not supported. Use 'textfsm' or 'ttp'"
+        )
+
+    # Normalize template name
+    if not template_name.endswith(expected_ext):
+        template_name += expected_ext
+
+    # Security: prevent path traversal
+    if "/" in template_name or "\\" in template_name or ".." in template_name:
+        raise TomValidationException(
+            "Template name cannot contain path separators or '..'"
+        )
+
+    template_path = template_dir / template_name
+
+    # Check if this is a custom template (in our template_dir)
+    if not template_path.exists():
+        # For TextFSM, check if it exists in ntc-templates
+        if parser_type == "textfsm":
+            parser = TextFSMParser(custom_template_dir=template_dir)
+            ntc_path = parser.ntc_templates_dir / template_name
+            if ntc_path.exists():
+                raise TomValidationException(
+                    f"Cannot delete ntc-template '{template_name}'. Only custom templates can be deleted."
+                )
+        raise TomNotFoundException(f"Template not found: {template_name}")
+
+    # Delete the template
+    try:
+        template_path.unlink()
+    except OSError as e:
+        raise TomException(f"Cannot delete template file: {e}")
+
+    return TemplateDeleteResponse(name=template_name, deleted=True)
