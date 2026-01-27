@@ -14,7 +14,7 @@ from tom_controller.exceptions import (
     TomValidationException,
     TomException,
 )
-from tom_controller.inventory.inventory import InventoryService
+from tom_controller.inventory.inventory import InventoryStore
 from tom_controller.parsing import TextFSMParser, TTPParser, parse_output
 
 logger = logging.getLogger(__name__)
@@ -123,9 +123,9 @@ async def match_template(
     # Resolve device_type from inventory if device name provided
     resolved_device_type = device_type
     if device:
-        inventory_service: InventoryService = request.app.state.inventory_service
+        inventory_store: InventoryStore = request.app.state.inventory_store
         try:
-            device_config = inventory_service.get_device_config(device)
+            device_config = inventory_store.get_device_config(device)
             resolved_device_type = device_config.adapter_driver
         except KeyError:
             raise TomNotFoundException(f"Device '{device}' not found in inventory")

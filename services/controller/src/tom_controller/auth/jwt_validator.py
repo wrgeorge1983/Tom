@@ -3,7 +3,7 @@
 import json
 import logging
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Union
 
 import httpx
 from jose import jwt, jwk
@@ -43,7 +43,7 @@ class JWTValidator:
         # Populated from OIDC discovery
         self.issuer: Optional[str] = None
         self.jwks_uri: Optional[str] = None
-        
+
         # OAuth test endpoint URLs (populated from OIDC discovery)
         self.oauth_test_authorization_endpoint: Optional[str] = None
         self.oauth_test_token_endpoint: Optional[str] = None
@@ -53,7 +53,7 @@ class JWTValidator:
         self._jwks_cache: Optional[Dict[str, Any]] = None
         self._jwks_cache_time: float = 0
         self._jwks_cache_ttl: int = 3600  # Cache for 1 hour
-        
+
         # Discovery cache
         self._discovery_cache: Optional[Dict[str, Any]] = None
         self._discovery_initialized: bool = False
@@ -77,36 +77,40 @@ class JWTValidator:
         """Perform OIDC discovery to populate issuer, jwks_uri, and OAuth endpoints."""
         if self._discovery_initialized:
             return
-            
-        logger.info(f"Performing OIDC discovery for {self.name} from {self.discovery_url}")
-        
+
+        logger.info(
+            f"Performing OIDC discovery for {self.name} from {self.discovery_url}"
+        )
+
         from .oidc_discovery import OIDCDiscovery
-        
+
         discovery = OIDCDiscovery(self.discovery_url)
         doc = await discovery.discover()
         await discovery.close()
-        
+
         # Populate from discovered values
         self.issuer = doc.get("issuer")
         self.jwks_uri = doc.get("jwks_uri")
-        
+
         if not self.issuer or not self.jwks_uri:
             raise TomException(
                 f"OIDC discovery for {self.name} did not return required fields. "
                 f"Got issuer={self.issuer}, jwks_uri={self.jwks_uri}"
             )
-        
+
         logger.info(f"Discovered issuer: {self.issuer}")
         logger.info(f"Discovered jwks_uri: {self.jwks_uri}")
-        
+
         # Populate OAuth test endpoints
         self.oauth_test_authorization_endpoint = doc.get("authorization_endpoint")
         self.oauth_test_token_endpoint = doc.get("token_endpoint")
         self.oauth_test_userinfo_endpoint = doc.get("userinfo_endpoint")
-        
-        logger.debug(f"Discovered OAuth endpoints - auth: {self.oauth_test_authorization_endpoint}, "
-                   f"token: {self.oauth_test_token_endpoint}, userinfo: {self.oauth_test_userinfo_endpoint}")
-        
+
+        logger.debug(
+            f"Discovered OAuth endpoints - auth: {self.oauth_test_authorization_endpoint}, "
+            f"token: {self.oauth_test_token_endpoint}, userinfo: {self.oauth_test_userinfo_endpoint}"
+        )
+
         self._discovery_cache = doc
         self._discovery_initialized = True
 
@@ -121,12 +125,16 @@ class JWTValidator:
         """
         # Try discovery first if configured
         await self._ensure_discovery()
-        
+
         if not self.jwks_uri:
             if self.discovery_url:
-                raise JWKSFetchError(f"OIDC discovery failed to find jwks_uri for {self.name}")
+                raise JWKSFetchError(
+                    f"OIDC discovery failed to find jwks_uri for {self.name}"
+                )
             else:
-                raise JWKSFetchError(f"No JWKS URI configured for {self.name}. Either provide 'jwks_uri' or 'discovery_url' in config.")
+                raise JWKSFetchError(
+                    f"No JWKS URI configured for {self.name}. Either provide 'jwks_uri' or 'discovery_url' in config."
+                )
 
         # Check cache
         now = time.time()
@@ -184,14 +192,66 @@ class JWTValidator:
             logger.error(f"Error decoding token header: {e}")
             raise JWTValidationError(f"Invalid token format: {e}")
 
-    def _get_validation_audience(self) -> Optional[str]:
-        """Get the audience value to validate against.
+    def _get_allowed_audiences(self) -> List[str]:
+        """Get list of allowed audience values.
 
-        Returns the configured audience, or client_id as fallback.
+        Returns the configured audience(s), or client_id as fallback.
+        Always returns a list for consistent handling.
         """
-        return self.audience or self.client_id
+        if self.audience:
+            if isinstance(self.audience, list):
+                return self.audience
+            return [self.audience]
+        return [self.client_id] if self.client_id else []
 
-    async def validate_token(self, token: str, access_token: Optional[str] = None) -> Dict[str, Any]:
+    def _get_validation_audience(self) -> Optional[str]:
+        """Get a single audience value for python-jose validation.
+
+        Note: python-jose only accepts a single string for audience validation.
+        When multiple audiences are configured, we disable jose's audience check
+        and validate manually in _validate_audience_claim().
+
+        Returns the first allowed audience, or None if multiple are configured
+        (to disable jose's built-in check).
+        """
+        allowed = self._get_allowed_audiences()
+        if len(allowed) == 1:
+            return allowed[0]
+        # Multiple audiences - we'll validate manually
+        return None
+
+    def _validate_audience_claim(self, claims: Dict[str, Any]) -> None:
+        """Validate the audience claim against allowed audiences.
+
+        Args:
+            claims: The decoded JWT claims
+
+        Raises:
+            JWTInvalidClaimsError: If audience validation fails
+        """
+        allowed = self._get_allowed_audiences()
+        if not allowed:
+            return  # No audience restriction configured
+
+        token_aud = claims.get("aud")
+        if token_aud is None:
+            raise JWTInvalidClaimsError("Token missing 'aud' claim")
+
+        # Token aud can be a string or list per OIDC spec
+        if isinstance(token_aud, str):
+            token_audiences = [token_aud]
+        else:
+            token_audiences = token_aud
+
+        # Check if ANY of the token's audiences match ANY of our allowed audiences
+        if not any(aud in allowed for aud in token_audiences):
+            raise JWTInvalidClaimsError(
+                f"Token audience {token_aud} not in allowed audiences {allowed}"
+            )
+
+    async def validate_token(
+        self, token: str, access_token: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Validate JWT and return claims.
 
         Args:
@@ -209,7 +269,7 @@ class JWTValidator:
         """
         # Ensure discovery has been performed if configured
         await self._ensure_discovery()
-        
+
         try:
             # Basic validation start log without PII by default
             if app_settings.permit_logging_user_details:
@@ -231,23 +291,47 @@ class JWTValidator:
             signing_key = await self.get_signing_key(token)
 
             # Filter out non-standard JWK fields that some providers add
-            standard_jwk_fields = {'kty', 'use', 'kid', 'x5t', 'n', 'e', 'alg', 'crv', 'x', 'y', 'd', 'p', 'q', 'dp', 'dq', 'qi', 'k'}
-            filtered_key = {k: v for k, v in signing_key.items() if k in standard_jwk_fields}
-            
+            standard_jwk_fields = {
+                "kty",
+                "use",
+                "kid",
+                "x5t",
+                "n",
+                "e",
+                "alg",
+                "crv",
+                "x",
+                "y",
+                "d",
+                "p",
+                "q",
+                "dp",
+                "dq",
+                "qi",
+                "k",
+            }
+            filtered_key = {
+                k: v for k, v in signing_key.items() if k in standard_jwk_fields
+            }
+
             # Ensure alg is set for jwk.construct
-            if 'alg' not in filtered_key and 'kty' in filtered_key:
-                if filtered_key['kty'] == 'RSA':
-                    filtered_key['alg'] = 'RS256'
-                elif filtered_key['kty'] == 'EC':
-                    filtered_key['alg'] = 'ES256'
-            
-            logger.debug(f"Filtered JWK key fields: {list(filtered_key.keys())}, kid: {filtered_key.get('kid')}")
+            if "alg" not in filtered_key and "kty" in filtered_key:
+                if filtered_key["kty"] == "RSA":
+                    filtered_key["alg"] = "RS256"
+                elif filtered_key["kty"] == "EC":
+                    filtered_key["alg"] = "ES256"
+
+            logger.debug(
+                f"Filtered JWK key fields: {list(filtered_key.keys())}, kid: {filtered_key.get('kid')}"
+            )
 
             # Convert JWK to RSA key
             rsa_key = jwk.construct(filtered_key)
-            
+
             # Log validation parameters
-            logger.debug(f"Validating with audience={self._get_validation_audience()}, issuer={self.issuer}")
+            logger.debug(
+                f"Validating with audience={self._get_validation_audience()}, issuer={self.issuer}"
+            )
 
             # Determine allowed algorithm(s) based on token header and discovery doc
             header = jwt.get_unverified_header(token)
@@ -258,7 +342,9 @@ class JWTValidator:
             # Trust discovery when available
             allowed_from_discovery = None
             if self._discovery_cache:
-                allowed_from_discovery = self._discovery_cache.get("id_token_signing_alg_values_supported")
+                allowed_from_discovery = self._discovery_cache.get(
+                    "id_token_signing_alg_values_supported"
+                )
 
             if allowed_from_discovery is not None:
                 if header_alg not in allowed_from_discovery:
@@ -277,7 +363,9 @@ class JWTValidator:
                 "verify_nbf": True,
                 "verify_iat": True,
                 "verify_aud": bool(self._get_validation_audience()),
-                "verify_at_hash": bool(access_token),  # Verify at_hash if access_token provided
+                "verify_at_hash": bool(
+                    access_token
+                ),  # Verify at_hash if access_token provided
                 "require_exp": True,
                 "require_iat": True,
                 "leeway": self.leeway_seconds,
@@ -295,13 +383,16 @@ class JWTValidator:
             if access_token:
                 decode_kwargs["access_token"] = access_token
 
-            logger.debug(f"Calling jwt.decode with: algorithms={decode_kwargs.get('algorithms')}, audience={decode_kwargs.get('audience')}, issuer={decode_kwargs.get('issuer')}")
-            
-            claims = jwt.decode(
-                token,
-                rsa_key,
-                **decode_kwargs
+            logger.debug(
+                f"Calling jwt.decode with: algorithms={decode_kwargs.get('algorithms')}, audience={decode_kwargs.get('audience')}, issuer={decode_kwargs.get('issuer')}"
             )
+
+            claims = jwt.decode(token, rsa_key, **decode_kwargs)
+
+            # Validate audience when multiple audiences are configured
+            # (python-jose only handles single audience, so we do this ourselves)
+            if len(self._get_allowed_audiences()) > 1:
+                self._validate_audience_claim(claims)
 
             # Additional validation
             self._validate_claims(claims)
@@ -328,7 +419,9 @@ class JWTValidator:
             raise JWTInvalidClaimsError(f"Invalid token claims: {e}")
         except JWTError as e:
             logger.warning(f"JWT validation failed: {e}")
-            logger.debug(f"Token validation failed with params: aud={self._get_validation_audience()}, iss={self.issuer}, alg=RS256")
+            logger.debug(
+                f"Token validation failed with params: aud={self._get_validation_audience()}, iss={self.issuer}, alg=RS256"
+            )
             raise JWTInvalidSignatureError(f"Invalid token signature: {e}")
         except Exception as e:
             logger.error(f"Unexpected error during JWT validation: {e}")

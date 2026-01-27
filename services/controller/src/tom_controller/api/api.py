@@ -267,6 +267,7 @@ from tom_controller.api import (
     templates,
     oauth_test,
     credentials,
+    cache_api,
 )
 
 api_router.include_router(raw.router)
@@ -274,6 +275,7 @@ api_router.include_router(device.router)
 api_router.include_router(inventory.router)
 api_router.include_router(templates.router)
 api_router.include_router(credentials.router)
+api_router.include_router(cache_api.router)
 
 # OAuth test router is separate (unauthenticated)
 oauth_test_router = oauth_test.router
