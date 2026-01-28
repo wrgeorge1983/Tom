@@ -64,6 +64,7 @@ Tom automatically discovers OAuth endpoints using the standard OIDC discovery pr
 ```yaml
 jwt_providers:
   - name: google
+    type: google
     enabled: true
     client_id: "your-client-id"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
@@ -82,6 +83,7 @@ jwt_settings:
 
 jwt_providers:
   - name: duo
+    type: duo
     enabled: true
     issuer: "https://your-tenant.duosecurity.com"
     client_id: "your-client-id"
@@ -89,11 +91,13 @@ jwt_providers:
     audience: "tom-api"
 
   - name: google
+    type: google
     enabled: false
     client_id: "your-client.apps.googleusercontent.com"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
 
   - name: entra
+    type: entra
     enabled: false
     tenant_id: "your-tenant-id"
     client_id: "your-client-id"

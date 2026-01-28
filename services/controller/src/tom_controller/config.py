@@ -18,13 +18,25 @@ class JWTProviderConfig(BaseModel):
     OAuth provider and present them to Tom for validation.
 
     Required configuration:
-        name: google
-        enabled: true
+        name: my-google-provider  # Unique identifier for this provider
+        type: google              # Provider type: duo, google, or entra
         client_id: "your-client-id"
         discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+
+    You can configure multiple providers of the same type with different names:
+        - name: duo-internal
+          type: duo
+          client_id: "internal-app-client-id"
+          discovery_url: "https://sso.example.com/oidc/INTERNAL/.well-known/openid-configuration"
+
+        - name: duo-external
+          type: duo
+          client_id: "external-app-client-id"
+          discovery_url: "https://sso.example.com/oidc/EXTERNAL/.well-known/openid-configuration"
     """
 
-    name: Literal["duo", "google", "entra"] = "duo"
+    name: str  # Unique identifier for this provider instance
+    type: Literal["duo", "google", "entra"]  # Provider type for validator selection
     enabled: bool = True
 
     # OIDC Discovery (required)

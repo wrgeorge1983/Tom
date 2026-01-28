@@ -35,8 +35,9 @@ allowed_user_regex: []    # e.g., ['^netops-.*@example\\.com$', '^[a-z]+\\.admin
 # Optional: oauth_test_client_secret (only if oauth_test_enabled: true)
 
 jwt_providers:
-  # Duo Security (Tested ✅)
-  - name: duo
+  # Duo Security (Tested)
+  - name: duo                # Unique identifier for this provider instance
+    type: duo                # Provider type: duo, google, or entra
     enabled: true
     client_id: "YOUR_CLIENT_ID"
     discovery_url: "https://sso-XXXXXXXX.sso.duosecurity.com/oidc/YOUR_CLIENT_ID/.well-known/openid-configuration"
@@ -45,8 +46,9 @@ jwt_providers:
     # oauth_test_client_secret: "YOUR_CLIENT_SECRET"
     # oauth_test_scopes: ["openid", "email", "profile"]
 
-  # Google (Tested ✅)
-  - name: google
+  # Google (Tested)
+  - name: google             # Unique identifier for this provider instance
+    type: google             # Provider type
     enabled: false
     client_id: "your-client-id.apps.googleusercontent.com"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
@@ -59,8 +61,9 @@ jwt_providers:
     # oauth_test_client_secret: "YOUR_CLIENT_SECRET"
     # oauth_test_scopes: ["openid", "email", "profile"]
 
-  # Microsoft Entra ID (Tested ✅)
-  - name: entra
+  # Microsoft Entra ID (Tested)
+  - name: entra              # Unique identifier for this provider instance
+    type: entra              # Provider type
     enabled: false
     client_id: "your-app-client-id"
     # Replace {YOUR_TENANT_ID} with your actual tenant ID
@@ -71,11 +74,15 @@ jwt_providers:
     # oauth_test_client_secret: "YOUR_CLIENT_SECRET"
     # oauth_test_scopes: ["openid", "email", "profile"]
 
-  # Other OIDC providers (Okta, Auth0, etc.) work the same way:
-  # - name: okta
-  #   enabled: false
-  #   client_id: "your-okta-client-id"
-  #   discovery_url: "https://your-domain.okta.com/.well-known/openid-configuration"
+  # Multiple providers of the same type (e.g., for service-to-service auth):
+  # - name: duo-internal-service   # Different name for each instance
+  #   type: duo                    # Same type
+  #   enabled: true
+  #   client_id: "INTERNAL_SERVICE_CLIENT_ID"
+  #   discovery_url: "https://sso-XXXXXXXX.sso.duosecurity.com/oidc/INTERNAL_SERVICE_CLIENT_ID/.well-known/openid-configuration"
+  #   audience:
+  #     - "YOUR_CLIENT_ID"           # Accept tokens intended for your app
+  #     - "INTERNAL_SERVICE_CLIENT_ID"  # Accept tokens from internal service
 
 # ============================================================================
 # HYBRID MODE (Optional)

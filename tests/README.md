@@ -118,6 +118,7 @@ jwt: "eyJhbGci..."  # The actual JWT token
 
 provider_config:    # Config used during validation
   name: google
+  type: google
   discovery_url: "https://..."
   client_id: "..."
   issuer: "https://accounts.google.com"

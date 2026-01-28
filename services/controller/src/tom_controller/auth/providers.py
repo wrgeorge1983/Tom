@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class DuoJWTValidator(JWTValidator):
     """Duo Security JWT validator.
-    
+
     TESTED AND WORKING with Duo PKCE flow.
     """
 
@@ -50,9 +50,9 @@ class DuoJWTValidator(JWTValidator):
 
 class GoogleJWTValidator(JWTValidator):
     """Google OAuth JWT validator.
-    
+
     TESTED AND WORKING with Google ID tokens.
-    
+
     Note: Only ID tokens work. Google access tokens are opaque (not JWTs) and cannot be validated.
     """
 
@@ -67,7 +67,9 @@ class GoogleJWTValidator(JWTValidator):
         # Optionally verify email is verified
         if not claims.get("email_verified", False):
             if app_settings.permit_logging_user_details:
-                logger.warning(f"Email not verified for Google user: {claims.get('email')}")
+                logger.warning(
+                    f"Email not verified for Google user: {claims.get('email')}"
+                )
             else:
                 logger.warning("Email not verified for Google user")
 
@@ -78,7 +80,7 @@ class GoogleJWTValidator(JWTValidator):
 
 class EntraJWTValidator(JWTValidator):
     """Microsoft Entra ID (formerly Azure AD) JWT validator.
-    
+
     TESTED AND WORKING with Entra ID tokens.
     """
 
@@ -114,7 +116,9 @@ def get_jwt_validator(provider_config: Dict[str, Any]) -> JWTValidator:
     """Factory function to get the appropriate JWT validator for a provider.
 
     Args:
-        provider_config: Provider configuration dictionary
+        provider_config: Provider configuration dictionary containing:
+            - name: Unique identifier for this provider instance
+            - type: Provider type (duo, google, entra)
 
     Returns:
         JWTValidator instance for the specified provider
@@ -122,7 +126,8 @@ def get_jwt_validator(provider_config: Dict[str, Any]) -> JWTValidator:
     Raises:
         ValueError: If provider type is unknown
     """
-    provider_name = provider_config.get("name", "").lower()
+    provider_type = provider_config.get("type", "").lower()
+    provider_name = provider_config.get("name", "unknown")
 
     validators = {
         "duo": DuoJWTValidator,
@@ -132,9 +137,11 @@ def get_jwt_validator(provider_config: Dict[str, Any]) -> JWTValidator:
         "azuread": EntraJWTValidator,  # Another alias
     }
 
-    validator_class = validators.get(provider_name)
+    validator_class = validators.get(provider_type)
     if not validator_class:
-        raise ValueError(f"Unknown JWT provider: {provider_name}")
+        raise ValueError(
+            f"Unknown JWT provider type '{provider_type}' for provider '{provider_name}'"
+        )
 
-    logger.info(f"Creating {provider_name} JWT validator")
+    logger.info(f"Creating {provider_type} JWT validator for '{provider_name}'")
     return validator_class(provider_config)

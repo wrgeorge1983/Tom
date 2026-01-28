@@ -158,13 +158,25 @@ def create_app():
             logger.info("Pre-warming JWT provider caches...")
             from tom_controller.auth import get_jwt_validator
 
+            # Validate provider names are unique
+            provider_names = [p.name for p in settings.jwt_providers if p.enabled]
+            duplicate_names = [
+                name for name in provider_names if provider_names.count(name) > 1
+            ]
+            if duplicate_names:
+                raise TomException(
+                    f"Duplicate JWT provider names are not allowed: {set(duplicate_names)}"
+                )
+
             for provider_config in settings.jwt_providers:
                 if not provider_config.enabled:
                     continue
 
                 validator = None
                 try:
-                    logger.info(f"Initializing JWT provider: {provider_config.name}")
+                    logger.info(
+                        f"Initializing JWT provider '{provider_config.name}' (type: {provider_config.type})"
+                    )
                     config_dict = provider_config.model_dump()
                     validator = get_jwt_validator(config_dict)
 

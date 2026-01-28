@@ -23,6 +23,7 @@ This directory contains recorded JWT tokens from real OAuth providers used for t
    auth_mode: jwt
    jwt_providers:
      - name: google
+       type: google
        enabled: true
        client_id: "your-test-client-id.apps.googleusercontent.com"
        discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
@@ -88,6 +89,7 @@ jwt: "eyJhbGci..."  # The actual JWT token
 
 provider_config:    # Configuration used during validation
   name: google
+  type: google
   discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
   client_id: "your-client-id.apps.googleusercontent.com"
   issuer: "https://accounts.google.com"

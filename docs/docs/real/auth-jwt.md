@@ -51,7 +51,8 @@ sequenceDiagram
 auth_mode: jwt
 
 jwt_providers:
-  - name: google
+  - name: google           # Unique identifier for this provider instance
+    type: google           # Provider type: duo, google, or entra
     enabled: true
     client_id: "your-client-id.apps.googleusercontent.com"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
@@ -62,17 +63,20 @@ jwt_providers:
 ```yaml
 jwt_providers:
   - name: google
+    type: google
     enabled: true
     client_id: "google-client-id"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
 
   - name: entra
+    type: entra
     enabled: true
     client_id: "entra-client-id"
     tenant_id: "your-tenant-id"
     discovery_url: "https://login.microsoftonline.com/your-tenant-id/v2.0/.well-known/openid-configuration"
 
   - name: duo
+    type: duo
     enabled: false  # Disabled
     client_id: "duo-client-id"
     discovery_url: "https://your-tenant.duosecurity.com/.well-known/openid-configuration"
@@ -80,15 +84,38 @@ jwt_providers:
 
 Tom tries each enabled provider in order until one validates the token.
 
+### Multiple Providers of Same Type
+
+You can configure multiple providers of the same type with different names. This is useful for service-to-service authentication where different services have different OAuth clients:
+
+```yaml
+jwt_providers:
+  # Accept tokens from your primary app
+  - name: duo-primary
+    type: duo
+    client_id: "PRIMARY_CLIENT_ID"
+    discovery_url: "https://sso.example.com/oidc/PRIMARY_CLIENT_ID/.well-known/openid-configuration"
+
+  # Accept tokens from an internal service
+  - name: duo-internal-service
+    type: duo
+    client_id: "INTERNAL_SERVICE_CLIENT_ID"
+    discovery_url: "https://sso.example.com/oidc/INTERNAL_SERVICE_CLIENT_ID/.well-known/openid-configuration"
+    audience:
+      - "PRIMARY_CLIENT_ID"        # Accept tokens intended for primary app
+      - "INTERNAL_SERVICE_CLIENT_ID"
+```
+
 ### Provider Options
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `name` | Yes | - | Provider name: `duo`, `google`, or `entra` |
+| `name` | Yes | - | Unique identifier for this provider instance |
+| `type` | Yes | - | Provider type: `duo`, `google`, or `entra` |
 | `enabled` | No | `true` | Enable/disable this provider |
 | `client_id` | Yes | - | OAuth client ID |
 | `discovery_url` | Yes | - | OIDC discovery endpoint |
-| `audience` | No | `client_id` | Expected token audience |
+| `audience` | No | `client_id` | Expected token audience (string or list) |
 | `tenant_id` | No | - | Microsoft Entra tenant ID |
 | `leeway_seconds` | No | `30` | Clock skew tolerance |
 
@@ -154,6 +181,7 @@ curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIs..." \
 ```yaml
 jwt_providers:
   - name: google
+    type: google
     enabled: true
     client_id: "123456789-abc.apps.googleusercontent.com"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
@@ -170,6 +198,7 @@ jwt_providers:
 ```yaml
 jwt_providers:
   - name: entra
+    type: entra
     enabled: true
     client_id: "your-application-id"
     tenant_id: "your-tenant-id"
@@ -184,6 +213,7 @@ jwt_providers:
 ```yaml
 jwt_providers:
   - name: duo
+    type: duo
     enabled: true
     client_id: "your-duo-client-id"
     discovery_url: "https://your-tenant.duosecurity.com/.well-known/openid-configuration"
@@ -219,6 +249,7 @@ Allow clock skew between Tom and the OAuth provider:
 ```yaml
 jwt_providers:
   - name: google
+    type: google
     leeway_seconds: 30  # Default
 ```
 
@@ -231,6 +262,7 @@ oauth_test_enabled: true  # Enable test endpoints (dev only)
 
 jwt_providers:
   - name: google
+    type: google
     oauth_test_client_secret: "your-client-secret"  # Only for test flow
     oauth_test_scopes: ["openid", "email", "profile"]
 ```
