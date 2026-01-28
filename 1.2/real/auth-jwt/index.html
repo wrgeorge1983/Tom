@@ -249,7 +249,8 @@
 auth_mode: jwt
 
 jwt_providers:
-  - name: google
+  - name: google           # Unique identifier for this provider instance
+    type: google           # Provider type: duo, google, or entra
     enabled: true
     client_id: "your-client-id.apps.googleusercontent.com"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
@@ -257,22 +258,43 @@ jwt_providers:
 <h3 id="multiple-providers">Multiple Providers</h3>
 <pre><code class="language-yaml">jwt_providers:
   - name: google
+    type: google
     enabled: true
     client_id: "google-client-id"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
 
   - name: entra
+    type: entra
     enabled: true
     client_id: "entra-client-id"
     tenant_id: "your-tenant-id"
     discovery_url: "https://login.microsoftonline.com/your-tenant-id/v2.0/.well-known/openid-configuration"
 
   - name: duo
+    type: duo
     enabled: false  # Disabled
     client_id: "duo-client-id"
     discovery_url: "https://your-tenant.duosecurity.com/.well-known/openid-configuration"
 </code></pre>
 <p>Tom tries each enabled provider in order until one validates the token.</p>
+<h3 id="multiple-providers-of-same-type">Multiple Providers of Same Type</h3>
+<p>You can configure multiple providers of the same type with different names. This is useful for service-to-service authentication where different services have different OAuth clients:</p>
+<pre><code class="language-yaml">jwt_providers:
+  # Accept tokens from your primary app
+  - name: duo-primary
+    type: duo
+    client_id: "PRIMARY_CLIENT_ID"
+    discovery_url: "https://sso.example.com/oidc/PRIMARY_CLIENT_ID/.well-known/openid-configuration"
+
+  # Accept tokens from an internal service
+  - name: duo-internal-service
+    type: duo
+    client_id: "INTERNAL_SERVICE_CLIENT_ID"
+    discovery_url: "https://sso.example.com/oidc/INTERNAL_SERVICE_CLIENT_ID/.well-known/openid-configuration"
+    audience:
+      - "PRIMARY_CLIENT_ID"        # Accept tokens intended for primary app
+      - "INTERNAL_SERVICE_CLIENT_ID"
+</code></pre>
 <h3 id="provider-options">Provider Options</h3>
 <table>
 <thead>
@@ -288,7 +310,13 @@ jwt_providers:
 <td><code>name</code></td>
 <td>Yes</td>
 <td>-</td>
-<td>Provider name: <code>duo</code>, <code>google</code>, or <code>entra</code></td>
+<td>Unique identifier for this provider instance</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>Yes</td>
+<td>-</td>
+<td>Provider type: <code>duo</code>, <code>google</code>, or <code>entra</code></td>
 </tr>
 <tr>
 <td><code>enabled</code></td>
@@ -312,7 +340,7 @@ jwt_providers:
 <td><code>audience</code></td>
 <td>No</td>
 <td><code>client_id</code></td>
-<td>Expected token audience</td>
+<td>Expected token audience (string or list)</td>
 </tr>
 <tr>
 <td><code>tenant_id</code></td>
@@ -393,6 +421,7 @@ in production! Do you REALLY want 'any authenticated google user' to login? Prob
 </ol>
 <pre><code class="language-yaml">jwt_providers:
   - name: google
+    type: google
     enabled: true
     client_id: "123456789-abc.apps.googleusercontent.com"
     discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
@@ -406,6 +435,7 @@ in production! Do you REALLY want 'any authenticated google user' to login? Prob
 </ol>
 <pre><code class="language-yaml">jwt_providers:
   - name: entra
+    type: entra
     enabled: true
     client_id: "your-application-id"
     tenant_id: "your-tenant-id"
@@ -418,6 +448,7 @@ in production! Do you REALLY want 'any authenticated google user' to login? Prob
 </ol>
 <pre><code class="language-yaml">jwt_providers:
   - name: duo
+    type: duo
     enabled: true
     client_id: "your-duo-client-id"
     discovery_url: "https://your-tenant.duosecurity.com/.well-known/openid-configuration"
@@ -440,6 +471,7 @@ tomclient device router1 "show version"
 <p>Allow clock skew between Tom and the OAuth provider:</p>
 <pre><code class="language-yaml">jwt_providers:
   - name: google
+    type: google
     leeway_seconds: 30  # Default
 </code></pre>
 <h2 id="testing">Testing</h2>
@@ -448,6 +480,7 @@ tomclient device router1 "show version"
 
 jwt_providers:
   - name: google
+    type: google
     oauth_test_client_secret: "your-client-secret"  # Only for test flow
     oauth_test_scopes: ["openid", "email", "profile"]
 </code></pre>
