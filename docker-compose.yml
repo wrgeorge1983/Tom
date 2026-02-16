@@ -12,7 +12,7 @@ services:
     env_file:
       - docker.env
     ports:
-      - "8001:8000"
+      - "8100:8000"
 #    restart: always
     volumes:
       - ./inventory:/app/inventory
@@ -48,7 +48,7 @@ services:
 #    image: redis:7.4-alpine3.21
     build: ./docker/redis
     ports:
-      - "6380:6380"
+      - "8101:6380"
     logging:
       driver: "json-file"
       options:
@@ -58,7 +58,7 @@ services:
   vault:
     image: hashicorp/vault:1.20.2
     ports:
-      - '8200:8200'
+      - '8102:8200'
     volumes:
       - vault-data:/vault/data
       - vault-logs:/vault/logs
@@ -84,7 +84,7 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
     ports:
-      - "9090:9090"
+      - "8103:9090"
     depends_on:
       - controller
 
@@ -100,7 +100,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin  # Change in production
       - GF_SECURITY_ADMIN_USER=admin
     ports:
-      - "3000:3000"
+      - "8104:3000"
     depends_on:
       - prometheus
 
@@ -112,7 +112,7 @@ services:
     volumes:
       - ./docs/docs:/app/docs
     ports:
-      - "8001:8000"  # Avoid conflict with controller on 8000
+      - "8105:8000"
     profiles:
       - docs  # Optional, run with docker-compose --profile docs up
 
