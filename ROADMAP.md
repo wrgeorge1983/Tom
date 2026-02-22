@@ -113,6 +113,25 @@
 ### v0.21.0
 - Vault plugin automatic token re-authentication using AppRole credentials
 
+### v1.0.0 - v1.2.1
+- Template Management API (CRUD for custom TextFSM and TTP templates)
+- Parsing API with structured request body
+- TTP template auto-discovery and integration with ttp-templates library
+- Raw output endpoint support for parsing
+- JWT provider `type` field for validation and multiple provider support
+- Cache endpoint integration and improved JWT validation
+
+### Next version (unreleased)
+- Template source selection for parsing
+  - `template_source` parameter on all parsing endpoints and request models
+  - Explicit control over whether templates load from custom or library sources
+  - TextFSM: `"custom"` or `"ntc"`; TTP: `"custom"` or `"ttp_templates"`
+  - Works with both explicit template names and auto-discovery
+- Automatic index management for custom templates
+  - Template create API optionally registers templates in the index for auto-discovery
+  - Template delete API removes index entries automatically
+  - Index read/write/add/remove utility functions
+
 ## Future Work
 
 ### Reliability

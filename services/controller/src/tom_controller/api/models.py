@@ -138,6 +138,12 @@ class SendCommandRequest(BaseModel):
     template: Optional[str] = Field(
         None, description="Explicit template name for parsing"
     )
+    template_source: Optional[str] = Field(
+        None,
+        description="Where to load template from. For textfsm: 'custom' or 'ntc'. "
+        "For ttp: 'custom' or 'ttp_templates'. If not specified, checks custom first, "
+        "then falls back to library templates.",
+    )
     include_raw: bool = Field(False, description="Include raw output along with parsed")
     timeout: int = Field(10, description="Timeout in seconds")
     use_cache: bool = Field(False, description="Use cache for command results")
@@ -177,6 +183,12 @@ class RawCommandRequest(BaseModel):
     template: Optional[str] = Field(
         None, description="Explicit template name for parsing"
     )
+    template_source: Optional[str] = Field(
+        None,
+        description="Where to load template from. For textfsm: 'custom' or 'ntc'. "
+        "For ttp: 'custom' or 'ttp_templates'. If not specified, checks custom first, "
+        "then falls back to library templates.",
+    )
     include_raw: bool = Field(False, description="Include raw output along with parsed")
     # Caching options
     use_cache: bool = Field(False, description="Use cache for command results")
@@ -205,6 +217,11 @@ class CommandSpec(BaseModel):
     template: Optional[str] = Field(
         None, description="Explicit template to use for parsing this command"
     )
+    template_source: Optional[str] = Field(
+        None,
+        description="Where to load template from. For textfsm: 'custom' or 'ntc'. "
+        "For ttp: 'custom' or 'ttp_templates'.",
+    )
     include_raw: Optional[bool] = Field(
         None, description="Include raw output along with parsed result"
     )
@@ -230,6 +247,11 @@ class SendCommandsRequest(BaseModel):
     parse: bool = Field(False, description="Default: whether to parse command outputs")
     parser: Literal["textfsm", "ttp"] = Field(
         "textfsm", description="Default parser to use"
+    )
+    template_source: Optional[str] = Field(
+        None,
+        description="Default template source. For textfsm: 'custom' or 'ntc'. "
+        "For ttp: 'custom' or 'ttp_templates'.",
     )
     include_raw: bool = Field(
         False, description="Default: include raw output with parsed"

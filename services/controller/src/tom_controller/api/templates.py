@@ -1,3 +1,4 @@
+import csv
 import logging
 from io import StringIO
 from pathlib import Path
@@ -20,6 +21,115 @@ from tom_controller.parsing import TextFSMParser, TTPParser, parse_output
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["templates"])
+
+
+def _read_index(index_path: Path) -> List[dict]:
+    """Read and parse the index file.
+
+    Returns:
+        List of index entries as dicts with keys: template, hostname, platform, command
+    """
+    if not index_path.exists():
+        return []
+
+    entries = []
+    try:
+        with open(index_path, "r") as f:
+            lines = [
+                line for line in f if line.strip() and not line.strip().startswith("#")
+            ]
+            if not lines:
+                return []
+
+            reader = csv.DictReader(lines, skipinitialspace=True)
+            for row in reader:
+                entry = {k.lower().strip(): v.strip() for k, v in row.items() if k}
+                if entry:
+                    entries.append(entry)
+    except Exception as e:
+        logger.warning(f"Error reading index file {index_path}: {e}")
+
+    return entries
+
+
+def _write_index(index_path: Path, entries: List[dict]) -> None:
+    """Write entries to the index file.
+
+    Args:
+        index_path: Path to the index file
+        entries: List of index entries as dicts
+    """
+    try:
+        with open(index_path, "w", newline="") as f:
+            # Write header
+            f.write("Template, Hostname, Platform, Command\n")
+            for entry in entries:
+                template = entry.get("template", "")
+                hostname = entry.get("hostname", ".*")
+                platform = entry.get("platform", "")
+                command = entry.get("command", "")
+                f.write(f"{template}, {hostname}, {platform}, {command}\n")
+    except Exception as e:
+        logger.error(f"Error writing index file {index_path}: {e}")
+        raise TomException(f"Cannot write index file: {e}")
+
+
+def _add_to_index(
+    index_path: Path,
+    template_name: str,
+    platform: str,
+    command: str,
+    hostname: str = ".*",
+) -> None:
+    """Add or update a template entry in the index file.
+
+    Args:
+        index_path: Path to the index file
+        template_name: Name of the template file
+        platform: Platform/device type (e.g., "cisco_ios")
+        command: Command regex pattern (e.g., "show vlan")
+        hostname: Hostname regex pattern (default: ".*")
+    """
+    entries = _read_index(index_path)
+
+    # Remove any existing entry for this template
+    entries = [e for e in entries if e.get("template") != template_name]
+
+    # Add the new entry
+    entries.append(
+        {
+            "template": template_name,
+            "hostname": hostname,
+            "platform": platform,
+            "command": command,
+        }
+    )
+
+    _write_index(index_path, entries)
+    logger.info(f"Added/updated index entry for {template_name}")
+
+
+def _remove_from_index(index_path: Path, template_name: str) -> bool:
+    """Remove a template entry from the index file.
+
+    Args:
+        index_path: Path to the index file
+        template_name: Name of the template to remove
+
+    Returns:
+        True if entry was found and removed, False otherwise
+    """
+    entries = _read_index(index_path)
+    original_count = len(entries)
+
+    entries = [e for e in entries if e.get("template") != template_name]
+
+    if len(entries) < original_count:
+        _write_index(index_path, entries)
+        logger.info(f"Removed index entry for {template_name}")
+        return True
+
+    return False
 
 
 class TemplateMatch(BaseModel):
@@ -53,6 +163,10 @@ class TemplateCreateRequest(BaseModel):
     name: str
     content: str
     overwrite: bool = False
+    # Index entry fields for auto-discovery
+    platform: Optional[str] = None
+    command: Optional[str] = None
+    hostname: Optional[str] = None
 
 
 class TemplateCreateResponse(BaseModel):
@@ -77,6 +191,7 @@ class ParseTestRequest(BaseModel):
     raw_output: str
     parser: Literal["textfsm", "ttp"] = "textfsm"
     template: Optional[str] = None
+    template_source: Optional[str] = None
     device_type: Optional[str] = None
     command: Optional[str] = None
     include_raw: bool = False
@@ -208,6 +323,7 @@ async def test_parse(
         device_type=body.device_type,
         command=body.command,
         template=body.template,
+        template_source=body.template_source,
         include_raw=body.include_raw,
         parser_type=body.parser,
     )
@@ -238,22 +354,16 @@ async def get_template(
     if parser_type == "textfsm":
         template_dir = Path(settings.textfsm_template_dir)
         parser = TextFSMParser(custom_template_dir=template_dir)
-        template_path = parser._find_template(template_name)
+        template_path, source = parser._find_template(template_name)
 
         if not template_path:
             raise TomNotFoundException(f"Template not found: {template_name}")
-
-        # Determine source
-        if template_path.parent == template_dir:
-            source = "custom"
-        else:
-            source = "ntc"
 
         content = template_path.read_text()
         return TemplateContent(
             name=template_path.name,
             parser="textfsm",
-            source=source,
+            source=source or "custom",
             content=content,
         )
 
@@ -355,6 +465,20 @@ async def create_template(
     except OSError as e:
         raise TomException(f"Cannot write template file: {e}")
 
+    # Add to index if platform and command are provided
+    if body.platform and body.command:
+        index_path = template_dir / "index"
+        try:
+            _add_to_index(
+                index_path=index_path,
+                template_name=template_name,
+                platform=body.platform,
+                command=body.command,
+                hostname=body.hostname or ".*",
+            )
+        except Exception as e:
+            validation_warnings.append(f"Failed to update index: {e}")
+
     return TemplateCreateResponse(
         name=template_name,
         parser=parser_type,
@@ -417,5 +541,13 @@ async def delete_template(
         template_path.unlink()
     except OSError as e:
         raise TomException(f"Cannot delete template file: {e}")
+
+    # Remove from index if present
+    index_path = template_dir / "index"
+    if index_path.exists():
+        try:
+            _remove_from_index(index_path, template_name)
+        except Exception as e:
+            logger.warning(f"Failed to remove {template_name} from index: {e}")
 
     return TemplateDeleteResponse(name=template_name, deleted=True)

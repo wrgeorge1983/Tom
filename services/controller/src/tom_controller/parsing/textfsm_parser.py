@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import textfsm
 import ntc_templates
@@ -13,6 +13,9 @@ import ntc_templates
 from tom_controller.exceptions import TomParsingException, TomTemplateNotFoundException
 
 logger = logging.getLogger(__name__)
+
+# Template source literals for type safety
+TemplateSource = Literal["custom", "ntc"]
 
 
 class TextFSMParser:
@@ -38,6 +41,7 @@ class TextFSMParser:
         self,
         raw_output: str,
         template_name: Optional[str] = None,
+        template_source: Optional[TemplateSource] = None,
         platform: Optional[str] = None,
         command: Optional[str] = None,
         include_raw: bool = False,
@@ -47,6 +51,8 @@ class TextFSMParser:
         Args:
             raw_output: Raw text output from network device
             template_name: Explicit template name (e.g., "cisco_ios_show_ip_int_brief.textfsm")
+            template_source: Where to load template from ("custom" or "ntc").
+                           If None, checks custom first, then falls back to ntc.
             platform: Platform/device type for auto-discovery (e.g., "cisco_ios")
             command: Command for auto-discovery (e.g., "show ip int brief")
             include_raw: If True, include raw output in response
@@ -59,17 +65,25 @@ class TextFSMParser:
             On error, returns error information.
         """
         # Initialize metadata tracking
-        template_source = None
+        resolved_source = None
         matched_template = None
 
         # Mode 1: Explicit template name
         if template_name:
-            template_path = self._find_template(template_name)
+            template_path, resolved_source = self._find_template(
+                template_name, source=template_source
+            )
 
             if not template_path:
+                if template_source:
+                    raise TomTemplateNotFoundException(
+                        f"Template not found: {template_name} (source={template_source})"
+                    )
                 raise TomTemplateNotFoundException(
                     f"Template not found: {template_name}"
                 )
+
+            matched_template = template_name
 
             # Parse with TextFSM
             try:
@@ -86,8 +100,8 @@ class TextFSMParser:
         # Mode 2: Auto-discovery - find template ourselves
         elif platform and command:
             # Look up the template from our indexes
-            template_path, template_source, matched_template = self._discover_template(
-                platform=platform, command=command
+            template_path, resolved_source, matched_template = self._discover_template(
+                platform=platform, command=command, source=template_source
             )
 
             if not template_path:
@@ -96,7 +110,7 @@ class TextFSMParser:
                 )
 
             logger.info(
-                f"Using {template_source} template: {matched_template} for {platform}/{command}"
+                f"Using {resolved_source} template: {matched_template} for {platform}/{command}"
             )
 
             # Parse with TextFSM directly
@@ -121,40 +135,61 @@ class TextFSMParser:
             response["raw"] = raw_output
 
         # Add metadata about template selection (if available)
-        if template_source:
-            response["_metadata"] = {"template_source": template_source}
+        if resolved_source:
+            response["_metadata"] = {"template_source": resolved_source}
             if matched_template:
                 response["_metadata"]["template_name"] = matched_template
 
         return response
 
-    def _find_template(self, template_name: str) -> Optional[Path]:
-        """Find template file, checking custom dir first, then ntc-templates.
+    def _find_template(
+        self, template_name: str, source: Optional[TemplateSource] = None
+    ) -> Tuple[Optional[Path], Optional[TemplateSource]]:
+        """Find template file, optionally from a specific source.
 
         Args:
             template_name: Name of template file
+            source: Where to look for the template ("custom" or "ntc").
+                   If None, checks custom first, then falls back to ntc.
 
         Returns:
-            Path to template file, or None if not found
+            Tuple of (path, source) where source is "custom" or "ntc".
+            Returns (None, None) if not found.
         """
         # Ensure .textfsm extension
         if not template_name.endswith(".textfsm"):
             template_name += ".textfsm"
 
-        # Check custom templates first
+        # If source is explicitly specified, only check that source
+        if source == "custom":
+            if self.custom_template_dir:
+                custom_path = self.custom_template_dir / template_name
+                if custom_path.exists():
+                    logger.debug(f"Using custom template: {custom_path}")
+                    return custom_path, "custom"
+            return None, None
+
+        if source == "ntc":
+            ntc_path = self.ntc_templates_dir / template_name
+            if ntc_path.exists():
+                logger.debug(f"Using ntc-template: {ntc_path}")
+                return ntc_path, "ntc"
+            return None, None
+
+        # No source specified - check custom first, then ntc
         if self.custom_template_dir:
             custom_path = self.custom_template_dir / template_name
             if custom_path.exists():
                 logger.debug(f"Using custom template: {custom_path}")
-                return custom_path
+                return custom_path, "custom"
 
         # Fall back to ntc-templates
         ntc_path = self.ntc_templates_dir / template_name
         if ntc_path.exists():
             logger.debug(f"Using ntc-template: {ntc_path}")
-            return ntc_path
+            return ntc_path, "ntc"
 
-        return None
+        return None, None
 
     def list_templates(self) -> Dict[str, List[str]]:
         """List all available templates.
@@ -179,42 +214,56 @@ class TextFSMParser:
         return templates
 
     def _discover_template(
-        self, platform: str, command: str, hostname: str = ".*"
-    ) -> Tuple[Optional[Path], Optional[str], Optional[str]]:
+        self,
+        platform: str,
+        command: str,
+        hostname: str = ".*",
+        source: Optional[TemplateSource] = None,
+    ) -> Tuple[Optional[Path], Optional[TemplateSource], Optional[str]]:
         """Discover which template to use for given platform/command.
 
-        Checks custom index first, then ntc-templates index.
+        Checks custom index first, then ntc-templates index (unless source is specified).
 
         Args:
             platform: Device platform (e.g., 'cisco_ios')
             command: Command to match (e.g., 'show version')
             hostname: Device hostname for matching (default: '.*')
+            source: Where to look for templates ("custom" or "ntc").
+                   If None, checks custom first, then falls back to ntc.
 
         Returns:
             Tuple of (template_path, source, template_name)
             - template_path: Full path to template file
-            - source: "custom" or "ntc-templates"
+            - source: "custom" or "ntc"
             - template_name: Name of the template file
             Returns (None, None, None) if no match found
         """
-        # 1. Check custom index first
-        if self.custom_template_dir:
-            custom_index = self.custom_template_dir / "index"
-            if custom_index.exists():
-                match = self._lookup_in_index(
-                    index_file=custom_index,
-                    platform=platform,
-                    command=command,
-                    hostname=hostname,
-                )
-                if match:
-                    template_path = self.custom_template_dir / match
-                    if template_path.exists():
-                        return (template_path, "custom", match)
-                    else:
-                        logger.warning(f"Custom template in index not found: {match}")
+        # If source is explicitly "ntc", skip custom index
+        if source != "ntc":
+            # Check custom index
+            if self.custom_template_dir:
+                custom_index = self.custom_template_dir / "index"
+                if custom_index.exists():
+                    match = self._lookup_in_index(
+                        index_file=custom_index,
+                        platform=platform,
+                        command=command,
+                        hostname=hostname,
+                    )
+                    if match:
+                        template_path = self.custom_template_dir / match
+                        if template_path.exists():
+                            return (template_path, "custom", match)
+                        else:
+                            logger.warning(
+                                f"Custom template in index not found: {match}"
+                            )
 
-        # 2. Check ntc-templates index
+            # If source is explicitly "custom", don't fall back to ntc
+            if source == "custom":
+                return (None, None, None)
+
+        # Check ntc-templates index
         ntc_index = self.ntc_templates_dir / "index"
         if ntc_index.exists():
             match = self._lookup_in_index(
@@ -226,7 +275,7 @@ class TextFSMParser:
             if match:
                 template_path = self.ntc_templates_dir / match
                 if template_path.exists():
-                    return (template_path, "ntc-templates", match)
+                    return (template_path, "ntc", match)
 
         return (None, None, None)
 

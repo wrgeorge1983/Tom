@@ -92,16 +92,21 @@ Get template contents.
 
 ### POST /api/templates/{parser}
 
-Create a custom template.
+Create a custom template. Optionally registers it in the template index for auto-discovery.
 
 **Request:**
 ```json
 {
   "name": "my_template.textfsm",
   "content": "Value HOSTNAME (\\S+)\\n\\nStart\\n  ^${HOSTNAME}",
-  "overwrite": false
+  "overwrite": false,
+  "platform": "cisco_ios",
+  "command": "show hostname",
+  "hostname": ".*"
 }
 ```
+
+The `platform`, `command`, and `hostname` fields are optional. When `platform` and `command` are provided, the template is automatically registered in the index file for auto-discovery. `hostname` defaults to `.*` (match all devices). If a template with the same name already exists in the index, its entry is replaced.
 
 **Response:**
 ```json
@@ -125,7 +130,7 @@ If validation fails:
 
 ### DELETE /api/templates/{parser}/{name}
 
-Delete a custom template.
+Delete a custom template. Also removes its entry from the index file if present.
 
 **Response:**
 ```json
@@ -138,6 +143,22 @@ Delete a custom template.
 **Errors:**
 - 404: Template not found
 - 400: Cannot delete ntc-template
+
+## Template Source Selection
+
+All parsing endpoints and request models accept an optional `template_source` parameter that controls where templates are loaded from. By default, custom templates are checked first with a fallback to the built-in library. Setting `template_source` restricts the search to a single source.
+
+Valid values:
+- TextFSM: `"custom"` or `"ntc"`
+- TTP: `"custom"` or `"ttp_templates"`
+
+This applies to both explicit template names and auto-discovery. When a source is specified and the template is not found in that source, the request fails rather than falling back.
+
+The `template_source` parameter is available on:
+- `SendCommandRequest`, `RawCommandRequest` (single-command endpoints)
+- `CommandSpec`, `SendCommandsRequest` (multi-command endpoints, per-command and default)
+- `ParseTestRequest` (test parsing endpoint)
+- Job result retrieval query parameters
 
 ## Security Considerations
 

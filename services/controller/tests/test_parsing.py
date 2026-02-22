@@ -138,19 +138,54 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
 
     def test_find_template_with_extension(self, test_template_dir):
         parser = TextFSMParser(custom_template_dir=test_template_dir)
-        template_path = parser._find_template("test_show_ip_int_brief.textfsm")
+        template_path, source = parser._find_template("test_show_ip_int_brief.textfsm")
 
         assert template_path is not None
         assert template_path.exists()
         assert template_path.name == "test_show_ip_int_brief.textfsm"
+        assert source == "custom"
 
     def test_find_template_without_extension(self, test_template_dir):
         parser = TextFSMParser(custom_template_dir=test_template_dir)
-        template_path = parser._find_template("test_show_ip_int_brief")
+        template_path, source = parser._find_template("test_show_ip_int_brief")
 
         assert template_path is not None
         assert template_path.exists()
         assert template_path.name == "test_show_ip_int_brief.textfsm"
+        assert source == "custom"
+
+    def test_find_template_with_source_custom(self, test_template_dir):
+        """Test finding template with explicit source='custom'."""
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        template_path, source = parser._find_template(
+            "test_show_ip_int_brief.textfsm", source="custom"
+        )
+
+        assert template_path is not None
+        assert source == "custom"
+
+    def test_find_template_with_source_ntc(self, test_template_dir):
+        """Test finding template with explicit source='ntc'."""
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        # This should find a template from ntc-templates
+        template_path, source = parser._find_template(
+            "cisco_ios_show_version.textfsm", source="ntc"
+        )
+
+        assert template_path is not None
+        assert source == "ntc"
+
+    def test_find_template_source_ntc_skips_custom(self, test_template_dir):
+        """Test that source='ntc' skips custom templates even if they exist."""
+        parser = TextFSMParser(custom_template_dir=test_template_dir)
+        # test_show_ip_int_brief exists only in custom, not in ntc
+        template_path, source = parser._find_template(
+            "test_show_ip_int_brief.textfsm", source="ntc"
+        )
+
+        # Should not find it because it doesn't exist in ntc-templates
+        assert template_path is None
+        assert source is None
 
     def test_expand_optional_syntax_simple(self, test_template_dir):
         parser = TextFSMParser(custom_template_dir=test_template_dir)
@@ -387,3 +422,177 @@ GigabitEthernet0/1     10.2.2.1        YES NVRAM  up                    up"""
                 raw_output="some output", platform="cisco_ios", command="show version"
             )
         assert "No template found" in str(exc_info.value)
+
+    def test_find_template_with_source_custom(self, test_template_dir):
+        """Test finding template with explicit source='custom'."""
+        parser = TTPParser(custom_template_dir=test_template_dir)
+        template_path, source = parser._find_template(
+            "test_show_ip_int_brief.ttp", source="custom"
+        )
+
+        assert template_path is not None
+        assert source == "custom"
+
+    def test_find_template_with_source_ttp_templates(self, test_template_dir):
+        """Test finding template with explicit source='ttp_templates'."""
+        parser = TTPParser(custom_template_dir=test_template_dir)
+        template_path, source = parser._find_template(
+            "cisco_ios_show_ip_arp", source="ttp_templates"
+        )
+
+        assert template_path is not None
+        assert source == "ttp_templates"
+
+    def test_find_template_source_ttp_templates_skips_custom(self, test_template_dir):
+        """Test that source='ttp_templates' skips custom templates."""
+        parser = TTPParser(custom_template_dir=test_template_dir)
+        # test_show_ip_int_brief exists only in custom, not in ttp_templates
+        template_path, source = parser._find_template(
+            "test_show_ip_int_brief.ttp", source="ttp_templates"
+        )
+
+        assert template_path is None
+        assert source is None
+
+    def test_find_template_source_custom_skips_ttp_templates(self, test_template_dir):
+        """Test that source='custom' skips ttp_templates package."""
+        parser = TTPParser(custom_template_dir=test_template_dir)
+        # cisco_ios_show_ip_arp exists only in ttp_templates, not custom
+        template_path, source = parser._find_template(
+            "cisco_ios_show_ip_arp", source="custom"
+        )
+
+        assert template_path is None
+        assert source is None
+
+    def test_discover_template_with_source_custom(self, tmp_path):
+        """Test auto-discovery restricted to custom source."""
+        # Create custom template and index
+        template_content = """<group name="interfaces">
+{{ interface }} {{ ip_address }} YES {{ method }} {{ status }} {{ protocol }}
+</group>
+"""
+        (tmp_path / "custom_test.ttp").write_text(template_content)
+        index_content = """Template, Hostname, Platform, Command
+custom_test.ttp, .*, cisco_ios, show custom test
+"""
+        (tmp_path / "index").write_text(index_content)
+
+        parser = TTPParser(custom_template_dir=tmp_path)
+
+        # Should find in custom
+        path, source, name = parser.discover_template(
+            platform="cisco_ios", command="show custom test", source="custom"
+        )
+        assert path is not None
+        assert source == "custom"
+
+        # A command only in ttp_templates should not be found with source="custom"
+        path, source, name = parser.discover_template(
+            platform="cisco_ios", command="show ip arp", source="custom"
+        )
+        assert path is None
+
+    def test_discover_template_with_source_ttp_templates(self, tmp_path):
+        """Test auto-discovery restricted to ttp_templates source."""
+        # Create custom template and index that would match
+        template_content = """<group name="data">
+{{ value }}
+</group>
+"""
+        (tmp_path / "custom_test.ttp").write_text(template_content)
+        index_content = """Template, Hostname, Platform, Command
+custom_test.ttp, .*, cisco_ios, show ip arp
+"""
+        (tmp_path / "index").write_text(index_content)
+
+        parser = TTPParser(custom_template_dir=tmp_path)
+
+        # With source="ttp_templates", custom index should be skipped
+        path, source, name = parser.discover_template(
+            platform="cisco_ios", command="show ip arp", source="ttp_templates"
+        )
+        assert path is not None
+        assert source == "ttp_templates"
+
+    def test_parse_with_explicit_template_and_source(
+        self, sample_output, test_template_dir
+    ):
+        """Test parsing with explicit template name and source."""
+        parser = TTPParser(custom_template_dir=test_template_dir)
+        result = parser.parse(
+            raw_output=sample_output,
+            template_name="test_show_ip_int_brief.ttp",
+            template_source="custom",
+            include_raw=False,
+        )
+
+        assert "parsed" in result
+        assert "error" not in result
+        assert result["_metadata"]["template_source"] == "custom"
+
+    def test_parse_with_wrong_source_raises(self, sample_output, test_template_dir):
+        """Test that specifying wrong source raises TemplateNotFound with source info."""
+        parser = TTPParser(custom_template_dir=test_template_dir)
+        with pytest.raises(TomTemplateNotFoundException) as exc_info:
+            parser.parse(
+                raw_output=sample_output,
+                template_name="test_show_ip_int_brief.ttp",
+                template_source="ttp_templates",
+            )
+        assert "source=ttp_templates" in str(exc_info.value)
+
+
+class TestParseOutputTemplateSource:
+    """Test the parse_output entry point with template_source parameter."""
+
+    def test_parse_output_textfsm_with_source_ntc(self):
+        from unittest.mock import MagicMock
+
+        settings = MagicMock()
+        settings.textfsm_template_dir = "/tmp/textfsm"
+        settings.ttp_template_dir = "/tmp/ttp"
+
+        result = parse_output(
+            raw_output="Cisco IOS Software",
+            settings=settings,
+            template="cisco_ios_show_version.textfsm",
+            template_source="ntc",
+            parser_type="textfsm",
+        )
+        assert "parsed" in result
+        assert result["_metadata"]["template_source"] == "ntc"
+
+    def test_parse_output_textfsm_invalid_source(self):
+        from unittest.mock import MagicMock
+
+        settings = MagicMock()
+        settings.textfsm_template_dir = "/tmp/textfsm"
+        settings.ttp_template_dir = "/tmp/ttp"
+
+        with pytest.raises(TomValidationException) as exc_info:
+            parse_output(
+                raw_output="test",
+                settings=settings,
+                template="test.textfsm",
+                template_source="invalid_source",
+                parser_type="textfsm",
+            )
+        assert "Invalid template_source" in str(exc_info.value)
+
+    def test_parse_output_ttp_invalid_source(self):
+        from unittest.mock import MagicMock
+
+        settings = MagicMock()
+        settings.textfsm_template_dir = "/tmp/textfsm"
+        settings.ttp_template_dir = "/tmp/ttp"
+
+        with pytest.raises(TomValidationException) as exc_info:
+            parse_output(
+                raw_output="test",
+                settings=settings,
+                template="test.ttp",
+                template_source="ntc",
+                parser_type="ttp",
+            )
+        assert "Invalid template_source" in str(exc_info.value)

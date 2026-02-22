@@ -277,6 +277,7 @@ async def send_inventory_command(
                 device_type=device_config.adapter_driver,
                 command=body.command,
                 template=body.template,
+                template_source=body.template_source,
                 include_raw=body.include_raw,
                 parser_type=body.parser,
             )
@@ -436,6 +437,7 @@ async def send_inventory_commands(
                                 device_type=device_config.adapter_driver,
                                 command=command_str,
                                 template=cmd_spec.template,
+                                template_source=cmd_spec.template_source,
                                 include_raw=cmd_spec.include_raw or False,
                                 parser_type=cmd_spec.parser or "textfsm",
                             )

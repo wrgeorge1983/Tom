@@ -123,6 +123,7 @@ async def send_netmiko_command(
                 device_type=body.device_type,
                 command=body.command,
                 template=body.template,
+                template_source=body.template_source,
                 include_raw=body.include_raw,
                 parser_type=body.parser,
             )
@@ -218,6 +219,7 @@ async def send_scrapli_command(
                 device_type=body.device_type,
                 command=body.command,
                 template=body.template,
+                template_source=body.template_source,
                 include_raw=body.include_raw,
                 parser_type=body.parser,
             )

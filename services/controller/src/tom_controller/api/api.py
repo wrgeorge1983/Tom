@@ -50,6 +50,11 @@ async def job(
     parse: bool = Query(False, description="Parse output using TextFSM"),
     parser: str = Query("textfsm", description="Parser to use"),
     template: Optional[str] = Query(None, description="Template name for parsing"),
+    template_source: Optional[str] = Query(
+        None,
+        description="Where to load template from. For textfsm: 'custom' or 'ntc'. "
+        "For ttp: 'custom' or 'ttp_templates'.",
+    ),
     include_raw: bool = Query(False, description="Include raw output with parsed"),
 ) -> Optional[JobResponse]:
     """Get job status and results by job ID.
@@ -116,6 +121,7 @@ async def job(
                         device_type=device_type,
                         command=command,
                         template=template,
+                        template_source=template_source,
                         include_raw=include_raw,
                         parser_type=parser,
                     )

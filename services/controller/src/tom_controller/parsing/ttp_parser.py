@@ -2,7 +2,7 @@ import csv
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from ttp import ttp
 import ttp_templates
@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 # Get the path to ttp_templates package
 TTP_TEMPLATES_DIR = Path(ttp_templates.__file__).parent / "platform"
+
+# Template source literals for type safety
+TTPTemplateSource = Literal["custom", "ttp_templates"]
 
 
 class TTPParser:
@@ -29,6 +32,7 @@ class TTPParser:
         self,
         raw_output: str,
         template_name: Optional[str] = None,
+        template_source: Optional[TTPTemplateSource] = None,
         template_string: Optional[str] = None,
         platform: Optional[str] = None,
         command: Optional[str] = None,
@@ -36,14 +40,20 @@ class TTPParser:
         include_raw: bool = False,
     ) -> Dict[str, Any]:
         # Initialize metadata tracking
-        template_source = None
+        resolved_source = None
         matched_template = None
 
         # Mode 1: Explicit template name
         if template_name:
-            template_path, source = self._find_template(template_name)
+            template_path, resolved_source = self._find_template(
+                template_name, source=template_source
+            )
 
             if not template_path:
+                if template_source:
+                    raise TomTemplateNotFoundException(
+                        f"Template not found: {template_name} (source={template_source})"
+                    )
                 raise TomTemplateNotFoundException(
                     f"Template not found: {template_name}"
                 )
@@ -52,7 +62,6 @@ class TTPParser:
                 template_content = f.read()
 
             matched_template = template_path.name
-            template_source = source or "explicit"
 
             try:
                 parser = ttp(data=raw_output, template=template_content)
@@ -63,7 +72,7 @@ class TTPParser:
 
         # Mode 2: Inline template string
         elif template_string:
-            template_source = "inline"
+            resolved_source = "inline"
             try:
                 parser = ttp(data=raw_output, template=template_string)
                 parser.parse()
@@ -73,8 +82,11 @@ class TTPParser:
 
         # Mode 3: Auto-discovery via custom index or ttp_templates
         elif platform and command:
-            template_path, template_source, matched_template = self.discover_template(
-                platform=platform, command=command, hostname=hostname
+            template_path, resolved_source, matched_template = self.discover_template(
+                platform=platform,
+                command=command,
+                hostname=hostname,
+                source=template_source,
             )
 
             if not template_path:
@@ -86,7 +98,7 @@ class TTPParser:
                 template_content = f.read()
 
             logger.info(
-                f"Using TTP template ({template_source}): {matched_template} for {platform}/{command}"
+                f"Using TTP template ({resolved_source}): {matched_template} for {platform}/{command}"
             )
 
             try:
@@ -106,20 +118,22 @@ class TTPParser:
             response["raw"] = raw_output
 
         # Add metadata about template selection
-        if template_source:
-            response["_metadata"] = {"template_source": template_source}
+        if resolved_source:
+            response["_metadata"] = {"template_source": resolved_source}
             if matched_template:
                 response["_metadata"]["template_name"] = matched_template
 
         return response
 
     def _find_template(
-        self, template_name: str
-    ) -> Tuple[Optional[Path], Optional[str]]:
-        """Find template file, checking custom dir first, then ttp_templates package.
+        self, template_name: str, source: Optional[TTPTemplateSource] = None
+    ) -> Tuple[Optional[Path], Optional[TTPTemplateSource]]:
+        """Find template file, optionally from a specific source.
 
         Args:
             template_name: Name of template file
+            source: Where to look for the template ("custom" or "ttp_templates").
+                   If None, checks custom first, then falls back to ttp_templates.
 
         Returns:
             Tuple of (path, source) where source is "custom" or "ttp_templates"
@@ -132,7 +146,24 @@ class TTPParser:
         elif template_name.endswith(".txt"):
             base_name = template_name[:-4]
 
-        # Check custom templates first (.ttp extension)
+        # If source is explicitly specified, only check that source
+        if source == "custom":
+            if self.custom_template_dir:
+                custom_path = self.custom_template_dir / f"{base_name}.ttp"
+                if custom_path.exists():
+                    logger.debug(f"Using custom template: {custom_path}")
+                    return custom_path, "custom"
+            return None, None
+
+        if source == "ttp_templates":
+            if TTP_TEMPLATES_DIR.exists():
+                ttp_templates_path = TTP_TEMPLATES_DIR / f"{base_name}.txt"
+                if ttp_templates_path.exists():
+                    logger.debug(f"Using ttp_templates: {ttp_templates_path}")
+                    return ttp_templates_path, "ttp_templates"
+            return None, None
+
+        # No source specified - check custom first, then ttp_templates
         if self.custom_template_dir:
             custom_path = self.custom_template_dir / f"{base_name}.ttp"
             if custom_path.exists():
@@ -307,33 +338,45 @@ class TTPParser:
         return None, None
 
     def discover_template(
-        self, platform: str, command: str, hostname: Optional[str] = None
-    ) -> Tuple[Optional[Path], Optional[str], Optional[str]]:
+        self,
+        platform: str,
+        command: str,
+        hostname: Optional[str] = None,
+        source: Optional[TTPTemplateSource] = None,
+    ) -> Tuple[Optional[Path], Optional[TTPTemplateSource], Optional[str]]:
         """Discover which template to use for given platform/command.
 
-        Checks custom index first, then ttp_templates package.
+        Checks custom index first, then ttp_templates package (unless source is specified).
 
         Args:
             platform: Device platform (e.g., 'cisco_ios')
             command: Command to match (e.g., 'show version')
             hostname: Device hostname for matching (default: '.*')
+            source: Where to look for templates ("custom" or "ttp_templates").
+                   If None, checks custom first, then falls back to ttp_templates.
 
         Returns:
             Tuple of (template_path, source, template_name)
             Returns (None, None, None) if no match found
         """
-        # 1. Check custom index first
-        template_path, source = self._lookup_template_from_index(
-            platform=platform, command=command, hostname=hostname
-        )
-        if template_path:
-            return template_path, source, template_path.name
+        # If source is explicitly "ttp_templates", skip custom index
+        if source != "ttp_templates":
+            # Check custom index first
+            template_path, resolved_source = self._lookup_template_from_index(
+                platform=platform, command=command, hostname=hostname
+            )
+            if template_path:
+                return template_path, resolved_source, template_path.name
 
-        # 2. Fall back to ttp_templates package
-        template_path, source = self._lookup_ttp_templates(
+            # If source is explicitly "custom", don't fall back to ttp_templates
+            if source == "custom":
+                return None, None, None
+
+        # Fall back to ttp_templates package
+        template_path, resolved_source = self._lookup_ttp_templates(
             platform=platform, command=command
         )
         if template_path:
-            return template_path, source, template_path.name
+            return template_path, resolved_source, template_path.name
 
         return None, None, None
