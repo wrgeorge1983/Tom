@@ -18,6 +18,7 @@ from tom_controller.api.models import (
     CommandSpec,
 )
 from tom_controller.exceptions import (
+    TomJobEnqueueError,
     TomNotFoundException,
     TomException,
 )
@@ -133,13 +134,10 @@ async def _execute_device_job(
             timeout=params.timeout,
             retries=params.retries,
             max_queue_wait=params.max_queue_wait,
+            job_label=device_name,
         )
-    except Exception as e:
-        return _raise_or_plain(
-            f"Failed to enqueue job for {device_name}: {e}",
-            500,
-            raw_output,
-        )
+    except TomJobEnqueueError as e:
+        return _raise_or_plain(str(e), 500, raw_output)
 
     return response
 
@@ -204,12 +202,17 @@ async def send_inventory_command(
     When wait=true and parse=true, the command output in result.data will be
     the parsed structured data instead of raw text.
 
+    When wait=true, a 200 response may contain a non-complete status (e.g.
+    ACTIVE, QUEUED) if the wait timed out. The job was accepted and may still
+    complete. Callers should check the `status` field rather than assuming a
+    200 means the job completed.
+
     **Raw Output Mode** (raw_output=true):
     Opts out of the JobResponse envelope entirely. Returns plain text
     (text/plain) with just the device output. Requires wait=true.
     Errors return appropriate HTTP status codes with plain text messages:
     - 404: Device not found
-    - 500: Queue/adapter errors
+    - 500: Failed to submit job to queue (infrastructure error)
     - 502: Device command execution failed
     """
     logger.info(f"Device command request: {device_name} - {body.command[:50]}...")
@@ -302,13 +305,18 @@ async def send_inventory_commands(
     - attempts: Number of execution attempts
     - error: Error message if failed
 
+    When wait=true, a 200 response may contain a non-complete status (e.g.
+    ACTIVE, QUEUED) if the wait timed out. The job was accepted and may still
+    complete. Callers should check the `status` field rather than assuming a
+    200 means the job completed.
+
     **Raw Output Mode** (raw_output=true):
     Opts out of the JobResponse envelope entirely. Returns plain text
     (text/plain) with all command outputs concatenated (separated by newlines).
     Requires wait=true. Errors return appropriate HTTP status codes with
     plain text messages:
     - 404: Device not found
-    - 500: Queue/adapter errors
+    - 500: Failed to submit job to queue (infrastructure error)
     - 502: Device command execution failed
 
     This endpoint supports both simple and advanced command execution:

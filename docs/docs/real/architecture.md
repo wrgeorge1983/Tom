@@ -118,6 +118,8 @@ sequenceDiagram
     T -->> C: Final response
 ```
 
+**Wait timeout:** If the worker doesn't complete within the `timeout` period, the controller returns a 200 response with the `JobResponse` in its current state (e.g. `ACTIVE` or `QUEUED`). The job is still running -- the client can poll `GET /api/job/{job_id}` for the final result. This is distinct from an enqueue failure, which returns a 500 error.
+
 ### Asynchronous Request (wait=false)
 
 When a client sends a command with `wait=false`, they get a job ID immediately and poll for results:

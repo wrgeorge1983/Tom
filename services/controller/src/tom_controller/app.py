@@ -20,6 +20,7 @@ from tom_controller.exceptions import (
     TomException,
     TomAuthException,
     TomAuthorizationException,
+    TomJobEnqueueError,
     TomNotFoundException,
     TomValidationException,
     TomParsingException,
@@ -344,6 +345,14 @@ def create_app():
         logging.warning(f"Parsing error: {exc}")
         return JSONResponse(
             status_code=422, content={"error": "Parsing Failed", "detail": str(exc)}
+        )
+
+    @app.exception_handler(TomJobEnqueueError)
+    async def tom_job_enqueue_error_handler(request: Request, exc: TomJobEnqueueError):
+        logging.error(f"Job enqueue failed: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Job Enqueue Failed", "detail": str(exc)},
         )
 
     @app.exception_handler(TomException)

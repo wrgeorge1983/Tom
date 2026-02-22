@@ -39,7 +39,7 @@ Set `raw_output=true` to opt out of the JobResponse envelope and get plain text 
 
 **Requires:** `wait=true`
 
-**Error responses:** Returns appropriate HTTP status codes (404, 500, 502) with plain text error messages.
+**Error responses:** Returns appropriate HTTP status codes (404, 500, 502) with plain text error messages. 500 indicates a queue infrastructure failure; 502 indicates the device command failed.
 
 ## Start a job (device via inventory)
 
@@ -316,9 +316,12 @@ All errors return JSON with consistent structure:
 | 404 | Not Found | Resource not found |
 | 404 | Template Not Found | Parsing template not found |
 | 422 | Parsing Failed | Output parsing failed |
-| 500 | Internal Server Error | Server error |
+| 500 | Job Enqueue Failed | Failed to submit job to Redis/SAQ queue |
+| 500 | Internal Server Error | Other server errors |
 
 **Note:** When using `raw_output=true`, errors return plain text with appropriate HTTP status codes instead of JSON.
+
+**Wait timeout:** When `wait=true`, a 200 response may have a non-complete `status` (e.g. `ACTIVE`, `QUEUED`) if the wait timed out. The job was accepted and may still complete. Use `GET /api/job/{job_id}` to poll for the final result.
 
 ## Credentials
 - `GET /api/credentials` - list available credential IDs from the configured credential store (optional `timeout` param)

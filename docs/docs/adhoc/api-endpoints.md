@@ -49,7 +49,7 @@ For endpoints that support it, setting `raw_output=true` opts out of the JobResp
 
 **Error responses in raw output mode:**
 - 404: Device/resource not found
-- 500: Queue/adapter errors
+- 500: Failed to submit job to queue (infrastructure error)
 - 502: Device command execution failed
 
 ## Endpoints
@@ -694,9 +694,19 @@ All errors return JSON with consistent structure:
 | 404 | Not Found | Resource not found |
 | 404 | Template Not Found | Parsing template not found |
 | 422 | Parsing Failed | Output parsing failed |
-| 500 | Internal Server Error | Server error |
+| 500 | Job Enqueue Failed | Failed to submit job to Redis/SAQ queue |
+| 500 | Internal Server Error | Other server errors |
 
 **Note:** When using `raw_output=true`, errors return plain text with appropriate HTTP status codes instead of JSON.
+
+### Wait Timeout Behavior
+
+When `wait=true`, a 200 response may contain a `JobResponse` with a non-complete status (e.g. `ACTIVE`, `QUEUED`) if the wait timed out before the worker finished. This means:
+
+- The job **was accepted** and is still running (or queued). It may complete successfully after the timeout.
+- The response is not an error -- the HTTP status is still 200.
+- Callers should check the `status` field rather than assuming a 200 means the job completed.
+- The `job_id` in the response can be used to poll `GET /api/job/{job_id}` for the final result.
 
 ## Data Types
 

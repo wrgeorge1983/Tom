@@ -8,7 +8,7 @@ from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
 from tom_shared.models.models import StoredCredential, InlineSSHCredential
 from tom_controller.api.helpers import enqueue_job
 from tom_controller.api.models import JobResponse, RawCommandRequest
-from tom_controller.exceptions import TomAuthException, TomException
+from tom_controller.exceptions import TomAuthException, TomException, TomJobEnqueueError
 from tom_controller.parsing import parse_output
 
 router = APIRouter(tags=["raw"])
@@ -52,6 +52,11 @@ async def send_netmiko_command(
     - `raw_output=true`: Returns plain text device output (requires `wait=true`)
     - `parse=true`: Parses output using TextFSM or TTP templates
 
+    When wait=true, a 200 response may contain a non-complete status (e.g.
+    ACTIVE, QUEUED) if the wait timed out. The job was accepted and may still
+    complete. Callers should check the `status` field rather than assuming a
+    200 means the job completed.
+
     **Parsing:**
     When `parse=true`, you can specify:
     - `parser`: "textfsm" (default) or "ttp"
@@ -92,13 +97,10 @@ async def send_netmiko_command(
             args,
             wait=body.wait,
             timeout=body.timeout,
+            job_label=body.host,
         )
-    except Exception as e:
-        return _raise_or_plain(
-            f"Failed to enqueue job: {e}",
-            500,
-            body.raw_output,
-        )
+    except TomJobEnqueueError as e:
+        return _raise_or_plain(str(e), 500, body.raw_output)
 
     # Handle completed job
     if body.wait:
@@ -148,6 +150,11 @@ async def send_scrapli_command(
     - `raw_output=true`: Returns plain text device output (requires `wait=true`)
     - `parse=true`: Parses output using TextFSM or TTP templates
 
+    When wait=true, a 200 response may contain a non-complete status (e.g.
+    ACTIVE, QUEUED) if the wait timed out. The job was accepted and may still
+    complete. Callers should check the `status` field rather than assuming a
+    200 means the job completed.
+
     **Parsing:**
     When `parse=true`, you can specify:
     - `parser`: "textfsm" (default) or "ttp"
@@ -188,13 +195,10 @@ async def send_scrapli_command(
             args,
             wait=body.wait,
             timeout=body.timeout,
+            job_label=body.host,
         )
-    except Exception as e:
-        return _raise_or_plain(
-            f"Failed to enqueue job: {e}",
-            500,
-            body.raw_output,
-        )
+    except TomJobEnqueueError as e:
+        return _raise_or_plain(str(e), 500, body.raw_output)
 
     # Handle completed job
     if body.wait:

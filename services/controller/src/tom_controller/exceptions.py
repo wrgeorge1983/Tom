@@ -91,6 +91,12 @@ class TomCacheDecodingError(TomCacheException):
     pass
 
 
+class TomJobEnqueueError(TomException):
+    """Failed to submit a job to the queue (Redis/SAQ failure)."""
+
+    pass
+
+
 class TomParsingException(TomException):
     """Raised when output parsing fails."""
 
