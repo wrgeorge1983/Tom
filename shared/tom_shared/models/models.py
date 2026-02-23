@@ -29,6 +29,15 @@ class NetmikoSendCommandModel(BaseModel):
     max_queue_wait: int = 300
 
 
+class NetmikoSendConfigModel(BaseModel):
+    host: str
+    port: int
+    device_type: str
+    config_commands: list[str]
+    credential: CredentialSource = Field(discriminator="type")
+    max_queue_wait: int = 300
+
+
 class ScrapliSendCommandModel(BaseModel):
     host: str
     port: int
@@ -38,6 +47,15 @@ class ScrapliSendCommandModel(BaseModel):
     use_cache: bool = True
     cache_refresh: bool = False
     cache_ttl: Optional[int] = None
+    max_queue_wait: int = 300
+
+
+class ScrapliSendConfigModel(BaseModel):
+    host: str
+    port: int
+    device_type: str
+    config_commands: list[str]
+    credential: CredentialSource = Field(discriminator="type")
     max_queue_wait: int = 300
 
 
@@ -132,5 +150,16 @@ class CommandExecutionResult(BaseModel):
                     "execution_time": 2.5,
                     "device": "router1"
                 }
+            }
+        }
+
+
+class ConfigExecutionResult(BaseModel):
+    """Result from executing config commands on a network device."""
+    transcript: str  # raw session output
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "transcript": "router1#show version\nCisco IOS XE Software, Version 16.12.01b...",
             }
         }

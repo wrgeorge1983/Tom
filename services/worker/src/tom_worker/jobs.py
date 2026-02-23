@@ -6,19 +6,15 @@ from tom_worker.config import Settings
 from tom_worker.semaphore import device_lease
 from tom_shared.models import (
     NetmikoSendCommandModel,
+    NetmikoSendConfigModel,
     ScrapliSendCommandModel,
+    ScrapliSendConfigModel,
     CommandExecutionResult,
+    ConfigExecutionResult
 )
 from tom_shared.cache import CacheManager
 
 logger = logging.getLogger(__name__)
-
-
-async def foo(*args, **kwargs):
-    return {
-        "foo": "bar",
-        "baz": "qux",
-    }
 
 
 async def list_credentials(ctx: saq.types.Context):
@@ -129,6 +125,29 @@ async def send_commands_netmiko(ctx: saq.types.Context, json: str):
     return execution_result.model_dump()
 
 
+async def send_configs_netmiko(ctx: saq.types.Context, json: str):
+    assert "credential_store" in ctx, "Missing credential store in context."
+    credential_store = ctx["credential_store"]
+    redis_client = ctx["redis_client"]
+
+    model = NetmikoSendConfigModel.model_validate_json(json)
+
+    job_id = ctx["job"].id
+
+    device_id = f"{model.host}:{model.port}"
+
+    async with device_lease(ctx, redis_client, device_id, job_id, model.max_queue_wait):
+        logger.info(
+            f"Job {job_id}: Sending configuration to {device_id} [netmiko/{model.device_type}]"
+        )
+
+        async with await NetmikoAdapter.from_model(model, credential_store) as adapter:
+            result = await adapter.send_configs(model.config_commands)
+
+        execution_result = ConfigExecutionResult(transcript=result)
+        return execution_result.model_dump()
+
+
 async def send_commands_scrapli(ctx: saq.types.Context, json: str):
     assert "credential_store" in ctx, "Missing credential store in context."
     settings: Settings = ctx["settings"]
@@ -216,3 +235,24 @@ async def send_commands_scrapli(ctx: saq.types.Context, json: str):
 
     # Return as dict for SAQ serialization
     return execution_result.model_dump()
+
+
+async def send_configs_scrapli(ctx: saq.types.Context, json: str):
+    assert "credential_store" in ctx, "Missing credential store in context."
+    credential_store = ctx["credential_store"]
+    redis_client = ctx["redis_client"]
+
+    model = ScrapliSendConfigModel.model_validate_json(json)
+
+    job_id = ctx["job"].id
+    device_id = f"{model.host}:{model.port}"
+
+    async with device_lease(ctx, redis_client, device_id, job_id, model.max_queue_wait):
+        logger.info(f"Job {job_id}: Sending configuration to {device_id} [scrapli/{model.device_type}]")
+
+        async with await ScrapliAsyncAdapter.from_model(model, credential_store) as adapter:
+            result = await adapter.send_configs(model.config_commands)
+
+        execution_result = ConfigExecutionResult(transcript=result)
+
+        return execution_result.model_dump()

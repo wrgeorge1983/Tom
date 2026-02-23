@@ -1,7 +1,10 @@
 from .models import (
-    NetmikoSendCommandModel, 
+    NetmikoSendCommandModel,
+    NetmikoSendConfigModel,
     ScrapliSendCommandModel,
+    ScrapliSendConfigModel,
     CommandExecutionResult,
+    ConfigExecutionResult,
     CacheMetadata,
     StoredCredential,
     InlineSSHCredential,

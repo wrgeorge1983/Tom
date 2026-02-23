@@ -12,7 +12,7 @@ from scrapli.driver.core import (
 )
 from scrapli.exceptions import ScrapliAuthenticationFailed
 
-from tom_shared.models import ScrapliSendCommandModel
+from tom_shared.models import ScrapliSendCommandModel, ScrapliSendConfigModel
 from tom_worker.credentials.credentials import SSHCredentials
 from tom_worker.exceptions import TomException, AuthenticationException
 from tom_worker.Plugins.base import CredentialPlugin
@@ -82,7 +82,7 @@ class ScrapliAsyncAdapter:
 
     @classmethod
     async def from_model(
-        cls, model: ScrapliSendCommandModel, credential_store: CredentialPlugin
+        cls, model: ScrapliSendCommandModel|ScrapliSendConfigModel, credential_store: CredentialPlugin
     ) -> "ScrapliAsyncAdapter":
         if model.credential.type == "stored":
             credential = await credential_store.get_ssh_credentials(
@@ -118,3 +118,12 @@ class ScrapliAsyncAdapter:
             results[command] = result.result
 
         return results
+
+    async def send_configs(self, config_lines: list[str]) -> str:
+        """Send a list of configuration lines to the device.
+        returns the full transcript of the configuration session."""
+        if self.connection is None:
+            raise TomException("Connection not initialized")
+
+        result = await self.connection.send_configs(configs=config_lines)
+        return result.result  # should be full transcript

@@ -8,13 +8,19 @@ from fastapi.responses import PlainTextResponse
 from starlette.requests import Request
 
 from tom_shared.models import NetmikoSendCommandModel, ScrapliSendCommandModel
-from tom_shared.models.models import InlineSSHCredential, StoredCredential
+from tom_shared.models.models import (
+    InlineSSHCredential,
+    StoredCredential,
+    NetmikoSendConfigModel,
+    ScrapliSendConfigModel,
+)
 from tom_controller.api.helpers import enqueue_job
 from tom_controller.api.inventory import get_inventory_store
 from tom_controller.api.models import (
     JobResponse,
     SendCommandRequest,
     SendCommandsRequest,
+    SendConfigsRequest,
     CommandSpec,
 )
 from tom_controller.exceptions import (
@@ -67,7 +73,7 @@ def _raise_or_plain(
 
 
 # -----------------------------------------------------------------------------
-# Job execution helper
+# Job execution helpers
 # -----------------------------------------------------------------------------
 
 
@@ -82,6 +88,18 @@ class JobExecutionParams:
     use_cache: bool
     cache_refresh: bool
     cache_ttl: Optional[int]
+    wait: bool
+    timeout: int
+    retries: int = 3
+    max_queue_wait: int = 300
+
+
+@dataclass
+class ConfigJobExecutionParams:
+    queue: saq.Queue
+    device_config: DeviceConfig
+    config_lines: list[str]
+    credential: Union[StoredCredential, InlineSSHCredential]
     wait: bool
     timeout: int
     retries: int = 3
@@ -138,6 +156,50 @@ async def _execute_device_job(
         )
     except TomJobEnqueueError as e:
         return _raise_or_plain(str(e), 500, raw_output)
+
+    return response
+
+
+async def _execute_config_device_job(
+    params: ConfigJobExecutionParams,
+    device_name: str,
+) -> Union[JobResponse, PlainTextResponse]:
+    """Execute a job on a device, handling adapter selection and error responses."""
+    adapter = params.device_config.adapter
+    kwargs = {
+        "host": params.device_config.host,
+        "device_type": params.device_config.adapter_driver,
+        "config_commands": params.config_lines,
+        "credential": params.credential,
+        "port": params.device_config.port,
+        "max_queue_wait": params.max_queue_wait,
+    }
+    if adapter == "netmiko":
+        args = NetmikoSendConfigModel(**kwargs)
+        job_function = "send_configs_netmiko"
+    elif adapter == "scrapli":
+        args = ScrapliSendConfigModel(**kwargs)
+        job_function = "send_configs_scrapli"
+    else:
+        return _raise_or_plain(
+            f"Unknown adapter type: {adapter}",
+            500,
+            False,
+        )
+
+    try:
+        response = await enqueue_job(
+            params.queue,
+            job_function,
+            args,
+            wait=params.wait,
+            timeout=params.timeout,
+            retries=params.retries,
+            max_queue_wait=params.max_queue_wait,
+            job_label=device_name,
+        )
+    except TomJobEnqueueError as e:
+        return _raise_or_plain(str(e), 500, False)
 
     return response
 
@@ -455,3 +517,40 @@ async def send_inventory_commands(
                 return response.with_parsed_result(parsed_results)
 
     return response
+
+
+@router.post("/device/{device_name}/send_configs", response_model=None)
+async def send_inventory_configs(
+    request: Request,
+    device_name: str,
+    body: SendConfigsRequest,
+    inventory_store: InventoryStore = Depends(get_inventory_store),
+) -> Union[JobResponse, PlainTextResponse]:
+    """Send multiple configuration commands to a device."""
+
+    device_config = inventory_store.get_device_config(device_name)
+    if device_config is None:
+        raise TomNotFoundException(f"Device '{device_name}' not found in inventory")
+
+    # Build credential
+    if body.username is not None and body.password is not None:
+        credential: Union[StoredCredential, InlineSSHCredential] = InlineSSHCredential(
+            username=body.username, password=body.password
+        )
+
+    else:
+        credential = StoredCredential(credential_id=device_config.credential_id)
+
+    params = ConfigJobExecutionParams(
+        queue=request.app.state.queue,
+        device_config=device_config,
+        config_lines=body.config_lines,
+        credential=credential,
+        wait=body.wait,
+        timeout=body.timeout,
+        retries=body.retries,
+        max_queue_wait=body.max_queue_wait,
+    )
+
+    result = await _execute_config_device_job(params, device_name)
+    return result

@@ -3,10 +3,10 @@ import re
 from dataclasses import dataclass
 from typing import Optional, Any
 
-from netmiko import ConnectHandler
+from netmiko import ConnectHandler, BaseConnection
 from netmiko.exceptions import NetmikoAuthenticationException
 
-from tom_shared.models import NetmikoSendCommandModel
+from tom_shared.models import NetmikoSendCommandModel, NetmikoSendConfigModel
 from tom_worker.credentials.credentials import SSHCredentials
 from tom_worker.exceptions import TomException, AuthenticationException
 from tom_worker.Plugins.base import CredentialPlugin
@@ -20,7 +20,7 @@ class NetmikoAdapter:
         self.port = port
         self.device_type = device_type
         self.credential = credential
-        self.connection: Optional[Any] = None
+        self.connection: Optional[BaseConnection] = None
 
     def _connect(self):
         if self.credential is None:
@@ -61,7 +61,7 @@ class NetmikoAdapter:
 
     @classmethod
     async def from_model(
-        cls, model: NetmikoSendCommandModel, credential_store: CredentialPlugin
+        cls, model: NetmikoSendCommandModel|NetmikoSendConfigModel, credential_store: CredentialPlugin
     ) -> "NetmikoAdapter":
         if model.credential.type == "stored":
             credential = await credential_store.get_ssh_credentials(
@@ -81,10 +81,11 @@ class NetmikoAdapter:
             port=model.port,
         )
 
-    def _send_commands(self, commands: list[str]) -> dict:
+    def _send_commands(self, commands: list[str]) -> dict[str, str]:
         if self.connection is None:
             raise TomException("Connection not initialized")
         results = {}
+
         for command in commands:
             result = self.connection.send_command(command)
             while command in results:
@@ -98,5 +99,15 @@ class NetmikoAdapter:
 
         return results
 
-    async def send_commands(self, commands: list[str]) -> dict:
+    def _send_configs(self, config_lines: list[str]) -> str:
+        if self.connection is None:
+            raise TomException("Connection not initialized")
+        return self.connection.send_config_set(config_lines)
+
+    async def send_commands(self, commands: list[str]) -> dict[str, str]:
         return await asyncio.to_thread(self._send_commands, commands=commands)
+
+    async def send_configs(self, config_lines: list[str]) -> str:
+        """Send a list of configuration lines to the device.
+        returns the full transcript of the configuration session."""
+        return await asyncio.to_thread(self._send_configs, config_lines=config_lines)

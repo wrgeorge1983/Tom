@@ -303,3 +303,14 @@ class SendCommandsRequest(BaseModel):
                     cmd.include_raw = self.include_raw
                 normalized.append(cmd)
         return normalized
+
+
+class SendConfigsRequest(BaseModel):
+    """Request body for sending configuration commands."""
+    config_lines: list[str] = Field(..., description="List of configuration commands to apply")
+    wait: bool = Field(False, description="Wait for job completion")
+    timeout: int = Field(10, description="Timeout in seconds for device command execution")
+    retries: int = Field(3, description="Number of times to retry on transient failures")
+    max_queue_wait: int = Field(300, description="Maximum total seconds to wait for device semaphore acquisition across all retry attempts")
+    username: Optional[str] = Field(None, description="Override username (requires password)")
+    password: Optional[str] = Field(None, description="Override password (requires username)")
