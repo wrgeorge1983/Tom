@@ -216,13 +216,18 @@
 </ul>
 <p>The controller <strong>never connects to network devices directly</strong>. This separation means a vulnerability in the API layer doesn't provide direct network access.</p>
 <h3 id="worker">Worker</h3>
-<p>Workers execute the actual network commands:</p>
+<p>Workers execute the actual network operations:</p>
 <ul>
 <li>Pull jobs from the Redis queue</li>
 <li>Retrieve credentials from Vault (or other credential store)</li>
 <li>Connect to devices using Netmiko or Scrapli</li>
-<li>Execute commands and capture output</li>
+<li>Execute operational commands (show) or push configuration changes</li>
 <li>Store results back in Redis</li>
+</ul>
+<p>Workers handle two distinct operation types:</p>
+<ul>
+<li><strong>Operational commands</strong> (<code>send_commands</code>): Uses <code>send_command()</code> per command, returns per-command output, supports caching</li>
+<li><strong>Configuration push</strong> (<code>send_configs</code>): Uses <code>send_config_set()</code> / <code>send_configs()</code>, returns a session transcript, no caching</li>
 </ul>
 <p>You can run multiple workers for higher throughput. Workers enforce per-device concurrency limits to prevent overwhelming devices with simultaneous connections.</p>
 <h3 id="redis">Redis</h3>
@@ -314,6 +319,40 @@
     C -&gt;&gt; T: GET /job/abc-123
     T -&gt;&gt; Q: Fetch job result
     T --&gt;&gt; C: status=COMPLETE, result={...}
+</div>
+<h3 id="configuration-push">Configuration Push</h3>
+<p>Configuration push follows a simpler path than operational commands -- no caching is involved:</p>
+<div class="mermaid">sequenceDiagram
+    actor C as Client 
+    participant T as Controller
+    participant Q as Redis Queue
+    participant W as Worker
+    participant V as Vault
+    participant D as Network Device
+
+    C -&gt;&gt; T: POST /device/router1/send_configs
+    note over C,T: config_lines=[...]&lt;br/&gt;wait=true
+    T -&gt;&gt; T: Authenticate request
+    T -&gt;&gt; T: Lookup device in inventory
+    T -&gt;&gt; Q: Enqueue config job
+    note over T,Q: host, driver, credential_id, config_lines
+
+    W -&gt;&gt; Q: Fetch job
+    activate W
+    W -&gt;&gt; V: Get credential by ID
+    V --&gt;&gt; W: username, password
+    T -&gt;&gt; Q: Poll for completion
+    W -&gt;&gt; D: send_config_set(config_lines)
+    activate D
+    note over W,D: Adapter handles conf t / end
+    D --&gt;&gt; W: Session transcript
+    deactivate D
+    W -&gt;&gt; Q: Store result, mark complete
+    deactivate W
+
+    T -&gt;&gt; Q: Poll for completion
+    Q --&gt;&gt; T: Job complete with transcript
+    T --&gt;&gt; C: JobResponse with transcript
 </div>
 <h2 id="job-states">Job States</h2>
 <p>Jobs progress through these states:</p>

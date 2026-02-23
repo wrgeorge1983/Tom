@@ -551,6 +551,51 @@
 <p><strong>Returns:</strong>
 - Default: <code>JobResponse</code> object
 - With <code>raw_output=true</code>: Plain text with all command outputs</p>
+<h4 id="configuration-commands">Configuration Commands</h4>
+<pre><code>POST /api/device/{device_name}/send_configs
+</code></pre>
+<p>Send configuration commands to a device from inventory. This uses netmiko's <code>send_config_set</code> or scrapli's <code>send_configs</code> under the hood, which handle entering and exiting config mode automatically.</p>
+<p>This endpoint is fundamentally different from <code>send_command</code>/<code>send_commands</code>:</p>
+<ul>
+<li><strong>No caching</strong>: Configuration push results are not cached</li>
+<li><strong>No parsing</strong>: Output is not parsed with TextFSM/TTP</li>
+<li><strong>No raw output mode</strong>: The endpoint always returns a <code>JobResponse</code> envelope</li>
+<li><strong>Different result shape</strong>: Returns a session transcript instead of per-command outputs</li>
+</ul>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
+  &quot;config_lines&quot;: [
+    &quot;interface GigabitEthernet0/1&quot;,
+    &quot;description Uplink to core&quot;,
+    &quot;ip address 10.0.1.1 255.255.255.0&quot;,
+    &quot;no shutdown&quot;
+  ],
+  &quot;wait&quot;: true,
+  &quot;timeout&quot;: 30
+}
+</code></pre>
+<p><strong>Parameters:</strong>
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| <code>config_lines</code> | array | required | List of configuration commands to apply |
+| <code>wait</code> | bool | false | Wait for job completion |
+| <code>timeout</code> | int | 10 | Timeout in seconds |
+| <code>retries</code> | int | 3 | Number of retries on transient failures |
+| <code>max_queue_wait</code> | int | 300 | Max seconds to wait for device semaphore |
+| <code>username</code> | string | null | Override credentials |
+| <code>password</code> | string | null | Override credentials |</p>
+<p><strong>Returns:</strong> <code>JobResponse</code> object. When the job completes, the <code>result</code> field contains a <code>ConfigExecutionResult</code>:</p>
+<pre><code class="language-json">{
+  &quot;job_id&quot;: &quot;abc123&quot;,
+  &quot;status&quot;: &quot;COMPLETE&quot;,
+  &quot;result&quot;: {
+    &quot;transcript&quot;: &quot;configure terminal\nEnter configuration commands...\ninterface GigabitEthernet0/1\n...&quot;
+  },
+  &quot;attempts&quot;: 1,
+  &quot;error&quot;: null
+}
+</code></pre>
+<p><strong>Error handling:</strong> Errors (connectivity issues, timeouts, authentication failures) are handled the same way as operational commands — the job moves to <code>FAILED</code> status with the error in the <code>error</code> field. CLI-level configuration errors (e.g. <code>% Invalid input</code>) are not currently detected; they will appear in the transcript.</p>
 <h3 id="rawdirect-host-endpoints">Raw/Direct Host Endpoints</h3>
 <p>These endpoints bypass inventory lookup and connect directly to hosts.
 They support the same output modes, parsing, and caching options as the 
@@ -962,6 +1007,23 @@ inventory-based endpoints.</p>
   &quot;error&quot;: &quot;error message (when failed)&quot;
 }
 </code></pre>
+<p><strong>Note:</strong> The structure of <code>result</code> depends on the job type:
+- <strong>Operational commands</strong> (<code>send_command</code>, <code>send_commands</code>): <code>result</code> contains <code>{"data": {...}, "meta": {...}}</code> (see <a href="#commandexecutionresult">CommandExecutionResult</a>)
+- <strong>Configuration push</strong> (<code>send_configs</code>): <code>result</code> contains <code>{"transcript": "..."}</code> (see <a href="#configexecutionresult">ConfigExecutionResult</a>)</p>
+<h3 id="commandexecutionresult">CommandExecutionResult</h3>
+<p>Returned by operational command jobs (<code>send_command</code>, <code>send_commands</code>):</p>
+<pre><code class="language-json">{
+  &quot;data&quot;: {&quot;show version&quot;: &quot;...&quot;, &quot;show ip int brief&quot;: &quot;...&quot;},
+  &quot;meta&quot;: {&quot;cache&quot;: {&quot;cache_status&quot;: &quot;miss&quot;, &quot;commands&quot;: {...}}}
+}
+</code></pre>
+<h3 id="configexecutionresult">ConfigExecutionResult</h3>
+<p>Returned by configuration push jobs (<code>send_configs</code>):</p>
+<pre><code class="language-json">{
+  &quot;transcript&quot;: &quot;configure terminal\nEnter configuration commands...\ninterface Gi0/1\n...\nend&quot;
+}
+</code></pre>
+<p>The transcript contains the full session output from entering config mode, applying each command, and exiting. This is useful for debugging but is not parsed or structured.</p>
 <h3 id="deviceconfig">DeviceConfig</h3>
 <pre><code class="language-json">{
   &quot;adapter&quot;: &quot;netmiko|scrapli&quot;,

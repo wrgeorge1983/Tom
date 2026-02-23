@@ -526,6 +526,53 @@
 <li><code>template</code> (string): Template file for this command</li>
 <li><code>include_raw</code> (bool): Include raw with parsed for this command</li>
 </ul>
+<h3 id="configuration-commands">Configuration commands</h3>
+<ul>
+<li>Endpoint: <code>POST /api/device/{device_name}/send_configs</code></li>
+</ul>
+<p>This endpoint pushes configuration to a device. It is fundamentally different from the operational command endpoints above:</p>
+<ul>
+<li>The worker uses netmiko's <code>send_config_set</code> (or scrapli's <code>send_configs</code>), which handles entering and exiting config mode</li>
+<li>There is no caching, parsing, or raw output mode</li>
+<li>The result is a session transcript (a single string), not per-command outputs</li>
+</ul>
+<p>You do <strong>not</strong> include <code>conf t</code> or <code>end</code> in the config lines -- the adapter handles mode transitions.</p>
+<h4 id="request-body-fields_1">Request body fields</h4>
+<ul>
+<li><code>config_lines</code> (required): List of configuration commands to apply</li>
+<li><code>wait</code> (bool): Wait for job completion</li>
+<li><code>timeout</code> (int): Timeout in seconds (default: 10)</li>
+<li><code>retries</code> (int): Number of retries on transient failures (default: 3)</li>
+<li><code>max_queue_wait</code> (int): Max seconds to wait for device semaphore (default: 300)</li>
+<li><code>username</code>/<code>password</code>: Optional credential override</li>
+</ul>
+<h4 id="example">Example</h4>
+<pre><code class="language-bash">curl -X POST -H &quot;X-API-Key: MYKEY&quot; -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;config_lines&quot;: [
+      &quot;interface GigabitEthernet0/1&quot;,
+      &quot;description Uplink to core&quot;,
+      &quot;ip address 10.0.1.1 255.255.255.0&quot;,
+      &quot;no shutdown&quot;
+    ],
+    &quot;wait&quot;: true,
+    &quot;timeout&quot;: 30
+  }' \
+  &quot;http://tom:8020/api/device/router1/send_configs&quot;
+</code></pre>
+<h4 id="response">Response</h4>
+<p>When complete, the <code>result</code> field contains a transcript of the config session:</p>
+<pre><code class="language-json">{
+  &quot;job_id&quot;: &quot;abc123&quot;,
+  &quot;status&quot;: &quot;COMPLETE&quot;,
+  &quot;result&quot;: {
+    &quot;transcript&quot;: &quot;configure terminal\nEnter configuration commands...\ninterface GigabitEthernet0/1\ndescription Uplink to core\n...\nend&quot;
+  },
+  &quot;attempts&quot;: 1,
+  &quot;error&quot;: null
+}
+</code></pre>
+<p>Errors (connectivity, timeouts, auth failures) result in the job moving to <code>FAILED</code> status, same as operational commands. CLI-level errors (e.g. <code>% Invalid input</code>) are not currently detected -- they appear in the transcript.</p>
 <h3 id="rawdirect-host-endpoints">Raw/Direct host endpoints</h3>
 <ul>
 <li><code>POST /api/raw/send_netmiko_command</code></li>
