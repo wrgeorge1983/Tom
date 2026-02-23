@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # where a very fast job (e.g. cache hit) might complete before the pubsub
 # listener is subscribed, causing the notification to be lost. After these
 # polls, we rely solely on pubsub for the remainder of the timeout.
-_GUARD_POLL_DELAYS = [0.05, 0.10, 0.15, 0.25]
+_GUARD_POLL_DELAYS = [0.01, 0.05, 0.10, 0.20]
 
 
 async def _wait_for_job(job: Job, timeout: float) -> None:
