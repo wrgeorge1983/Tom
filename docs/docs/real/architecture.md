@@ -167,30 +167,37 @@ Jobs progress through these states:
 
 ## Caching
 
-When caching is enabled, the flow shortcuts if a valid cached result exists:
+Caching happens in the **worker**, not the controller. When a job reaches a worker and caching is enabled, the worker checks Redis for cached results before connecting to the device. A job is always queued even if the result is cached -- the savings are in skipping the device connection, not the queue round-trip.
+
+For multi-command jobs, the worker checks each command individually, so a single job can have a mix of cache hits and misses. Only the uncached commands require a device connection.
 
 ```mermaid
 sequenceDiagram
     actor C as Client
     participant T as Controller
-    participant Cache as Redis Cache
     participant Q as Queue
     participant W as Worker
+    participant Cache as Redis Cache
+    participant D as Network Device
     
     C ->> T: send_command (use_cache=true)
-    T ->> Cache: Check for cached result
+    T ->> Q: Enqueue job
+    W ->> Q: Fetch job
+    W ->> Cache: Check for cached result
     alt Cache hit
-        Cache -->> T: Cached output
-        T -->> C: Return cached result
+        Cache -->> W: Cached output
     else Cache miss
-        T ->> Q: Enqueue job
-        W ->> Q: Execute job
+        W ->> D: Execute command
+        D -->> W: Raw output
         W ->> Cache: Store result (with TTL)
-        T -->> C: Return fresh result
     end
+    W ->> Q: Store result, mark complete
+    T -->> C: Return result
 ```
 
-Cache parameters:
+The controller provides cache **management** endpoints (invalidate, clear, list keys, stats) but never reads or writes cached command results itself.
+
+Cache parameters (passed through to worker via job args):
 - `use_cache=true`: Allow returning cached results
 - `cache_ttl=300`: Cache lifetime in seconds
 - `cache_refresh=true`: Force fresh execution, update cache

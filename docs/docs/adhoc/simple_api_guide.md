@@ -50,7 +50,7 @@ Set `raw_output=true` to opt out of the JobResponse envelope and get plain text 
 - `command` (required): Command to execute
 - `wait` (bool): `true` = synchronous (wait for job completion), `false` = async (returns job info)
 - `raw_output` (bool): Return plain text output (requires `wait=true`)
-- `use_cache` (bool): Allow use of cached results (works with `wait=true`)
+- `use_cache` (bool): Allow use of cached results
 - `cache_ttl` (int seconds): TTL for cache
 - `cache_refresh` (bool): Force refresh of cache
 - `parse` (bool): Parse output (only meaningful with `wait=true`; for async parsing, use `GET /api/job/{job_id}?parse=true`)
@@ -285,11 +285,14 @@ Request body:
 You can also use `device_type` + `command` instead of `template` for auto-discovery.
 
 ## Caching
-- Controlled per-request (device endpoints) with request body fields:
-  - `use_cache=true` - allow returning cached result (effective with `wait=true`)
+Caching is performed by the worker, not the controller. When a job reaches a worker with caching enabled, the worker checks Redis for cached results before connecting to the device. A job is always queued regardless of cache status -- caching saves the device connection, not the queue round-trip.
+
+Controlled per-request with request body fields:
+  - `use_cache=true` - allow returning cached result
   - `cache_ttl=<seconds>` - TTL for the cache entry
   - `cache_refresh=true` - force bypass/update cache
-- Cache metadata is included in the `result.meta.cache` field of JobResponse.
+
+Cache metadata is included in the `result.meta.cache` field of JobResponse. The controller provides cache management endpoints (invalidate, clear, list, stats) but does not read or write cached results itself.
 
 ## Parsing selection
 - Parsers supported: `textfsm` (default) and `ttp`.

@@ -34,7 +34,12 @@ def _make_queue() -> AsyncMock:
 
 
 def _make_job(queue: AsyncMock, status: Status = Status.NEW, **kwargs) -> saq.Job:
-    """Create a real SAQ Job associated with a mock queue."""
+    """Create a real SAQ Job associated with a mock queue.
+
+    Also sets up queue.job() to return a copy of this job (as SAQ's
+    RedisQueue.job() would), so that _wait_for_job's polling guard works
+    correctly with mock objects.
+    """
     defaults = {
         "function": "send_commands_netmiko",
         "key": "saq:job:test-job-id",
@@ -46,7 +51,28 @@ def _make_job(queue: AsyncMock, status: Status = Status.NEW, **kwargs) -> saq.Jo
         "queue": queue,
     }
     defaults.update(kwargs)
-    return saq.Job(**defaults)
+    job = saq.Job(**defaults)
+
+    # queue.job() is called by the polling guard in _wait_for_job.
+    # Return a snapshot of the job (same status) by default. Tests that need
+    # different behavior can override queue.job after calling _make_job.
+    async def _fake_queue_job(key):
+        snapshot = saq.Job(
+            function=job.function,
+            key=job.key,
+            retries=job.retries,
+            attempts=job.attempts,
+            status=job.status,
+            result=job.result,
+            error=job.error,
+            completed=job.completed,
+            queue=queue,
+        )
+        return snapshot
+
+    queue.job = _fake_queue_job
+
+    return job
 
 
 class TestEnqueueSuccess:
