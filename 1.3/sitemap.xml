@@ -2,130 +2,130 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/api-endpoints/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/jobs-initial/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/jobs-phase1/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/jobs-phase2/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/metrics/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/oauth-implementation/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/overal-sequence-detail/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/overall-sequence/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/parsing/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/adhoc/simple_api_guide/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/architecture/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/auth-api-keys/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/auth-jwt/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/authentication/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/aws-credentials/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/configuration/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/drivers/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/getting-started-FAST/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/getting-started/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/inventory-nautobot/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/inventory-netbox/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/inventory-solarwinds/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/inventory-yaml/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/inventory/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/nautobot-device-setup/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/parsing/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/tutorial/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/vault-credentials/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
     <url>
          <loc>https://wrgeorge1983.github.io/Tom/1.3/real/yaml-credentials/</loc>
-         <lastmod>2026-02-22</lastmod>
+         <lastmod>2026-02-23</lastmod>
     </url>
 </urlset>

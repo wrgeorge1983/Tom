@@ -441,7 +441,7 @@
 - <code>command</code> (required): Command to execute
 - <code>wait</code> (bool): <code>true</code> = synchronous (wait for job completion), <code>false</code> = async (returns job info)
 - <code>raw_output</code> (bool): Return plain text output (requires <code>wait=true</code>)
-- <code>use_cache</code> (bool): Allow use of cached results (works with <code>wait=true</code>)
+- <code>use_cache</code> (bool): Allow use of cached results
 - <code>cache_ttl</code> (int seconds): TTL for cache
 - <code>cache_refresh</code> (bool): Force refresh of cache
 - <code>parse</code> (bool): Parse output (only meaningful with <code>wait=true</code>; for async parsing, use <code>GET /api/job/{job_id}?parse=true</code>)
@@ -658,13 +658,12 @@ curl &quot;http://tom:8020/api/inventory/export?Vendor=arista&amp;Description=DC
 </code></pre>
 <p>You can also use <code>device_type</code> + <code>command</code> instead of <code>template</code> for auto-discovery.</p>
 <h2 id="caching">Caching</h2>
-<ul>
-<li>Controlled per-request (device endpoints) with request body fields:</li>
-<li><code>use_cache=true</code> - allow returning cached result (effective with <code>wait=true</code>)</li>
-<li><code>cache_ttl=&lt;seconds&gt;</code> - TTL for the cache entry</li>
-<li><code>cache_refresh=true</code> - force bypass/update cache</li>
-<li>Cache metadata is included in the <code>result.meta.cache</code> field of JobResponse.</li>
-</ul>
+<p>Caching is performed by the worker, not the controller. When a job reaches a worker with caching enabled, the worker checks Redis for cached results before connecting to the device. A job is always queued regardless of cache status -- caching saves the device connection, not the queue round-trip.</p>
+<p>Controlled per-request with request body fields:
+  - <code>use_cache=true</code> - allow returning cached result
+  - <code>cache_ttl=&lt;seconds&gt;</code> - TTL for the cache entry
+  - <code>cache_refresh=true</code> - force bypass/update cache</p>
+<p>Cache metadata is included in the <code>result.meta.cache</code> field of JobResponse. The controller provides cache management endpoints (invalidate, clear, list, stats) but does not read or write cached results itself.</p>
 <h2 id="parsing-selection">Parsing selection</h2>
 <ul>
 <li>Parsers supported: <code>textfsm</code> (default) and <code>ttp</code>.</li>

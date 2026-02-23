@@ -352,27 +352,32 @@
 </tbody>
 </table>
 <h2 id="caching">Caching</h2>
-<p>When caching is enabled, the flow shortcuts if a valid cached result exists:</p>
+<p>Caching happens in the <strong>worker</strong>, not the controller. When a job reaches a worker and caching is enabled, the worker checks Redis for cached results before connecting to the device. A job is always queued even if the result is cached -- the savings are in skipping the device connection, not the queue round-trip.</p>
+<p>For multi-command jobs, the worker checks each command individually, so a single job can have a mix of cache hits and misses. Only the uncached commands require a device connection.</p>
 <div class="mermaid">sequenceDiagram
     actor C as Client
     participant T as Controller
-    participant Cache as Redis Cache
     participant Q as Queue
     participant W as Worker
+    participant Cache as Redis Cache
+    participant D as Network Device
 
     C -&gt;&gt; T: send_command (use_cache=true)
-    T -&gt;&gt; Cache: Check for cached result
+    T -&gt;&gt; Q: Enqueue job
+    W -&gt;&gt; Q: Fetch job
+    W -&gt;&gt; Cache: Check for cached result
     alt Cache hit
-        Cache --&gt;&gt; T: Cached output
-        T --&gt;&gt; C: Return cached result
+        Cache --&gt;&gt; W: Cached output
     else Cache miss
-        T -&gt;&gt; Q: Enqueue job
-        W -&gt;&gt; Q: Execute job
+        W -&gt;&gt; D: Execute command
+        D --&gt;&gt; W: Raw output
         W -&gt;&gt; Cache: Store result (with TTL)
-        T --&gt;&gt; C: Return fresh result
     end
+    W -&gt;&gt; Q: Store result, mark complete
+    T --&gt;&gt; C: Return result
 </div>
-<p>Cache parameters:
+<p>The controller provides cache <strong>management</strong> endpoints (invalidate, clear, list keys, stats) but never reads or writes cached command results itself.</p>
+<p>Cache parameters (passed through to worker via job args):
 - <code>use_cache=true</code>: Allow returning cached results
 - <code>cache_ttl=300</code>: Cache lifetime in seconds
 - <code>cache_refresh=true</code>: Force fresh execution, update cache</p>
