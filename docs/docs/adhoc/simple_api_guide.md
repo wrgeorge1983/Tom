@@ -143,6 +143,58 @@ Returns plain text with commands separated:
 - `template` (string): Template file for this command
 - `include_raw` (bool): Include raw with parsed for this command
 
+### Configuration commands
+- Endpoint: `POST /api/device/{device_name}/send_configs`
+
+This endpoint pushes configuration to a device. It is fundamentally different from the operational command endpoints above:
+
+- The worker uses netmiko's `send_config_set` (or scrapli's `send_configs`), which handles entering and exiting config mode
+- There is no caching, parsing, or raw output mode
+- The result is a session transcript (a single string), not per-command outputs
+
+You do **not** include `conf t` or `end` in the config lines -- the adapter handles mode transitions.
+
+#### Request body fields
+- `config_lines` (required): List of configuration commands to apply
+- `wait` (bool): Wait for job completion
+- `timeout` (int): Timeout in seconds (default: 10)
+- `retries` (int): Number of retries on transient failures (default: 3)
+- `max_queue_wait` (int): Max seconds to wait for device semaphore (default: 300)
+- `username`/`password`: Optional credential override
+
+#### Example
+```bash
+curl -X POST -H "X-API-Key: MYKEY" -H "Content-Type: application/json" \
+  -d '{
+    "config_lines": [
+      "interface GigabitEthernet0/1",
+      "description Uplink to core",
+      "ip address 10.0.1.1 255.255.255.0",
+      "no shutdown"
+    ],
+    "wait": true,
+    "timeout": 30
+  }' \
+  "http://tom:8020/api/device/router1/send_configs"
+```
+
+#### Response
+When complete, the `result` field contains a transcript of the config session:
+
+```json
+{
+  "job_id": "abc123",
+  "status": "COMPLETE",
+  "result": {
+    "transcript": "configure terminal\nEnter configuration commands...\ninterface GigabitEthernet0/1\ndescription Uplink to core\n...\nend"
+  },
+  "attempts": 1,
+  "error": null
+}
+```
+
+Errors (connectivity, timeouts, auth failures) result in the job moving to `FAILED` status, same as operational commands. CLI-level errors (e.g. `% Invalid input`) are not currently detected -- they appear in the transcript.
+
 ### Raw/Direct host endpoints
 - `POST /api/raw/send_netmiko_command`
 - `POST /api/raw/send_scrapli_command`

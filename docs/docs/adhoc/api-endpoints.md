@@ -193,6 +193,62 @@ Raw output for multiple commands is formatted as:
 - Default: `JobResponse` object
 - With `raw_output=true`: Plain text with all command outputs
 
+#### Configuration Commands
+
+```
+POST /api/device/{device_name}/send_configs
+```
+
+Send configuration commands to a device from inventory. This uses netmiko's `send_config_set` or scrapli's `send_configs` under the hood, which handle entering and exiting config mode automatically.
+
+This endpoint is fundamentally different from `send_command`/`send_commands`:
+
+- **No caching**: Configuration push results are not cached
+- **No parsing**: Output is not parsed with TextFSM/TTP
+- **No raw output mode**: The endpoint always returns a `JobResponse` envelope
+- **Different result shape**: Returns a session transcript instead of per-command outputs
+
+**Request Body:**
+```json
+{
+  "config_lines": [
+    "interface GigabitEthernet0/1",
+    "description Uplink to core",
+    "ip address 10.0.1.1 255.255.255.0",
+    "no shutdown"
+  ],
+  "wait": true,
+  "timeout": 30
+}
+```
+
+**Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `config_lines` | array | required | List of configuration commands to apply |
+| `wait` | bool | false | Wait for job completion |
+| `timeout` | int | 10 | Timeout in seconds |
+| `retries` | int | 3 | Number of retries on transient failures |
+| `max_queue_wait` | int | 300 | Max seconds to wait for device semaphore |
+| `username` | string | null | Override credentials |
+| `password` | string | null | Override credentials |
+
+**Returns:** `JobResponse` object. When the job completes, the `result` field contains a `ConfigExecutionResult`:
+
+```json
+{
+  "job_id": "abc123",
+  "status": "COMPLETE",
+  "result": {
+    "transcript": "configure terminal\nEnter configuration commands...\ninterface GigabitEthernet0/1\n..."
+  },
+  "attempts": 1,
+  "error": null
+}
+```
+
+**Error handling:** Errors (connectivity issues, timeouts, authentication failures) are handled the same way as operational commands — the job moves to `FAILED` status with the error in the `error` field. CLI-level configuration errors (e.g. `% Invalid input`) are not currently detected; they will appear in the transcript.
+
 ### Raw/Direct Host Endpoints
 
 These endpoints bypass inventory lookup and connect directly to hosts.
@@ -724,6 +780,33 @@ When `wait=true`, a 200 response may contain a `JobResponse` with a non-complete
   "error": "error message (when failed)"
 }
 ```
+
+**Note:** The structure of `result` depends on the job type:
+- **Operational commands** (`send_command`, `send_commands`): `result` contains `{"data": {...}, "meta": {...}}` (see [CommandExecutionResult](#commandexecutionresult))
+- **Configuration push** (`send_configs`): `result` contains `{"transcript": "..."}` (see [ConfigExecutionResult](#configexecutionresult))
+
+### CommandExecutionResult
+
+Returned by operational command jobs (`send_command`, `send_commands`):
+
+```json
+{
+  "data": {"show version": "...", "show ip int brief": "..."},
+  "meta": {"cache": {"cache_status": "miss", "commands": {...}}}
+}
+```
+
+### ConfigExecutionResult
+
+Returned by configuration push jobs (`send_configs`):
+
+```json
+{
+  "transcript": "configure terminal\nEnter configuration commands...\ninterface Gi0/1\n...\nend"
+}
+```
+
+The transcript contains the full session output from entering config mode, applying each command, and exiting. This is useful for debugging but is not parsed or structured.
 
 ### DeviceConfig
 

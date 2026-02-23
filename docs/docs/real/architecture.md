@@ -38,13 +38,18 @@ The controller **never connects to network devices directly**. This separation m
 
 ### Worker
 
-Workers execute the actual network commands:
+Workers execute the actual network operations:
 
 - Pull jobs from the Redis queue
 - Retrieve credentials from Vault (or other credential store)
 - Connect to devices using Netmiko or Scrapli
-- Execute commands and capture output
+- Execute operational commands (show) or push configuration changes
 - Store results back in Redis
+
+Workers handle two distinct operation types:
+
+- **Operational commands** (`send_commands`): Uses `send_command()` per command, returns per-command output, supports caching
+- **Configuration push** (`send_configs`): Uses `send_config_set()` / `send_configs()`, returns a session transcript, no caching
 
 You can run multiple workers for higher throughput. Workers enforce per-device concurrency limits to prevent overwhelming devices with simultaneous connections.
 
@@ -150,6 +155,44 @@ sequenceDiagram
     C ->> T: GET /job/abc-123
     T ->> Q: Fetch job result
     T -->> C: status=COMPLETE, result={...}
+```
+
+### Configuration Push
+
+Configuration push follows a simpler path than operational commands -- no caching is involved:
+
+```mermaid
+sequenceDiagram
+    actor C as Client 
+    participant T as Controller
+    participant Q as Redis Queue
+    participant W as Worker
+    participant V as Vault
+    participant D as Network Device
+        
+    C ->> T: POST /device/router1/send_configs
+    note over C,T: config_lines=[...]<br/>wait=true
+    T ->> T: Authenticate request
+    T ->> T: Lookup device in inventory
+    T ->> Q: Enqueue config job
+    note over T,Q: host, driver, credential_id, config_lines
+    
+    W ->> Q: Fetch job
+    activate W
+    W ->> V: Get credential by ID
+    V -->> W: username, password
+    T ->> Q: Poll for completion
+    W ->> D: send_config_set(config_lines)
+    activate D
+    note over W,D: Adapter handles conf t / end
+    D -->> W: Session transcript
+    deactivate D
+    W ->> Q: Store result, mark complete
+    deactivate W
+    
+    T ->> Q: Poll for completion
+    Q -->> T: Job complete with transcript
+    T -->> C: JobResponse with transcript
 ```
 
 ## Job States
