@@ -146,7 +146,12 @@ redis_port: 6379
 
 # Credentials
 credential_plugin: "vault"     # vault (recommended), yaml
+
+# Concurrency
+concurrency: 10                # Number of concurrent jobs per worker instance
 ```
+
+`concurrency` controls how many jobs a single worker process handles simultaneously. The default of 10 is appropriate for most deployments, but you may want to reduce it if running many worker instances (e.g. under autoscaling) to avoid individual workers consuming more CPU than their allocated share. Can also be set via `TOM_WORKER_CONCURRENCY`.
 
 See the example config files for all available options.
 
