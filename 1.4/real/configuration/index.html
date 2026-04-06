@@ -553,7 +553,11 @@ redis_port: 6379
 
 # Credentials
 credential_plugin: &quot;vault&quot;     # vault (recommended), yaml
+
+# Concurrency
+concurrency: 10                # Number of concurrent jobs per worker instance
 </code></pre>
+<p><code>concurrency</code> controls how many jobs a single worker process handles simultaneously. The default of 10 is appropriate for most deployments, but you may want to reduce it if running many worker instances (e.g. under autoscaling) to avoid individual workers consuming more CPU than their allocated share. Can also be set via <code>TOM_WORKER_CONCURRENCY</code>.</p>
 <p>See the example config files for all available options.</p>
 <h2 id="adapters-and-drivers">Adapters and Drivers</h2>
 <p>Tom supports two network automation libraries (adapters): <strong>Netmiko</strong> and <strong>Scrapli</strong>. See the <a href="../drivers/">Adapters and Drivers Reference</a> for the full list of supported platforms.</p>
