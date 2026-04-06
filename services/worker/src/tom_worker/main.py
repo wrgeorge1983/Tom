@@ -14,7 +14,9 @@ from tom_worker.exceptions import TomException
 from tom_worker.jobs import (
     send_commands_netmiko,
     send_commands_scrapli,
-    list_credentials, send_configs_netmiko, send_configs_scrapli
+    list_credentials,
+    send_configs_netmiko,
+    send_configs_scrapli,
 )
 from tom_worker.monitoring import heartbeat_task
 from tom_worker.Plugins.base import CredentialPluginManager
@@ -206,7 +208,14 @@ async def main():
 
     worker = saq.Worker(
         queue,
-        functions = [send_commands_netmiko, send_commands_scrapli, send_configs_netmiko, send_configs_scrapli, list_credentials],
+        functions=[
+            send_commands_netmiko,
+            send_commands_scrapli,
+            send_configs_netmiko,
+            send_configs_scrapli,
+            list_credentials,
+        ],
+        concurrency=settings.concurrency,
         startup=worker_setup,
         before_process=before_job_process,
         after_process=after_job_process,

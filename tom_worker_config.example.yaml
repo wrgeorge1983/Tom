@@ -19,6 +19,7 @@
 
 log_level: "info"           # debug, info, warning, error
 project_root: "../../.."    # Path to project root (for resolving relative paths)
+concurrency: 10             # Number of concurrent jobs per worker instance (TOM_WORKER_CONCURRENCY)
 
 # Redis connection (inherited from shared settings)
 redis_host: "localhost"
@@ -100,6 +101,7 @@ plugin_vault_token: "myroot"
 #   TOM_WORKER_REDIS_HOST
 #   TOM_WORKER_REDIS_PORT
 #   TOM_WORKER_CREDENTIAL_PLUGIN
+#   TOM_WORKER_CONCURRENCY
 #
 # Vault plugin settings:
 #   TOM_WORKER_PLUGIN_VAULT_URL

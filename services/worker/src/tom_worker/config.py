@@ -25,6 +25,9 @@ class Settings(SharedSettings):
     # Credential plugin selection (vault recommended for production)
     credential_plugin: str = "vault"
 
+    # SAQ worker concurrency (number of concurrent jobs per worker instance)
+    concurrency: int = 10
+
     model_config = SettingsConfigDict(
         env_prefix="TOM_WORKER_",
         env_file=os.getenv("TOM_WORKER_ENV_FILE", "foo.env"),
