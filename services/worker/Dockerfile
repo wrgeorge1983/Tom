@@ -20,6 +20,8 @@ RUN uv sync --locked --no-install-project --no-editable --no-dev && \
 COPY --chown=app:app services/worker/ /app/services/worker
 RUN  uv pip install --no-deps .
 
+RUN .venv/bin/python -m compileall -q /app
+
 # Final stage
 FROM python:3.13-slim-trixie
 
