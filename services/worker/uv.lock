@@ -691,7 +691,7 @@ requires-dist = [
 
 [[package]]
 name = "tom-worker"
-version = "1.4.7"
+version = "1.4.8"
 source = { editable = "." }
 dependencies = [
     { name = "asyncssh" },
