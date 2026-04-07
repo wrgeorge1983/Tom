@@ -467,24 +467,28 @@ time() - tom_worker_last_heartbeat &gt; 120
 </code></pre>
 <h3 id="queue-metrics">Queue Metrics</h3>
 <h4 id="tom_queue_depth-gauge"><code>tom_queue_depth</code> (gauge)</h4>
-<p>Number of jobs waiting to be processed in each queue.</p>
+<p>Number of jobs in the queue by state.</p>
 <p><strong>Type:</strong> Gauge<br />
 <strong>Labels:</strong>
-- <code>queue</code> - Queue name (typically <code>default</code>)</p>
+- <code>queue</code> - Queue name (typically <code>default</code>)
+- <code>state</code> - Job state: <code>queued</code> (waiting to be picked up) or <code>active</code> (currently being processed)</p>
 <p><strong>Example:</strong></p>
-<pre><code>tom_queue_depth{queue=&quot;default&quot;} 42.0
+<pre><code>tom_queue_depth{queue=&quot;default&quot;,state=&quot;queued&quot;} 42.0
+tom_queue_depth{queue=&quot;default&quot;,state=&quot;active&quot;} 8.0
 </code></pre>
 <p><strong>Use Cases:</strong>
-- Monitor queue backlog
-- Detect processing bottlenecks
-- Capacity planning
-- Alert on stuck queues</p>
+- Monitor queue backlog (<code>queued</code>) for autoscaling triggers
+- Monitor in-flight work (<code>active</code>) for capacity planning
+- Detect stuck queues</p>
 <p><strong>Common Queries:</strong></p>
-<pre><code class="language-promql"># Queue backlog
-tom_queue_depth
+<pre><code class="language-promql"># Jobs waiting to be picked up (best signal for autoscaling)
+tom_queue_depth{state=&quot;queued&quot;}
+
+# Total unfinished work
+sum(tom_queue_depth)
 
 # Queue growing over time (potential stuck queue)
-deriv(tom_queue_depth[5m]) &gt; 0
+deriv(tom_queue_depth{state=&quot;queued&quot;}[5m]) &gt; 0
 </code></pre>
 <h3 id="device-semaphore-metrics">Device Semaphore Metrics</h3>
 <h4 id="tom_device_semaphore_leases-gauge"><code>tom_device_semaphore_leases</code> (gauge)</h4>
