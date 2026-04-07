@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -5,7 +6,11 @@ from typing import Optional
 import redis.asyncio as redis
 import saq.types
 
-from tom_worker.exceptions import AuthenticationException, PermanentException
+from tom_worker.exceptions import (
+    AuthenticationException,
+    GatingException,
+    PermanentException,
+)
 from tom_worker.retry_handler import RetryHandler
 
 logger = logging.getLogger(__name__)
@@ -87,9 +92,14 @@ async def device_lease(
     semaphore = DeviceSemaphore(redis_client=redis_client, device_id=device_id)
     lease_acquired = await semaphore.acquire_lease(job_id)
 
-    # Handle device busy with time-based retry budget
-    # This may raise GatingException to trigger SAQ retry
-    RetryHandler.handle_device_busy(ctx, device_id, lease_acquired, max_queue_wait)
+    # Handle device busy with time-based retry budget.
+    # GatingException triggers a SAQ retry.  We catch it and re-raise as
+    # CancelledError so SAQ takes its quiet retry path (job.retry("cancelled"))
+    # instead of logging a full traceback via logger.exception().
+    try:
+        RetryHandler.handle_device_busy(ctx, device_id, lease_acquired, max_queue_wait)
+    except GatingException:
+        raise asyncio.CancelledError()
 
     try:
         # Restore original retry settings now that we have the lease
