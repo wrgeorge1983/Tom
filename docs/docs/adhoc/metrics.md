@@ -94,30 +94,34 @@ time() - tom_worker_last_heartbeat > 120
 ### Queue Metrics
 
 #### `tom_queue_depth` (gauge)
-Number of jobs waiting to be processed in each queue.
+Number of jobs in the queue by state.
 
 **Type:** Gauge  
 **Labels:**
 - `queue` - Queue name (typically `default`)
+- `state` - Job state: `queued` (waiting to be picked up) or `active` (currently being processed)
 
 **Example:**
 ```
-tom_queue_depth{queue="default"} 42.0
+tom_queue_depth{queue="default",state="queued"} 42.0
+tom_queue_depth{queue="default",state="active"} 8.0
 ```
 
 **Use Cases:**
-- Monitor queue backlog
-- Detect processing bottlenecks
-- Capacity planning
-- Alert on stuck queues
+- Monitor queue backlog (`queued`) for autoscaling triggers
+- Monitor in-flight work (`active`) for capacity planning
+- Detect stuck queues
 
 **Common Queries:**
 ```promql
-# Queue backlog
-tom_queue_depth
+# Jobs waiting to be picked up (best signal for autoscaling)
+tom_queue_depth{state="queued"}
+
+# Total unfinished work
+sum(tom_queue_depth)
 
 # Queue growing over time (potential stuck queue)
-deriv(tom_queue_depth[5m]) > 0
+deriv(tom_queue_depth{state="queued"}[5m]) > 0
 ```
 
 ### Device Semaphore Metrics
