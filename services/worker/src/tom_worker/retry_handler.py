@@ -87,7 +87,10 @@ class RetryHandler:
                 f"{gating_count} attempts over {elapsed_time:.1f}s "
                 f"(max_queue_wait={max_queue_wait}s)"
             )
-            # Clean up job.meta for this job
+            # Prevent SAQ from retrying — gating set retries=999999, so
+            # without this SAQ would requeue the job indefinitely.
+            job.retries = job.attempts
+
             job.meta.pop(GATING_START_KEY, None)
             job.meta.pop(GATING_COUNT_KEY, None)
             job.meta.pop(ORIGINAL_SETTINGS_KEY, None)
@@ -141,7 +144,10 @@ class RetryHandler:
 
         original = job.meta[ORIGINAL_SETTINGS_KEY]
 
-        job.retries = original["retries"]
+        # Gating attempts consumed job.attempts but shouldn't count against
+        # the user's retry budget.  Give the job its original number of
+        # retries from this point forward.
+        job.retries = job.attempts + original["retries"]
         job.retry_delay = original["retry_delay"]
         job.retry_backoff = original["retry_backoff"]
 
